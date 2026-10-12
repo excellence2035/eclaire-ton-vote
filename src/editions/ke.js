@@ -1,0 +1,409 @@
+/* Format: src/EDITION_SPEC.md. Kenya edition, base language English, researched up to 11 October 2026. Notes: src/notes/ke.md */
+const SRC_KE = {
+  iebc_date: { o: "Kenyans.co.ke", t: "IEBC Sets August 10, 2027 Election Date, Orders Public Officers to Resign by February 9", d: "24 Jun 2026", u: "https://www.kenyans.co.ke/news/124581-iebc-sets-august-10-2027-election-date-orders-public-officers-resign-february-9" },
+  runoff: { o: "Kenyans.co.ke", t: "EXPLAINER: Difference Between Re-Run, Run-Off and Fresh Elections", d: "23 Aug 2022", u: "https://www.kenyans.co.ke/node/78760?page=89" },
+  iebc_trust: { o: "The Star", t: "IEBC forges ahead with key electoral activities but trust deficit remains", d: "5 Apr 2026", u: "https://www.the-star.co.ke/news/2026-04-05-iebc-forges-ahead-with-key-electoral-activities-but-trust-deficit-remains" },
+  odm_ruto: { o: "Citizen Digital", t: "ODM will not field a presidential candidate in 2027, we will support Ruto - Oburu", d: "12 Jul 2026", u: "https://citizen.digital/article/odm-will-not-field-a-presidential-candidate-in-2027-we-will-support-ruto-oburu-n386325" },
+  uo_flag: { o: "The Eastleigh Voice", t: "Fresh cracks emerge in United Opposition over selection of 2027 flagbearer", d: "6 Jul 2026", u: "https://eastleighvoice.co.ke/politics/376055/fresh-cracks-emerge-in-united-opposition-over-selection-of-2027-flagbearer" },
+  lm_party: { o: "Capital FM", t: "Sifuna to unveil new party in Oct as Linda Mwananchi eyes 2027", d: "21 Sep 2026", u: "https://capitalfm.africa/sifuna-to-unveil-new-party-in-oct-as-linda-mwananchi-eyes-2027/" },
+  dcp_launch: { o: "People Daily", t: "Gachagua unveils DCP as his new party", d: "15 May 2025", u: "https://peopledaily.digital/inside-politics/gachagua-unveils-dcp-as-his-new-party" },
+  dcp_youth: { o: "Citizen Digital", t: "Gachagua’s DCP Party launches new youth agenda for 2027 polls", d: "5 Nov 2025", u: "https://citizen.digital/article/gachaguas-dcp-party-launches-new-youth-agenda-for-2027-polls-n372301" },
+  matiangi_pledge: { o: "People Daily", t: "Matiang’i pledges to fix the country, engage Gen Z if he forms govt in 2027", d: "22 Feb 2026", u: "https://peopledaily.digital/inside-politics/matiangi-pledges-to-fix-the-country-engage-gen-z-if-he-forms-govt-in-2027/amp" },
+  peoples_budget: { o: "Capital FM", t: "Opposition Unveils ‘People’s Budget’, Accuses Ruto Govt of Economic Mismanagement", d: "11 Jun 2026", u: "https://capitalfm.africa/opposition-unveils-peoples-budget-accuses-ruto-govt-of-economic-mismanagement/" },
+  fb26_pass: { o: "Kenyans.co.ke", t: "MPs Pass Finance Bill 2026 After Third Reading Vote", d: "18 Jun 2026", u: "https://www.kenyans.co.ke/news/124437-mps-pass-finance-bill-2026-after-third-reading-vote" },
+  fb26_blocs: { o: "People Daily", t: "The numbers game: Govt vs Opposition showdown looms as MPs vote for Finance Bill 2026", d: "18 Jun 2026", u: "https://peopledaily.digital/inside-politics/the-numbers-game-govt-vs-opposition-showdown-looms-as-mps-vote-for-finance-bill-2026/amp" },
+  malala: { o: "People Daily", t: "Malala: DCP party shall not accept punitive taxes in Finance Bill 2026", d: "20 May 2026", u: "https://peopledaily.digital/news/malala-dcp-party-shall-not-accept-punitive-taxes-in-finance-bill-2026/amp" },
+  safaricom: { o: "Citizen Digital", t: "MPs approve sale of 15% government stake in Safaricom to Vodacom", d: "11 Mar 2026", u: "https://citizen.digital/article/mps-approve-sale-of-15-government-stake-in-safaricom-to-vodacom-n378866" },
+  odm_10pt: { o: "People Daily", t: "ODM reveals progress in implementing Raila’s wish on 10-point agenda", d: "2 Dec 2025", u: "https://peopledaily.digital/news/odm-reveals-progress-in-implementing-railas-wish-on-10-point-agenda" },
+  raila_demands: { o: "Kenyans.co.ke", t: "SHA, High Taxation Among Raila’s Demands to Ruto", d: "11 Mar 2025", u: "https://www.kenyans.co.ke/news/109822-sha-high-taxation-among-railas-demands-ruto" },
+  odm_comp: { o: "Citizen Digital", t: "Oburu says Ksh.2 billion allocated for protest victims compensation", d: "9 Mar 2026", u: "https://citizen.digital/article/oburu-says-ksh2-billion-allocated-for-protest-victims-compensation-n378728" },
+  shoot_leg_ruto: { o: "AllAfrica", t: "Kenya: Ruto - Shoot Protesters in the Leg, Not to Kill", d: "Jul 2025", u: "https://allafrica.com/stories/202507090498.html" },
+  shoot_leg_opp: { o: "The Star", t: "Opposition chiefs slam Ruto’s shoot the leg order at Boniface Kariuki’s burial", d: "12 Jul 2025", u: "https://www.the-star.co.ke/news/2025-07-12-opposition-slam-rutos-shoot-the-leg-order-at-boniface-kariukis-burial" },
+  kalonzo_police: { o: "People Daily", t: "Kalonzo pledges police reforms, condemns abductions ahead of 2027 election", d: "5 Jul 2026", u: "https://peopledaily.digital/inside-politics/kalonzo-pledges-police-reforms-condemns-abductions-ahead-of-2027-election" },
+  kalonzo_haiti: { o: "People Daily", t: "Kalonzo demands immediate return of Kenyan officers sent to Haiti", d: "28 Sep 2025", u: "https://peopledaily.digital/news/kalonzo-demands-immediate-return-of-kenyan-officers-sent-to-haiti" },
+  haiti_return: { o: "Ministry of Interior and National Administration", t: "653 Kenyan police officers return home after two-year Haiti mission", d: "2026", u: "https://interior.go.ke/653-kenyan-police-officers-return-home-after-two-year-haiti-mission" },
+  opp_jan: { o: "Citizen Digital", t: "Opposition leaders renew calls for IEBC CEO exit, overhaul of election technology", d: "10 Jan 2026", u: "https://citizen.digital/article/opposition-leaders-renew-calls-for-iebc-ceo-exit-overhaul-of-election-technology-n375558" },
+  smartmatic: { o: "Citizen Digital", t: "Opposition demands IEBC ditch Smartmatic technology ahead of 2027 polls", d: "20 Mar 2026", u: "https://citizen.digital/article/opposition-demands-iebc-ditch-smartmatic-technology-ahead-of-2027-polls-n379422" },
+  county_dora: { o: "Capital FM (via AllAfrica)", t: "Kenya: Ruto Signs Division of Revenue Act, Securing Sh428bn Equitable Share for Counties", d: "15 Jun 2026", u: "https://allafrica.com/stories/202606150105.html" },
+  unimodel_ca: { o: "Citizen Digital", t: "Win for Gov’t as Court of Appeal reinstates university funding model", d: "26 Mar 2025", u: "https://citizen.digital/article/win-for-govt-as-court-of-appeal-reinstates-university-funding-model-n359944" },
+  ogamba_gach: { o: "Capital FM", t: "Ogamba hits back at Gachagua over opposition to university funding model", d: "20 Aug 2026", u: "https://capitalfm.africa/ogamba-hits-back-at-gachagua-over-opposition-to-university-funding-model/" },
+  edu_afya: { o: "The Standard", t: "Hospitals to get Sh116m for defunct Edu Afya claims", d: "2026", u: "https://www.standardmedia.co.ke/national/article/2001545996/hospitals-to-get-sh116m-for-defunct-edu-afya-claims" },
+  sha_ruto: { o: "People Daily", t: "2027 polls: Ruto says opposition bid to scrap SHA risks reversing Kenya’s healthcare reforms", d: "25 Jul 2026", u: "https://peopledaily.digital/inside-politics/2027-polls-ruto-says-opposition-bid-to-scrap-sha-risks-reversing-kenyas-healthcare-reforms" },
+  kalonzo_sha: { o: "People Daily", t: "Kalonzo vows to fix Kenya’s healthcare system, tackle SHA corruption in 2027 bid", d: "22 Dec 2025", u: "https://peopledaily.digital/inside-politics/kalonzo-vows-to-fix-kenyas-healthcare-system-tackle-sha-corruption-in-2027-bid/amp" },
+  lindamama: { o: "The Standard", t: "Duale defends transfer of Linda Mama program to SHA", d: "29 Oct 2025", u: "https://thestandard.ke/business/amp/health-science/article/2001532979/duale-defends-transfer-of-linda-mama-program-to-sha" },
+  housing_ruto: { o: "Kenyans.co.ke", t: "Ruto Clarifies Housing Levy Deductions, Points to 10% Wage Increase", d: "29 Aug 2026", u: "https://www.kenyans.co.ke/news/126614-ruto-clarifies-housing-levy-deductions-points-10-wage-increase" },
+  gach_levy: { o: "Capital FM", t: "We will scrap housing levy if elected next year, former DP Gachagua", d: "27 Jul 2026", u: "https://capitalfm.africa/we-will-scrap-housing-levy-if-elected-next-year-former-dp-gachagua/" },
+  labour_nyt: { o: "Oman Observer / New York Times", t: "Kenya’s key export, now, is its cheap labour", d: "15 Nov 2025", u: "https://www.omanobserver.om/article/1179699/world/africa/kenyas-key-export-now-is-its-cheap-labour" },
+  raila_labour: { o: "People Daily", t: "‘Unataka wabaki Kenya wafanye nini?’ – Ruto slams Raila after criticism over labour export", d: "10 Dec 2023", u: "https://peopledaily.digital/inside-politics/ruto-slams-raila-after-criticism-over-labour-export" },
+  fuel_gach: { o: "People Daily", t: "Gachagua pressures govt to lower fuel prices further despite Ruto’s interventions", d: "18 Apr 2026", u: "https://peopledaily.digital/inside-politics/gachagua-pressures-govt-to-lower-fuel-prices-further-despite-rutos-interventions/amp" },
+  g2g: { o: "Citizen Digital", t: "Opposition threatens mass action over fuel crisis, demands cancelation of G-to-G deal", d: "15 Apr 2026", u: "https://citizen.digital/article/opposition-threatens-mass-action-over-fuel-crisis-demands-cancelation-of-g-to-g-deal-n380773" },
+  ketraco: { o: "Kenyans.co.ke", t: "KETRACO Nears Ksh45B Transmission Deal With AfDB Investments & Indian Firm to Replace Adani Group", d: "28 Feb 2025", u: "https://www.kenyans.co.ke/news/109437-ketraco-nears-ksh45b-transmission-deal-afdb-investments-indian-firm-replace-adani-group" }
+};
+
+const META_KE = { ev: [{ t: "general", d: "2027-08-10", q: "exact" }], src: "iebc_date" };
+
+const ED_KE = {
+  id: "ke", name: "Kenya", lang: "en",
+  role: "pres",
+  strip: "General election 2027",
+  stripDate: "Tuesday 10 August 2027",
+  facts: [
+    ["General election (all races)", "Tue 10 Aug 2027"],
+    ["Official campaign", "29 May – 7 Aug 2027"],
+    ["Parties compared", "5"]
+  ],
+  factsSrc: ["iebc_date"],
+  system: [
+    ["Political system", "Presidential republic with devolved government: 47 counties, each with its own governor and county assembly. President William Ruto (UDA), elected in 2022, is seeking a second term."],
+    ["How the President wins", "More than half of the votes nationwide (50% + 1) and at least 25% of the votes in at least 24 of the 47 counties. If no candidate meets both conditions, the top two candidates face a run-off."],
+    ["Several races on one ballot day", "On the same day voters also elect members of the National Assembly, senators, county women representatives, governors and members of county assemblies (MCAs)."],
+    ["Key dates", "Public officers who want to run must resign by 9 February 2027. Parties must finish their primaries by 9 May 2027. Nominations run from 29 May to 11 June 2027, and the campaign from 29 May to 7 August 2027."],
+    ["Electoral commission", "The IEBC, chaired by Erastus Ethekon, ran a 30-day voter registration drive in April 2026 aiming at about 6.5 million new voters. It is recruiting a new chief executive after Marjan Hussein left in February 2026. Opposition leaders contest its technology supplier, Smartmatic, and ask for an audit of the voter register."],
+    ["Alliances for 2027", "ODM, which joined a “broad-based” government with UDA in 2025, says it will not field a presidential candidate and will back President Ruto. DCP, Wiper, Jubilee and other parties form the opposition United Alternative Government, which had not named a joint candidate in the latest reports found (July 2026). ODM rebels around Senator Edwin Sifuna are setting up their own party."]
+  ],
+  systemSrc: ["odm_ruto", "runoff", "dcp_youth", "iebc_date", "iebc_trust", "uo_flag", "lm_party"],
+  status: "Party positions in this edition were coded from party statements, the opposition’s joint “People’s Budget”, parliamentary votes and government records published up to 11 October 2026. They have not yet been validated by the parties or by an independent committee. ODM sits in government and backs President Ruto; DCP, Wiper and Jubilee belong to the opposition United Alternative Government, so many of their positions come from the same joint statements.",
+  others: [
+    "Linda Mwananchi / The Mwananchi Party · Edwin Sifuna (new party being set up in October 2026; not compared yet)",
+    "DAP-K · Eugene Wamalwa (United Alternative Government)",
+    "PLP · Martha Karua (United Alternative Government)",
+    "DP · Justin Muturi (United Alternative Government)",
+    "and other parties and independent candidates"
+  ],
+  othersSrc: "uo_flag",
+  parties: [
+    { id: "ke_uda", sigle: "UDA", nom: "United Democratic Alliance", cand: "William Ruto", tag: "Governing party",
+      col: ["#7A5A00", "#F2C94C"],
+      commit: [
+        ["Keeps the 1.5% Affordable Housing Levy, pointing to a 10% minimum wage rise in 2026", "housing_ruto"],
+        ["Defends the Social Health Authority (SHA), which replaced NHIF", "sha_ruto"],
+        ["Passed the Finance Act 2026 to widen the tax base", "fb26_pass"],
+        ["Sold 15% of Safaricom to Vodacom for KSh204 billion for a National Infrastructure Fund", "safaricom"],
+        ["Means-tested university funding through scholarships and loans (since 2023)", "unimodel_ca"],
+        ["Aims to send a million Kenyan workers abroad each year", "labour_nyt"]
+      ] },
+    { id: "ke_odm", sigle: "ODM", nom: "Orange Democratic Movement", cand: "Oburu Oginga", candNote: "Party leader. ODM is not fielding a presidential candidate and says it will back William Ruto.",
+      tag: "Governing partner (broad-based government)",
+      col: ["#B04A00", "#FFB27A"],
+      commit: [
+        ["Will back President Ruto for a second term, in a coalition being negotiated with UDA", "odm_ruto"],
+        ["10-point agenda with UDA: jobs, devolution, debt audit, party funding, national healing", "odm_10pt"],
+        ["KSh2 billion allocated to compensate victims of protests since 2017", "odm_comp"],
+        ["Two-thirds gender rule and an end to politicians’ “opulence”", "raila_demands"],
+        ["Defends the credibility of the IEBC", "odm_ruto"]
+      ] },
+    { id: "ke_dcp", sigle: "DCP", nom: "Democracy for the Citizens Party", cand: "Rigathi Gachagua", candNote: "Party leader. The United Alternative Government has not chosen its joint presidential candidate yet.",
+      tag: "Opposition (United Alternative Government)", tagSrc: "dcp_launch",
+      col: ["#1B6B5A", "#86D9C3"],
+      commit: [
+        ["Will scrap the Affordable Housing Levy to “restore the dignity of the payslip”", "gach_levy"],
+        ["Says SHA is “on the brink of collapse”", "sha_ruto"],
+        ["Told its MPs to vote against the Finance Bill 2026", "fb26_pass"],
+        ["Wants the G-to-G fuel import deal cancelled and fuel taxes cut", "g2g"],
+        ["Says the old HELB university funding system worked", "ogamba_gach"],
+        ["Co-authored the opposition’s KSh4.32 trillion “People’s Budget”", "peoples_budget"]
+      ] },
+    { id: "ke_wiper", sigle: "Wiper", nom: "Wiper Democratic Movement – Kenya", cand: "Kalonzo Musyoka", candNote: "Seeks the opposition ticket. The United Alternative Government has not chosen its joint presidential candidate yet.",
+      tag: "Opposition (United Alternative Government)",
+      col: ["#1F4E9C", "#9CC0F5"],
+      commit: [
+        ["Presented the “People’s Budget”: no new taxes, abolish the housing levy", "peoples_budget"],
+        ["Promises to reform the police service and condemns abductions", "kalonzo_police"],
+        ["Wants the IEBC to “sever all ties” with Smartmatic", "smartmatic"],
+        ["Says SHA is “all corruption” and that NHIF was not the problem", "kalonzo_sha"],
+        ["Opposed the police mission in Haiti: “We want our boys back”", "kalonzo_haiti"]
+      ] },
+    { id: "ke_jubilee", sigle: "Jubilee", nom: "Jubilee Party", cand: "Fred Matiang’i", candNote: "Jubilee’s presidential flag bearer. The United Alternative Government has not chosen its joint presidential candidate yet.",
+      tag: "Opposition (United Alternative Government)",
+      col: ["#B3202A", "#F5A3A8"],
+      commit: [
+        ["Promises to “fix security, health, and education” and involve Gen Z", "matiangi_pledge"],
+        ["Co-presented the “People’s Budget”, with a KSh80 billion youth jobs programme", "peoples_budget"],
+        ["Abolish the Affordable Housing Levy", "peoples_budget"],
+        ["Restore the Linda Mama maternity and Edu Afya school health schemes", "peoples_budget"],
+        ["Backs the opposition call to cancel the G-to-G fuel import deal", "g2g"]
+      ] }
+  ],
+  themes: [
+    { id: "econ", name: "Economy, taxes & debt", min: "National Treasury & Economic Planning · Kenya Revenue Authority" },
+    { id: "security", name: "Policing & security", min: "Interior & National Administration · National Police Service" },
+    { id: "gov", name: "Elections & devolution", min: "IEBC · State Department for Devolution · Parliament" },
+    { id: "integrity", name: "Public money & privacy", min: "National Treasury · Kenya Revenue Authority · Office of the Auditor-General" },
+    { id: "edu", name: "Education", min: "Education · Higher Education Loans Board" },
+    { id: "health", name: "Health", min: "Health · Social Health Authority" },
+    { id: "social", name: "Jobs, wages & housing", min: "Labour & Social Protection · Lands, Public Works, Housing & Urban Development" },
+    { id: "energy", name: "Fuel, energy & infrastructure", min: "Energy & Petroleum · Roads & Transport" }
+  ],
+  questions: [
+    /* ---------- Economy, taxes & debt ---------- */
+    { theme: "econ", short: "Keep the Finance Act 2026",
+      text: "Parliament was right to pass the Finance Bill 2026, which raises new taxes to fund the budget.",
+      ctx: "MPs passed the Finance Bill 2026 by 122 votes to 40 in June 2026. The government says it broadens the tax base, improves compliance and raises revenue for a KSh4.82 trillion budget. Opposition MPs objected to measures such as higher excise duty on mobile phones, new taxes on mobile money transfers and wider data powers for the Kenya Revenue Authority; some contested proposals were dropped or revised before the vote.",
+      cells: {
+        ke_uda: { p: 2, k: "record", s: "fb26_pass", n: "Government-allied MPs, led by Majority Leader Kimani Ichung’wah, defended the bill and passed it in June 2026." },
+        ke_odm: { p: 1, k: "record", s: "fb26_blocs", n: "ODM’s wing loyal to the party leadership sat with the government bloc under the broad-based agreement. Rebel ODM MPs of the Linda Mwananchi faction, allied to Edwin Sifuna, sat with the opposition." },
+        ke_dcp: { p: -2, k: "record", s: "fb26_pass", n: "Gachagua directed all DCP-affiliated MPs to vote against the bill." },
+        ke_wiper: { p: -2, k: "stated", s: "peoples_budget", n: "Kalonzo’s “People’s Budget” (June 2026) rejects the new taxes on mobile money and mobile phones and calls for no new taxes." },
+        ke_jubilee: { p: -2, k: "stated", s: "peoples_budget", n: "Matiang’i co-presented the “People’s Budget”, which rejects the new taxes on mobile money and phones." }
+      } },
+    { theme: "econ", short: "Spending cuts, not new taxes",
+      text: "The budget deficit should be closed mainly by cutting spending and collecting taxes better, rather than by introducing new taxes.",
+      ctx: "The 2026/27 budget plans KSh4.82 trillion of spending against about KSh3.63 trillion of revenue, leaving a deficit above KSh1 trillion. The opposition’s alternative “People’s Budget” would spend KSh4.32 trillion and cut the deficit through efficiency, tighter spending controls and better collection “rather than imposing new taxes”. The government says new revenue measures are needed to broaden the tax base.",
+      cells: {
+        ke_uda: { p: -1, k: "record", s: "fb26_pass", n: "The government chose to raise revenue through new tax measures in the Finance Act 2026 to fund its budget." },
+        ke_dcp: { p: 2, k: "party", s: "malala", n: "DCP deputy leader Cleophas Malala (May 2026): “We shall not accept any punitive taxes” in the Finance Bill." },
+        ke_wiper: { p: 2, k: "stated", s: "peoples_budget", n: "Kalonzo presented the People’s Budget: cut the deficit through spending controls and better collection, with no new taxes." },
+        ke_jubilee: { p: 2, k: "stated", s: "peoples_budget", n: "Matiang’i co-presented the People’s Budget and its no-new-taxes approach." }
+      }, nd: { ke_odm: "ODM sits in the government that drew up the budget; this edition found no separate ODM statement on new taxes versus spending cuts." } },
+    { theme: "econ", short: "Tax mobile money and phones",
+      text: "Mobile money transaction fees and new mobile phones should be taxed more to raise public revenue.",
+      ctx: "The Finance Bill 2026 proposed 16% VAT on mobile money transaction fees and raising excise duty on phones to 25% on activation. Supporters say the digital economy should contribute more; critics say these taxes hit the poor and young hardest.",
+      cells: {
+        ke_uda: { p: 1, k: "record", s: "fb26_blocs", n: "The government’s Finance Bill 2026 included the higher excise on phones and new taxes on digital money transfers. This edition could not confirm the final wording after amendments." },
+        ke_dcp: { p: -2, k: "stated", s: "peoples_budget", n: "The People’s Budget, co-presented by Gachagua, would remove the 16% VAT on mobile money fees and the 25% excise on phones." },
+        ke_wiper: { p: -2, k: "stated", s: "peoples_budget", n: "The People’s Budget presented by Kalonzo would remove both taxes." },
+        ke_jubilee: { p: -2, k: "stated", s: "peoples_budget", n: "Matiang’i co-presented the People’s Budget, which would remove both taxes." }
+      } },
+    { theme: "econ", short: "Sell state shares in companies",
+      text: "The government should sell part of its shares in state-owned or state-backed companies, such as Safaricom, to raise money for infrastructure.",
+      ctx: "In March 2026 Parliament approved the sale of a 15% government stake in Safaricom to Vodacom for KSh204 billion (KSh34 a share), with the money ring-fenced for a new National Infrastructure Fund. Supporters say this funds roads and power without new debt. Critics, including some MPs, say the shares were undervalued and that profitable national assets should stay in public hands.",
+      cells: {
+        ke_uda: { p: 2, k: "record", s: "safaricom", n: "The government negotiated the Vodacom deal; its majority in Parliament approved it in March 2026." },
+        ke_dcp: { p: -2, k: "stated", s: "peoples_budget", n: "The People’s Budget opposes any sale of the government’s Safaricom stake and any privatisation of the Kenya Ports Authority." },
+        ke_wiper: { p: -2, k: "stated", s: "peoples_budget", n: "Kalonzo’s People’s Budget opposes the disposal of the Safaricom stake." },
+        ke_jubilee: { p: -2, k: "stated", s: "peoples_budget", n: "Matiang’i co-presented the People’s Budget, which opposes the disposal of the Safaricom stake." }
+      } },
+    { theme: "econ", short: "Audit the public debt",
+      text: "Kenya should carry out an independent audit of its public debt before taking on major new loans.",
+      ctx: "The government expects a 2026/27 deficit above KSh1 trillion, financed largely by borrowing, and opposition leaders say the country “is borrowing beyond its means”. A public debt audit is one of the ten points ODM and UDA agreed in March 2025. Supporters say an audit would expose wasteful or irregular loans; others fear it could delay financing.",
+      cells: {
+        ke_odm: { p: 2, k: "party", s: "odm_10pt", n: "A public debt audit is one of ODM’s ten points with UDA. In December 2025 ODM said the committee overseeing the agenda was making progress." },
+        ke_uda: { p: 1, k: "party", s: "odm_10pt", n: "UDA co-signed the 10-point agenda that includes a debt audit. This edition found no published audit." }
+      } },
+    { theme: "econ", short: "More for irrigation and food",
+      text: "Public money should be shifted from State House and the intelligence service to irrigation and food production.",
+      ctx: "The opposition’s People’s Budget proposes cutting spending at State House and the National Intelligence Service and moving part of the savings to irrigation and food security. Supporters say irrigation would make farming less dependent on rain; critics question whether large irrigation schemes deliver value for money.",
+      cells: {
+        ke_dcp: { p: 2, k: "stated", s: "peoples_budget", n: "Gachagua co-presented the plan to redirect State House and NIS savings to irrigation and food security." },
+        ke_wiper: { p: 2, k: "stated", s: "peoples_budget", n: "Kalonzo presented the plan in June 2026." },
+        ke_jubilee: { p: 2, k: "stated", s: "peoples_budget", n: "Matiang’i co-presented the plan in June 2026." }
+      } },
+
+    /* ---------- Policing & security ---------- */
+    { theme: "security", short: "Shoot rioters in the legs",
+      text: "Police should be allowed to shoot people who burn or loot businesses during protests in the legs, to stop them without killing them.",
+      ctx: "During the June–July 2025 protests, human rights bodies documented dozens of deaths, injuries and abductions; over 30 people were reportedly killed by police on Saba Saba day (7 July). Days later, President Ruto said anyone burning businesses should be shot in the legs and taken to court, “not killed”. Critics say such orders are unlawful and that leg wounds can also kill.",
+      cells: {
+        ke_uda: { p: 2, k: "stated", s: "shoot_leg_ruto", n: "Ruto (July 2025): “anyone burning people’s businesses should be shot in the legs… They should not be killed.”" },
+        ke_wiper: { p: -2, k: "stated", s: "shoot_leg_opp", n: "Kalonzo said the order breached the law Ruto swore to uphold: “How will they ensure they only shoot the legs?”" },
+        ke_dcp: { p: -1, k: "stated", s: "shoot_leg_ruto", n: "Gachagua mocked the order by sharing an AI-generated image of people on crutches." }
+      } },
+    { theme: "security", short: "Compensate protest victims",
+      text: "The state should pay compensation to people killed or injured by police during protests.",
+      ctx: "Many people were killed or injured during the 2024 and 2025 protests. According to ODM leader Oburu Oginga, Parliament has set aside KSh2 billion for victims of demonstrations since 2017. Rights groups also demand full investigations into protest killings.",
+      cells: {
+        ke_uda: { p: 2, k: "record", s: "odm_comp", n: "The KSh2 billion was allocated by Parliament under the government’s broad-based agenda with ODM, according to Oburu (March 2026)." },
+        ke_odm: { p: 2, k: "stated", s: "odm_comp", n: "Oburu (March 2026): “the money has already been allocated by Parliament, Ksh. 2 billion.”" },
+        ke_dcp: { p: 2, k: "stated", s: "peoples_budget", n: "The People’s Budget, co-presented by Gachagua, calls for compensation for victims of the June 2024 protests." },
+        ke_wiper: { p: 2, k: "stated", s: "peoples_budget", n: "Kalonzo’s People’s Budget calls for compensation for victims of the June 2024 protests." },
+        ke_jubilee: { p: 2, k: "stated", s: "peoples_budget", n: "Matiang’i co-presented the People’s Budget, which calls for compensation." }
+      } },
+    { theme: "security", short: "Police missions abroad",
+      text: "Kenya should keep sending police officers on international security missions, as it did in Haiti.",
+      ctx: "From 2024 Kenya led the Multinational Security Support mission against gangs in Haiti. At least one Kenyan officer was killed in an ambush in 2025. After UN Security Council Resolution 2793 (2025) handed operations to a Gang Suppression Force, 653 Kenyan officers came home between December 2025 and March 2026. Supporters say such missions raise Kenya’s standing; critics question the risks and the legal basis.",
+      cells: {
+        ke_uda: { p: 2, k: "record", s: "haiti_return", n: "The Interior ministry says the Haiti mission “continues to position the country as a key player in global peace and security operations”." },
+        ke_wiper: { p: -2, k: "stated", s: "kalonzo_haiti", n: "Kalonzo (September 2025) condemned “reckless decisions that put our young men in danger in Haiti”: “We want our boys back.”" }
+      }, nd: { ke_dcp: "Gachagua stood beside Kalonzo when he demanded the officers’ return, but made no recorded remark on Haiti." } },
+
+    /* ---------- Elections & devolution ---------- */
+    { theme: "gov", short: "Trust the IEBC as it is",
+      text: "The IEBC, with its current leadership and systems, can be trusted to run a free and fair election in 2027.",
+      ctx: "The electoral commission, chaired by Erastus Ethekon, is recruiting a new chief executive after Marjan Hussein left in February 2026, and is cleaning up the voter register with the civil registration department. Opposition leaders and activists question its technology supplier and the register. Parliament also rejected the KSh63 billion the IEBC asked for the election.",
+      cells: {
+        ke_odm: { p: 2, k: "stated", s: "odm_ruto", n: "ODM chair Gladys Wanga defended the IEBC in July 2026, citing the credibility of the 2025 by-elections." },
+        ke_wiper: { p: -2, k: "stated", s: "opp_jan", n: "Kalonzo (January 2026) on the then chief executive: “Elections won’t be free and fair if he is there.”" },
+        ke_dcp: { p: -1, k: "stated", s: "opp_jan", n: "Gachagua stood with Kalonzo at a January 2026 rally where the opposition leaders said they had no confidence in the IEBC or Smartmatic. This edition found no separate statement by him." }
+      }, nd: { ke_uda: "This edition found no UDA statement on the IEBC’s leadership or technology." } },
+    { theme: "gov", short: "Drop Smartmatic",
+      text: "The IEBC should stop using Smartmatic, the company that supplies its voter identification kits and results transmission system, before the 2027 election.",
+      ctx: "Smartmatic supplied the biometric kits (KIEMS) and results transmission infrastructure used in 2022 and has a contract for 2027. Opposition leaders call it discredited and say it mishandled the last election. Replacing the systems this close to an election would also take time and money.",
+      cells: {
+        ke_wiper: { p: 2, k: "stated", s: "smartmatic", n: "Kalonzo (March 2026): “IEBC must completely sever all ties with Smartmatic, a globally discredited company.”" },
+        ke_dcp: { p: 1, k: "stated", s: "opp_jan", n: "At a January 2026 rally with Gachagua, opposition leaders said they had no confidence in Smartmatic and questioned its 2027 contract." }
+      } },
+    { theme: "gov", short: "Two-thirds gender rule",
+      text: "Parliament should pass the law needed to apply the two-thirds gender rule to its own seats, even if this means adding seats for women.",
+      ctx: "The 2010 Constitution says no more than two-thirds of the members of elective public bodies should be of the same gender, but Parliament has not yet passed the law to apply it to its own seats. Supporters call it a constitutional duty; critics of some proposals, such as extra seats for women, say they would raise the cost of Parliament.",
+      cells: {
+        ke_odm: { p: 2, k: "party", s: "raila_demands", n: "Implementing the two-thirds gender rule is a commitment of the March 2025 ODM–UDA agreement." },
+        ke_uda: { p: 1, k: "party", s: "raila_demands", n: "UDA co-signed the March 2025 agreement that commits to implementing the rule." },
+        ke_dcp: { p: 2, k: "party", s: "dcp_youth", n: "DCP youth leader Wanjiku Thiga (November 2025): achieving the rule “is not a constitutional burden, but a moral duty”." }
+      } },
+    { theme: "gov", short: "More public funding for parties",
+      text: "Political parties should receive more public funding, so that they depend less on wealthy backers.",
+      ctx: "The March 2025 ODM–UDA agreement lists “sustainable political party funding” among its ten points. Supporters say public money reduces the influence of rich donors and helps parties build real programmes. Critics say taxpayers should not pay more for parties while services are underfunded.",
+      cells: {
+        ke_odm: { p: 2, k: "party", s: "odm_10pt", n: "Sustainable party funding is one of ODM’s ten points with UDA." },
+        ke_uda: { p: 1, k: "party", s: "odm_10pt", n: "UDA co-signed the 10-point agenda that includes party funding." }
+      } },
+    { theme: "gov", short: "A bigger share for counties",
+      text: "Counties should receive a much larger share of national revenue than the KSh428 billion set for 2026/27.",
+      ctx: "In June 2026 President Ruto signed the Division of Revenue Act giving the 47 counties KSh428 billion out of an estimated KSh2.9 trillion of shareable revenue, after seven mediation sessions between the National Assembly and the Senate. Counties had lobbied for more to pay for health, agriculture, water and early-childhood education. A larger county share leaves less for national programmes and debt repayments.",
+      cells: {
+        ke_uda: { p: -1, k: "record", s: "county_dora", n: "Ruto signed the KSh428 billion allocation, which also protects county funds from cuts when revenue falls short." },
+        ke_odm: { p: 0, k: "stated", s: "odm_comp", n: "Oburu (March 2026) says ODM’s agenda with UDA is already showing results in devolution, with funds allocated to strengthen county governments." }
+      } },
+
+    /* ---------- Public money & privacy ---------- */
+    { theme: "integrity", short: "KRA access to personal data",
+      text: "The Kenya Revenue Authority should get wider access to people’s personal and financial data in order to collect more tax.",
+      ctx: "The Finance Bill 2026 included a clause widening the tax authority’s access to taxpayers’ personal and financial data; the opposition called it unconstitutional state overreach. Supporters say better data helps tax the informal economy fairly. Critics fear surveillance and misuse of private information.",
+      cells: {
+        ke_uda: { p: 1, k: "record", s: "fb26_blocs", n: "The government’s Finance Bill 2026 contained the clause. This edition could not confirm its final wording after amendments." },
+        ke_dcp: { p: -2, k: "stated", s: "peoples_budget", n: "The People’s Budget co-presented by Gachagua opposes expanded KRA access to taxpayer information." },
+        ke_wiper: { p: -2, k: "stated", s: "peoples_budget", n: "Kalonzo’s People’s Budget opposes it." },
+        ke_jubilee: { p: -2, k: "stated", s: "peoples_budget", n: "Matiang’i co-presented the People’s Budget, which opposes it." }
+      } },
+    { theme: "integrity", short: "A single Treasury account",
+      text: "All public money should go through a single Treasury account, so that every payment can be traced.",
+      ctx: "The opposition’s People’s Budget cites pending bills flagged by the Auditor-General and proposes a Single Treasury Account to curb theft and eliminate duplicate payments. Others say the problem is enforcing existing rules rather than the number of accounts.",
+      cells: {
+        ke_dcp: { p: 2, k: "stated", s: "peoples_budget", n: "Gachagua co-presented the proposal in June 2026." },
+        ke_wiper: { p: 2, k: "stated", s: "peoples_budget", n: "Kalonzo presented the proposal in June 2026." },
+        ke_jubilee: { p: 2, k: "stated", s: "peoples_budget", n: "Matiang’i co-presented the proposal in June 2026." }
+      }, nd: { ke_uda: "This edition found no government statement on a single Treasury account." } },
+    { theme: "integrity", short: "Cut State House and perks",
+      text: "Spending on State House and on politicians’ perks should be cut sharply.",
+      ctx: "Senator Godfrey Osotsi, then ODM deputy leader, said in May 2026 that State House spends about KSh18 billion a year, against KSh3 billion under President Kibaki. The March 2025 ODM–UDA agreement promised to end “opulence” among some politicians, and the opposition’s People’s Budget would cut State House and intelligence spending.",
+      cells: {
+        ke_odm: { p: 2, k: "party", s: "raila_demands", n: "Ending opulence among politicians is one of the March 2025 ODM–UDA commitments pushed by ODM." },
+        ke_uda: { p: 1, k: "party", s: "raila_demands", n: "UDA co-signed the March 2025 commitment to end opulence among politicians." },
+        ke_dcp: { p: 2, k: "stated", s: "peoples_budget", n: "The People’s Budget co-presented by Gachagua cuts spending at State House and the National Intelligence Service." },
+        ke_wiper: { p: 2, k: "stated", s: "peoples_budget", n: "Kalonzo’s People’s Budget cuts State House and NIS spending." },
+        ke_jubilee: { p: 2, k: "stated", s: "peoples_budget", n: "Matiang’i co-presented the cuts in June 2026." }
+      } },
+
+    /* ---------- Education ---------- */
+    { theme: "edu", short: "Means-tested university funding",
+      text: "University studies should be funded through the means-tested model, in which poorer students get larger scholarships and others take more loans.",
+      ctx: "Since 2023 the Variable Scholarship and Loan Funding model places students in bands using a means-testing tool; students in the neediest band can get up to 70% in government scholarships. The High Court found the model discriminatory in 2024; the Court of Appeal reinstated it in March 2025 pending the appeal. Critics say it has made it harder for students to get enough funding.",
+      cells: {
+        ke_uda: { p: 2, k: "record", s: "ogamba_gach", n: "Education CS Ogamba (August 2026) defends the model: “education is an investment, not just a social good.” A 2026 bill would bring in private financiers." },
+        ke_dcp: { p: -2, k: "stated", s: "ogamba_gach", n: "Gachagua says the former HELB system worked, that replacing it was unnecessary and that the new model has made university harder to access." }
+      } },
+    { theme: "edu", short: "Bring back Edu Afya",
+      text: "Edu Afya, the separate health cover for school students, should be brought back instead of covering students through SHA household plans.",
+      ctx: "Edu Afya was a school health scheme run under NHIF. With the move to SHA it was phased out, and students are now covered through their household’s SHA plan. In 2026 SHA was still settling about KSh735 million owed under the old scheme. Supporters of Edu Afya say it guaranteed cover for every student; the government says SHA offers broader and fairer cover.",
+      cells: {
+        ke_uda: { p: -2, k: "record", s: "edu_afya", n: "Health CS Aden Duale defended phasing out Edu Afya: “SHA offered broader and more equitable coverage.”" },
+        ke_dcp: { p: 2, k: "stated", s: "peoples_budget", n: "The People’s Budget co-presented by Gachagua would restore Edu Afya." },
+        ke_wiper: { p: 2, k: "stated", s: "peoples_budget", n: "Kalonzo’s People’s Budget would restore Edu Afya." },
+        ke_jubilee: { p: 2, k: "stated", s: "peoples_budget", n: "Matiang’i co-presented the plan to restore Edu Afya." }
+      } },
+    { theme: "edu", short: "A bigger education budget",
+      text: "Education should get a larger share of the national budget, even if other spending has to be cut.",
+      ctx: "The government’s 2026/27 budget totals KSh4.82 trillion. The opposition’s People’s Budget spends less overall (KSh4.32 trillion) but promises more for education and health, paid for by cuts at State House and in the intelligence service and by better tax collection. Critics ask whether such cuts would be enough to cover the cost.",
+      cells: {
+        ke_dcp: { p: 2, k: "stated", s: "peoples_budget", n: "Gachagua co-presented the plan to raise education funding." },
+        ke_wiper: { p: 2, k: "stated", s: "peoples_budget", n: "Kalonzo presented the plan to raise education funding." },
+        ke_jubilee: { p: 2, k: "stated", s: "peoples_budget", n: "Matiang’i co-presented the plan to raise education funding." }
+      } },
+
+    /* ---------- Health ---------- */
+    { theme: "health", short: "Keep SHA",
+      text: "The Social Health Authority (SHA) should be kept and improved, rather than replaced by a return to NHIF.",
+      ctx: "SHA replaced the National Hospital Insurance Fund (NHIF). The government says 32 million people are now enrolled, against about 8 million under NHIF, and that hospitals receive KSh12 billion a month. Opposition leaders cite system outages, unpaid hospital bills and alleged corruption, and some have pledged to abolish SHA.",
+      cells: {
+        ke_uda: { p: 2, k: "stated", s: "sha_ruto", n: "Ruto (July 2026) says those urging a return to a system “that was not working” are “a very risky lot for our nation”." },
+        ke_odm: { p: 1, k: "older", s: "raila_demands", n: "Raila Odinga (March 2025): “SHA has a problem; it must be corrected” — a call to fix it rather than scrap it." },
+        ke_dcp: { p: -2, k: "stated", s: "sha_ruto", n: "Gachagua (June 2026) says SHA is “on the brink of collapse”; Ruto accuses the opposition of pledging to restore NHIF." },
+        ke_wiper: { p: -1, k: "stated", s: "kalonzo_sha", n: "Kalonzo (December 2025): “there was nothing wrong with NHIF… this SHA, nobody understands. It’s all corruption.” He has not said outright that he would abolish SHA." },
+        ke_jubilee: { p: -1, k: "stated", s: "smartmatic", n: "Matiang’i said in March 2026 that the President’s SHA plan had failed and that the opposition should take over." }
+      } },
+    { theme: "health", short: "Bring back Linda Mama",
+      text: "Linda Mama, the free maternity programme, should be restored as a separate scheme instead of being folded into SHA.",
+      ctx: "In 2025 the government moved the Linda Mama free maternity programme into SHA. It says SHA covers more services, such as newborn complications and intensive care, and that the state pays SHA cover for 558,000 poor households. The opposition wants the dedicated programme restored.",
+      cells: {
+        ke_uda: { p: -2, k: "record", s: "lindamama", n: "Health CS Duale (October 2025) said Linda Mama suffered “budget cuts, delayed reimbursements, and equity gaps” and defended the transfer to SHA." },
+        ke_dcp: { p: 2, k: "stated", s: "peoples_budget", n: "The People’s Budget co-presented by Gachagua would restore Linda Mama." },
+        ke_wiper: { p: 2, k: "stated", s: "peoples_budget", n: "Kalonzo’s People’s Budget would restore Linda Mama." },
+        ke_jubilee: { p: 2, k: "stated", s: "peoples_budget", n: "Matiang’i co-presented the plan to restore Linda Mama." }
+      } },
+    { theme: "health", short: "SHA tech money to hospitals",
+      text: "Money spent on SHA’s technology contracts should be redirected to hospitals and frontline health workers.",
+      ctx: "SHA registration and claims run on a digital system. The opposition says the money for “SHA-linked technology contracts” should go to frontline care instead; Gachagua cited four days of system outages in June 2026 as a sign of collapse. The government says hospitals are now paid about KSh12 billion a month.",
+      cells: {
+        ke_dcp: { p: 2, k: "stated", s: "peoples_budget", n: "Gachagua co-presented the proposal in June 2026." },
+        ke_wiper: { p: 2, k: "stated", s: "peoples_budget", n: "Kalonzo presented the proposal in June 2026." },
+        ke_jubilee: { p: 2, k: "stated", s: "peoples_budget", n: "Matiang’i co-presented the proposal in June 2026." }
+      }, nd: { ke_uda: "The government defends SHA as a whole (see “Keep SHA”); this edition found no statement on the technology contracts themselves." } },
+
+    /* ---------- Jobs, wages & housing ---------- */
+    { theme: "social", short: "Keep the housing levy",
+      text: "The 1.5% Affordable Housing Levy on salaries should be kept to fund affordable homes.",
+      ctx: "Salaried workers pay 1.5% of their pay into the levy, first introduced in 2023 and reinstated by the Affordable Housing Act 2024 after the courts struck it down. The government says it builds homes and employs many young people, and points to a 10% minimum wage rise in 2026. Critics say it cuts take-home pay and that most contributors will never get a house.",
+      cells: {
+        ke_uda: { p: 2, k: "stated", s: "housing_ruto", n: "Ruto (August 2026): “If you are told to give 1.5 per cent yet your salary has been raised by 10 per cent, what loss is there?”" },
+        ke_odm: { p: -1, k: "older", s: "raila_demands", n: "Raila Odinga (March 2025) said taxes were too high, “especially one on the houses”. This edition found no later ODM call to abolish it." },
+        ke_dcp: { p: -2, k: "stated", s: "gach_levy", n: "Gachagua (July 2026): scrapping the levy would be a top priority: “We must restore the dignity of the payslip.”" },
+        ke_wiper: { p: -2, k: "stated", s: "peoples_budget", n: "Kalonzo’s People’s Budget would abolish the levy." },
+        ke_jubilee: { p: -2, k: "stated", s: "peoples_budget", n: "Matiang’i co-presented the plan to abolish the levy." }
+      } },
+    { theme: "social", short: "A large youth jobs programme",
+      text: "The state should spend tens of billions of shillings on a direct youth employment programme, rather than rely on small grant schemes such as NYOTA.",
+      ctx: "Youth unemployment is one of the ten points of the ODM–UDA agreement. The government runs the NYOTA youth fund and presents the affordable housing programme as a major employer of young people; opposition leaders say NYOTA payouts are too small. The opposition’s People’s Budget proposes a KSh80 billion youth employment programme. Critics of big state programmes question their cost and whether the jobs last.",
+      cells: {
+        ke_uda: { p: -1, k: "record", s: "housing_ruto", n: "Ruto presents the housing programme as a mass jobs scheme: “If you abolish the programme, where will you take the millions of youths working in the Affordable Housing Programme?”" },
+        ke_dcp: { p: 2, k: "stated", s: "peoples_budget", n: "Gachagua co-presented the KSh80 billion youth employment programme." },
+        ke_wiper: { p: 2, k: "stated", s: "peoples_budget", n: "Kalonzo presented the KSh80 billion youth employment programme." },
+        ke_jubilee: { p: 2, k: "stated", s: "peoples_budget", n: "Matiang’i co-presented the KSh80 billion programme." }
+      } },
+    { theme: "social", short: "Jobs abroad for young Kenyans",
+      text: "Sending young Kenyans to work abroad, for example in Saudi Arabia, is a good way to tackle unemployment.",
+      ctx: "President Ruto says money sent home by Kenyans abroad now brings in more than coffee or tea, and his government aims to send a million workers abroad each year, mainly to Saudi Arabia. A New York Times investigation (November 2025) found that hundreds of Kenyan women had died working as domestic workers in Saudi Arabia, and that some recruitment firms are linked to officials.",
+      cells: {
+        ke_uda: { p: 2, k: "record", s: "labour_nyt", n: "Ruto’s government set a goal of sending 1 million people abroad every year." },
+        ke_odm: { p: -1, k: "older", s: "raila_labour", n: "Raila Odinga (December 2023), then in opposition, said the government should create jobs at home and mocked placements as “house helps in Saudi Arabia”. ODM has since joined the government and this edition found no new ODM statement." }
+      } },
+
+    /* ---------- Fuel, energy & infrastructure ---------- */
+    { theme: "energy", short: "Cut fuel taxes",
+      text: "Taxes on fuel, such as VAT and the fuel levy, should be cut to bring pump prices down, even if the state loses revenue.",
+      ctx: "In April 2026 pump prices jumped: petrol rose by KSh28.69 a litre in Nairobi. Parliament then passed, in about an hour, a law halving VAT on fuel to 8% for 90 days, and prices fell by about KSh9–10 a litre. Cutting fuel taxes reduces revenue and widens the deficit; high fuel prices raise transport and food costs.",
+      cells: {
+        ke_uda: { p: 1, k: "record", s: "fuel_gach", n: "Ruto signed the temporary VAT cut from 16% to 8% on 17 April 2026, for 90 days, extendable." },
+        ke_dcp: { p: 2, k: "stated", s: "g2g", n: "Gachagua read the April 2026 joint opposition statement demanding lower VAT on fuel and a lower fuel levy." },
+        ke_wiper: { p: 2, k: "stated", s: "g2g", n: "Kalonzo stood behind the April 2026 joint statement demanding cuts to fuel VAT and the fuel levy." },
+        ke_jubilee: { p: 2, k: "stated", s: "g2g", n: "Matiang’i stood behind the April 2026 joint statement demanding cuts to fuel VAT and the fuel levy." }
+      } },
+    { theme: "energy", short: "Cancel the G-to-G fuel deal",
+      text: "The government-to-government fuel import deal should be cancelled and fuel imports opened again to competitive tenders.",
+      ctx: "Since 2023, under the government-to-government (G-to-G) framework, the state imports fuel through designated suppliers instead of open tenders, to stabilise supply and reduce pressure on foreign exchange. After pump prices jumped in April 2026, the opposition blamed irregularities in the scheme and said it involves handpicked oil marketing companies.",
+      cells: {
+        ke_uda: { p: -2, k: "record", s: "g2g", n: "The government created the framework in 2023; this edition found no plan to end it." },
+        ke_dcp: { p: 2, k: "stated", s: "g2g", n: "Gachagua read the joint statement: “Cancel the Government to Government – Petroleum Framework as it involves handpicked Oil Marketing Companies.”" },
+        ke_wiper: { p: 2, k: "stated", s: "g2g", n: "Kalonzo stood behind the joint statement demanding cancellation (April 2026)." },
+        ke_jubilee: { p: 2, k: "stated", s: "g2g", n: "Matiang’i stood behind the joint statement demanding cancellation (April 2026)." }
+      } },
+    { theme: "energy", short: "Private investors for infrastructure",
+      text: "Power lines, ports and similar public infrastructure should be built or run by private investors under long-term concessions, to avoid new public debt.",
+      ctx: "In November 2024 President Ruto cancelled a KSh90 billion power transmission concession with India’s Adani Group over transparency concerns and corruption allegations against its executives. The state transmission company KETRACO then pursued a KSh45 billion privately financed deal with Africa50 and India’s POWERGRID to build two lines “without incurring additional public debt”. Critics want strategic assets kept in public hands.",
+      cells: {
+        ke_uda: { p: 2, k: "record", s: "ketraco", n: "After dropping Adani, the state’s KETRACO moved to a privately financed transmission deal with Africa50 and POWERGRID (2025)." },
+        ke_dcp: { p: -1, k: "stated", s: "peoples_budget", n: "The People’s Budget opposes any privatisation or disposal of the Kenya Ports Authority; it does not address power lines." },
+        ke_wiper: { p: -1, k: "stated", s: "peoples_budget", n: "Kalonzo’s People’s Budget opposes privatising the Kenya Ports Authority; it does not address power lines." },
+        ke_jubilee: { p: -1, k: "stated", s: "peoples_budget", n: "Matiang’i co-presented the People’s Budget, which opposes privatising the ports authority." }
+      } },
+    { theme: "energy", short: "Extend the SGR to Kisumu",
+      text: "Big rail and road projects, such as extending the standard gauge railway (SGR) to Kisumu, should go ahead even if they add to public debt.",
+      ctx: "The government is extending the SGR railway to Kisumu, a project ODM leaders cite as a reason to back President Ruto. Supporters say rail cuts transport costs and opens up western Kenya. Opposition leaders say the country is already “borrowing beyond its means”.",
+      cells: {
+        ke_uda: { p: 2, k: "record", s: "odm_ruto", n: "The government is extending the SGR to Kisumu, according to its ODM partners." },
+        ke_odm: { p: 2, k: "stated", s: "odm_ruto", n: "ODM chair Gladys Wanga (July 2026) cited roads and the SGR extension to Kisumu as reasons to back Ruto." },
+        ke_dcp: { p: -1, k: "stated", s: "peoples_budget", n: "The People’s Budget co-presented by Gachagua aims to cut reliance on borrowing; it does not mention the SGR." },
+        ke_wiper: { p: -1, k: "stated", s: "peoples_budget", n: "Kalonzo’s People’s Budget says “the country is borrowing beyond its means”; it does not mention the SGR." },
+        ke_jubilee: { p: -1, k: "stated", s: "peoples_budget", n: "Matiang’i co-presented the People’s Budget, which aims to cut borrowing; it does not mention the SGR." }
+      } }
+  ]
+};
