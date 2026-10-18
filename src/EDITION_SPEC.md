@@ -54,7 +54,7 @@ If the candidate is not designated yet, set `cand` to the party leader and add `
 ```
 Use these ids where they fit: `econ`, `security`, `gov`, `integrity` (corruption & civil liberties), `edu`, `health`, `social` (social protection & jobs), `agri`, `energy` (energy & environment), `land` (land & housing), `youth` (youth, digital & culture), `foreign`, `infra` (transport & infrastructure), `water`. Add a new short id only if none fits.
 
-**Questions** (30 to 40 in total; 3 to 6 per theme):
+**Questions** (25 to 40 in total; 3 to 6 per theme; fewer well-sourced questions beat many thin ones):
 ```js
 { theme: "econ", short: "Short title (≤ 6 words)",
   text: "One clear policy statement a young voter can agree or disagree with.",

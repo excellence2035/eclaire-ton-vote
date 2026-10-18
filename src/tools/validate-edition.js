@@ -78,7 +78,7 @@ const tids = new Set();
 T.forEach((t, i) => { str(t.id, `themes[${i}].id`); str(t.name, `themes[${i}].name`); str(t.min, `themes[${i}].min`); if (tids.has(t.id)) errs.push(`duplicate theme ${t.id}`); tids.add(t.id); });
 // Questions
 const Q = E.questions || [];
-if (Q.length < 30 || Q.length > 40) errs.push(`ED.questions: ${Q.length} (need 30–40)`);
+if (Q.length < 25 || Q.length > 40) errs.push(`ED.questions: ${Q.length} (need 25–40)`);
 const perTheme = {}, cover = {};
 P.forEach(p => cover[p.id] = 0);
 Q.forEach((q, i) => {
