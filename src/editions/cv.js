@@ -1,4 +1,4 @@
-/* Cabo Verde edition. Format: src/EDITION_SPEC.md. Research notes: src/notes/cv.md. Status date 12 Oct 2026. */
+/* Cabo Verde edition. Format: src/EDITION_SPEC.md. Research notes: src/notes/cv.md. Status date 12 Oct 2026; independent fact-check 22 Oct 2026. */
 const SRC_CV = {
   pres_date: { o: "Forbes África Lusófona", t: "Eleições presidenciais em Cabo Verde marcadas para 15 de Novembro deste ano", d: "31 Jul 2026", u: "https://forbesafricalusofona.com/?p=174758" },
   pres_cands: { o: "Forbes África Lusófona", t: "Tribunal Constitucional admite cinco candidaturas às eleições presidenciais de Cabo Verde", d: "23 Sep 2026", u: "https://forbesafricalusofona.com/?p=176618" },
@@ -29,7 +29,7 @@ const SRC_CV = {
   exp_1may: { o: "Expresso das Ilhas", t: "Legislativas 2026: MpD pede continuidade e PAICV promete governação “sem desculpas” na abertura da campanha. UCID pede “voto inteligente”", d: "1 May 2026", u: "https://expressodasilhas.cv/politica/2026/05/01/legislativas-2026-mpd-pede-continuidade-e-paicv-promete-governacao-sem-desculpas-na-abertura-da-campanha/102564" },
   region2019: { o: "Expresso das Ilhas", t: "Governo cancela proposta de regionalização", d: "12 Apr 2019", u: "https://expressodasilhas.cv/politica/2019/04/12/governo-pede-retirada-do-diploma-da-regionalizacao/63316" },
   kriolu: { o: "RTP / Lusa", t: "Disciplina de língua cabo-verdiana lança bases para oficialização", d: "20 Feb 2025", u: "https://www.rtp.pt/noticias/mundo/disciplina-de-lingua-cabo-verdiana-lanca-bases-para-oficializacao_n1635799" },
-  mpd_duvidas: { o: "Expresso das Ilhas / Inforpress", t: "MpD aponta dúvidas sobre proposta do Orçamento do Estado para 2027 apresentada pelo Governo", d: "29 Sep 2026", u: "https://expressodasilhas.cv/politica/2026/09/29/mpd-aponta-duvidas-sobre-proposta-do-orcamento-do-estado-para-2027-apresentada-pelo-governo/104853" },
+  min_wage2031: { o: "Forbes África Lusófona", t: "Cabo Verde prevê aumento gradual do salário mínimo para 30 mil escudos até 2031", d: "1 Oct 2026", u: "https://forbesafricalusofona.com/cabo-verde-preve-aumento-gradual-do-salario-minimo-para-30-mil-escudos-ate-2031/" },
   mpd_otimista: { o: "Expresso das Ilhas", t: "MpD considera OE2027 demasiado optimista", d: "2 Oct 2026", u: "https://expressodasilhas.cv/politica/2026/10/02/mpd-considera-oe2027-demasiado-optimista/104899" },
   mpd_contra: { o: "RTP / Lusa", t: "Oposição cabo-verdiana anuncia voto contra programa e moção de confiança do Governo", d: "16 Jul 2026", u: "https://www.rtp.pt/noticias/mundo/oposicao-cabo-verdiana-anuncia-voto-contra-programa-e-mocao-de-confianca-do-governo_n1753851" },
   pres_6: { o: "Notícias ao Minuto / Lusa", t: "Tribunal cabo-verdiano admite mais um candidato presidencial", d: "28 Sep 2026", u: "https://www.noticiasaominuto.com/mundo/3058341/tribunal-cabo-verdiano-admite-mais-um-candidato-presidencial" },
@@ -147,7 +147,7 @@ const ED_CV = {
       text: "When world oil prices rise, the State should use public money to keep fuel prices down for consumers.",
       ctx: "The 2026 amending budget set aside about 1.7 billion escudos to compensate fuel companies. Supporters say holding prices down protects households and keeps transport costs in check. Critics say such compensation is costly and benefits all consumers, including the better-off.",
       cells: {
-        cv_paicv: { p: 1, k: "record", s: "retif", n: "The PAICV government’s amending budget (July 2026) included about 1.7 billion escudos in fuel-cost compensation for fuel companies." },
+        cv_paicv: { p: 0, k: "record", s: "mpd_100dias", n: "After 30 June 2026 the PAICV government kept fuel price containment only for butane gas and did not extend it to other fuels, which MpD leader Paulo Veiga criticised in October 2026; its July amending budget still set aside about 1.7 billion escudos to compensate fuel companies." },
         cv_mpd: { p: 2, k: "stated", s: "mpd_100dias", n: "MpD leader Paulo Veiga (October 2026) criticised the end of fuel price containment after 30 June, proposed extending it to all fuels, and called for an 8,000-escudo monthly fuel cheque for taxis and public transport “em contrapartida pelo congelamento das tarifas”." }
       },
       nd: { cv_ucid: "No documented UCID position on fuel prices." } },
@@ -195,10 +195,9 @@ const ED_CV = {
       text: "The State should help young people buy their first home with subsidised loans and a lower property-transfer tax.",
       ctx: "Housing was a recurring theme of the May 2026 campaign. The PAICV programme promises subsidised credit up to age 35, a significant cut in the property-transfer tax (ITI) on first homes and the country’s first housing framework law. Critics of subsidised credit say it can push prices up if the supply of homes does not grow.",
       cells: {
-        cv_paicv: { p: 2, k: "stated", s: "gov_prog", n: "The programme promises “crédito bonificado até aos 35 anos” and a significant ITI cut for young people’s first homes." },
-        cv_ucid: { p: 1, k: "stated", s: "exp_1may", n: "UCID campaigned in São Vicente (2026) for “quality housing”, without detailing financing tools." }
+        cv_paicv: { p: 2, k: "stated", s: "gov_prog", n: "The programme promises “crédito bonificado até aos 35 anos” and a significant ITI cut for young people’s first homes." }
       },
-      nd: { cv_mpd: "No documented MpD position on subsidised housing credit." } },
+      nd: { cv_mpd: "No documented MpD position on subsidised housing credit.", cv_ucid: "UCID campaigned in São Vicente (April 2026) for “quality housing” without saying how; no UCID position was found on subsidised credit or the property-transfer tax." } },
 
     /* ---------- Education ---------- */
     { theme: "edu", short: "Free public university",
@@ -262,10 +261,9 @@ const ED_CV = {
       text: "Municipalities should receive a much bigger share of State revenue, rising to 17%.",
       ctx: "Municipalities receive State transfers through the Municipal Financing Fund. The PAICV programme promises to raise the fund progressively to 17% of State revenue and to strengthen municipalities’ ability to collect their own revenue. More local money can improve services, but it reduces what the central government can spend on national priorities.",
       cells: {
-        cv_paicv: { p: 2, k: "stated", s: "gov_prog", n: "The programme promises an “aumento progressivo do Fundo de Financiamento Municipal para 17% das receitas do Estado”." },
-        cv_ucid: { p: 1, k: "stated", s: "an_enxuto", n: "UCID’s 2026 programme focused on decentralisation (“Mais equilíbrio, melhor governação”), without a figure for municipal funding." }
+        cv_paicv: { p: 2, k: "stated", s: "gov_prog", n: "The programme promises an “aumento progressivo do Fundo de Financiamento Municipal para 17% das receitas do Estado”." }
       },
-      nd: { cv_mpd: "No documented MpD position on the 17% target." } },
+      nd: { cv_mpd: "No documented MpD position on the 17% target.", cv_ucid: "UCID’s 2026 programme focused on decentralisation (“Mais equilíbrio, melhor governação”), but no UCID statement on municipal funding was found." } },
     { theme: "gov", short: "Attorney General by public competition",
       text: "The Attorney General and the judges of the Court of Auditors should be chosen through a public competition, not by political appointment.",
       ctx: "The PAICV programme proposes choosing the Attorney General (Procurador-Geral da República) and the judges of the Court of Auditors by public competition, to strengthen their independence. Supporters say this would shield prosecutors from political influence; critics note that a competition can also be shaped by whoever designs it. Some institutional reforms need a two-thirds majority (48 of 72 seats), which the PAICV does not have alone.",
@@ -288,7 +286,7 @@ const ED_CV = {
       ctx: "The PAICV promised “a gratuitidade total dos cuidados de saúde” and created a “Saúde para Todos” programme with 100 million escudos in the 2026 amending budget. Supporters say fees keep poor families away from care. The MpD questions how universal free care will be financed.",
       cells: {
         cv_paicv: { p: 2, k: "record", s: "retif", n: "The government created “Saúde para Todos” (100 million escudos) and added 300 million escudos for medicines in July 2026." },
-        cv_mpd: { p: -1, k: "stated", s: "mpd_duvidas", n: "MpD spokesman Celso Ribeiro (September 2026) questioned how free health care and education will be financed: “o orçamento é despesa e receita”." },
+        cv_mpd: { p: -1, k: "record", s: "gov_social", n: "The MpD government (2016–2026) kept a targeted approach: it extended exemptions from health user fees for consultations, surgery and hospital stays to children under 5, pregnant women, people with disabilities, economically vulnerable people, social pensioners and blood donors." },
         cv_ucid: { p: 0, k: "stated", s: "ucid_prog", n: "João Santos Luís (July 2026) counted the plan to “reforçar a cobertura universal” among the programme’s strengths, but listed free health care among promises whose financing had not been demonstrated." }
       } },
     { theme: "health", short: "Raise the minimum wage yearly",
@@ -296,7 +294,7 @@ const ED_CV = {
       ctx: "Both main parties promised in 2026 to raise wages gradually. Higher minimum wages lift the income of the lowest-paid workers; employers argue that rises that are too fast can slow hiring in small firms.",
       cells: {
         cv_mpd: { p: 2, k: "stated", s: "vote_forbes", n: "The MpD’s 2026 programme proposed an “aumento gradual do salário mínimo”." },
-        cv_paicv: { p: 1, k: "stated", s: "prog", n: "The PAICV programme promises a “melhoria progressiva do salário” and of social pensions, without a specific minimum-wage target." },
+        cv_paicv: { p: 1, k: "stated", s: "min_wage2031", n: "The PAICV government (October 2026) plans gradual minimum-wage rises from 2028 to reach the 30,000 escudos proposed in its programme by 2031; no yearly schedule was given." },
         cv_ucid: { p: 0, k: "stated", s: "ucid_prog", n: "João Santos Luís (July 2026) said the PAICV’s minimum-wage increase was planned “sem demonstrar a sua sustentabilidade financeira”, while UCID also says wages are not keeping up with the cost of living." }
       } },
     { theme: "health", short: "Higher social pensions",
@@ -321,7 +319,7 @@ const ED_CV = {
       ctx: "The PAICV programme promises a “Tarifa Zero” for a basic level of consumption and a review of electricity tariffs. Supporters say it protects poor households. Critics say someone must pay for it: other consumers, the utility or the State budget.",
       cells: {
         cv_paicv: { p: 2, k: "stated", s: "gov_prog", n: "The programme promises the “Criação da Tarifa Zero para um limite de consumo básico”." },
-        cv_mpd: { p: 1, k: "record", s: "gov_social", n: "The MpD government chose targeted discounts rather than free basic consumption: it raised the social water and electricity tariff discount for poor households from 30% to 50% (about 17,300 beneficiaries) and cut VAT on water and electricity from 15% to 8%." }
+        cv_mpd: { p: 0, k: "record", s: "gov_social", n: "The MpD government chose targeted discounts rather than free basic consumption: it raised the social water and electricity tariff discount for poor households from 30% to 50% (about 17,300 beneficiaries) and cut VAT on water and electricity from 15% to 8%." }
       } },
     { theme: "energy", short: "Desalination powered by renewables",
       text: "Expanding desalination plants powered by renewable energy should be a top public investment priority to end water shortages.",
@@ -345,7 +343,7 @@ const ED_CV = {
       ctx: "The PAICV programme gives priority to the primary sector: efficient irrigation, drought-resistant crops and climate insurance. The MpD says the 2027 draft budget nonetheless cuts agricultural investment.",
       cells: {
         cv_paicv: { p: 2, k: "stated", s: "gov_prog", n: "The programme pledges to expand efficient irrigation, support drought-resistant crops and create climate insurance for farmers." },
-        cv_mpd: { p: 2, k: "stated", s: "mpd_otimista", n: "Paulo Veiga (October 2026) questioned cuts to agricultural investment in the 2027 draft, saying they contradict the PAICV’s own focus on the primary sector." },
+        cv_mpd: { p: 1, k: "stated", s: "mpd_otimista", n: "Paulo Veiga (October 2026) questioned cuts to agricultural investment in the 2027 draft, saying they contradict the PAICV’s own focus on the primary sector; he did not say how much should be invested instead." },
         cv_ucid: { p: 1, k: "stated", s: "ucid_prog", n: "UCID leader João Santos Luís (July 2026) said the government should “apoiar de forma mais consistente a agricultura, as pescas e as micro e pequenas empresas”." }
       } },
     { theme: "agri", short: "A public bank for farmers and fishers",

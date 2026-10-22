@@ -10,6 +10,7 @@ Ce qui change sur la plateforme, du plus récent au plus ancien. Les positions d
 - Questions : bouton ★ « compte double » placé au-dessus des réponses ; confirmation dans la page (et non plus une fenêtre du navigateur) avant d’effacer les réponses.
 - Résultats : les partis couverts à moins de 40 % par tes réponses sont séparés du classement ; les égalités à 3 points près s’affichent « 1= » ; avertissement si le résultat est calculé sur moins de 8 réponses, si le meilleur parti reste éloigné de tes positions, ou si tu as répondu la même chose partout ; en revenant modifier une réponse depuis les résultats, tu reviens aux résultats.
 - Accessibilité : titres et focus déplacés à chaque écran, annonces pour les lecteurs d’écran, flèches/Début/Fin dans les onglets (inversées en arabe).
+- Cap-Vert : relecture des positions codées contre les sources (7 cellules corrigées : carburants, logement, financement des communes, santé gratuite, électricité, crédit agricole, salaire minimum) ; présidentielle du 15 novembre 2026 confirmée, six candidats, second tour le 29 novembre si besoin.
 - Madagascar : une question visant une personne retirée (la plateforme compare des partis, pas des individus) ; 29 questions.
 - Tests automatiques : 19 tests, 930 vérifications.
 

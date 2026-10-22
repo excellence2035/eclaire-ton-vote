@@ -91,7 +91,7 @@ const I18N_CV_FR = {
       text: "Quand les cours mondiaux du pétrole augmentent, l’État doit utiliser l’argent public pour maintenir bas les prix des carburants pour les consommateurs.",
       ctx: "Le budget rectificatif 2026 a réservé environ 1,7 milliard d’escudos pour indemniser les distributeurs de carburant. Les partisans estiment que contenir les prix protège les ménages et limite le coût des transports. Les détracteurs jugent ces compensations coûteuses et soulignent qu’elles profitent à tous les consommateurs, y compris les plus aisés.",
       n: {
-        cv_paicv: "Le budget rectificatif du gouvernement PAICV (juillet 2026) comprenait environ 1,7 milliard d’escudos de compensation des coûts du carburant versés aux distributeurs.",
+        cv_paicv: "Après le 30 juin 2026, le gouvernement PAICV n’a maintenu la limitation des prix des carburants que pour le gaz butane et ne l’a pas étendue aux autres carburants, ce que le président du MpD, Paulo Veiga, a critiqué en octobre 2026 ; son budget rectificatif de juillet a malgré tout réservé environ 1,7 milliard d’escudos pour indemniser les distributeurs de carburant.",
         cv_mpd: "Le président du MpD, Paulo Veiga (octobre 2026), a critiqué la fin de la limitation des prix des carburants après le 30 juin, a proposé de l’étendre à tous les carburants et a réclamé un chèque carburant mensuel de 8 000 escudos pour les taxis et les transports publics « en contrepartie du gel des tarifs »."
       },
       nd: { cv_ucid: "Aucune position documentée de l’UCID sur les prix des carburants." } },
@@ -139,10 +139,9 @@ const I18N_CV_FR = {
       text: "L’État doit aider les jeunes à acheter leur premier logement grâce à des prêts bonifiés et à une baisse de l’impôt sur les transmissions immobilières.",
       ctx: "Le logement a été un thème récurrent de la campagne de mai 2026. Le programme du PAICV promet des crédits bonifiés jusqu’à 35 ans, une forte baisse de l’impôt sur les transmissions immobilières (ITI) pour le premier logement et la première loi-cadre du pays sur le logement. Les détracteurs du crédit bonifié estiment qu’il peut faire monter les prix si l’offre de logements n’augmente pas.",
       n: {
-        cv_paicv: "Le programme promet un « crédit bonifié jusqu’à 35 ans » et une forte baisse de l’ITI sur le premier logement des jeunes.",
-        cv_ucid: "L’UCID a fait campagne à São Vicente (2026) pour des « logements de qualité », sans détailler d’outils de financement."
+        cv_paicv: "Le programme promet un « crédit bonifié jusqu’à 35 ans » et une forte baisse de l’ITI sur le premier logement des jeunes."
       },
-      nd: { cv_mpd: "Aucune position documentée du MpD sur le crédit immobilier bonifié." } },
+      nd: { cv_mpd: "Aucune position documentée du MpD sur le crédit immobilier bonifié.", cv_ucid: "L’UCID a fait campagne à São Vicente (avril 2026) pour des « logements de qualité », sans préciser comment ; aucune position de l’UCID n’a été trouvée sur le crédit bonifié ou l’impôt sur les transmissions immobilières." } },
 
     /* ---------- Éducation ---------- */
     { short: "Université publique gratuite",
@@ -206,10 +205,9 @@ const I18N_CV_FR = {
       text: "Les municipalités doivent recevoir une part bien plus grande des recettes de l’État, jusqu’à 17 %.",
       ctx: "Les municipalités reçoivent des transferts de l’État par l’intermédiaire du Fonds de financement municipal. Le programme du PAICV promet de porter progressivement ce fonds à 17 % des recettes de l’État et de renforcer la capacité des municipalités à percevoir leurs propres recettes. Davantage d’argent local peut améliorer les services, mais réduit ce que le gouvernement central peut consacrer aux priorités nationales.",
       n: {
-        cv_paicv: "Le programme promet l’« augmentation progressive du Fonds de financement municipal à 17 % des recettes de l’État ».",
-        cv_ucid: "Le programme 2026 de l’UCID était centré sur la décentralisation (« Plus d’équilibre, meilleure gouvernance »), sans chiffre pour le financement municipal."
+        cv_paicv: "Le programme promet l’« augmentation progressive du Fonds de financement municipal à 17 % des recettes de l’État »."
       },
-      nd: { cv_mpd: "Aucune position documentée du MpD sur l’objectif de 17 %." } },
+      nd: { cv_mpd: "Aucune position documentée du MpD sur l’objectif de 17 %.", cv_ucid: "Le programme 2026 de l’UCID était centré sur la décentralisation (« Plus d’équilibre, meilleure gouvernance »), mais aucune déclaration de l’UCID sur le financement municipal n’a été trouvée." } },
     { short: "Procureur général choisi par concours",
       text: "Le procureur général de la République et les juges de la Cour des comptes doivent être choisis par concours public, et non par nomination politique.",
       ctx: "Le programme du PAICV propose de choisir le procureur général de la République (Procurador-Geral da República) et les juges de la Cour des comptes par concours public, pour renforcer leur indépendance. Les partisans estiment que cela protégerait le parquet de l’influence politique ; les détracteurs notent qu’un concours peut aussi être façonné par ceux qui le conçoivent. Certaines réformes institutionnelles exigent une majorité des deux tiers (48 sièges sur 72), dont le PAICV ne dispose pas seul.",
@@ -232,7 +230,7 @@ const I18N_CV_FR = {
       ctx: "Le PAICV a promis « la gratuité totale des soins de santé » et créé un programme « Saúde para Todos » doté de 100 millions d’escudos dans le budget rectificatif 2026. Les partisans estiment que les frais éloignent les familles pauvres des soins. Le MpD s’interroge sur le financement de la gratuité universelle.",
       n: {
         cv_paicv: "Le gouvernement a créé « Saúde para Todos » (100 millions d’escudos) et ajouté 300 millions d’escudos pour les médicaments en juillet 2026.",
-        cv_mpd: "Le porte-parole du MpD Celso Ribeiro (septembre 2026) a demandé comment seront financées la santé et l’éducation gratuites : « le budget, ce sont des dépenses et des recettes ».",
+        cv_mpd: "Le gouvernement MpD (2016-2026) a conservé une approche ciblée : il a étendu l’exonération du ticket modérateur pour les consultations, les opérations et les hospitalisations aux enfants de moins de 5 ans, aux femmes enceintes, aux personnes handicapées, aux personnes en situation de vulnérabilité économique, aux bénéficiaires de la pension sociale et aux donneurs de sang.",
         cv_ucid: "João Santos Luís (juillet 2026) a compté le projet de « renforcer la couverture universelle » parmi les points forts du programme, mais a rangé la gratuité des soins parmi les promesses dont le financement n’a pas été démontré."
       } },
     { short: "Hausser le salaire minimum chaque année",
@@ -240,7 +238,7 @@ const I18N_CV_FR = {
       ctx: "Les deux principaux partis ont promis en 2026 d’augmenter progressivement les salaires. Un salaire minimum plus élevé augmente le revenu des travailleurs les moins bien payés ; les employeurs font valoir que des hausses trop rapides peuvent freiner l’embauche dans les petites entreprises.",
       n: {
         cv_mpd: "Le programme 2026 du MpD proposait une « augmentation progressive du salaire minimum ».",
-        cv_paicv: "Le programme du PAICV promet une « amélioration progressive du salaire » et des pensions sociales, sans objectif précis pour le salaire minimum.",
+        cv_paicv: "Le gouvernement PAICV (octobre 2026) prévoit des hausses progressives du salaire minimum à partir de 2028 pour atteindre d’ici 2031 les 30 000 escudos proposés dans son programme ; aucun calendrier annuel n’a été donné.",
         cv_ucid: "João Santos Luís (juillet 2026) a estimé que la hausse du salaire minimum prévue par le PAICV l’était « sans démontrer sa soutenabilité financière », l’UCID affirmant par ailleurs que les salaires ne suivent pas le coût de la vie."
       } },
     { short: "Des pensions sociales plus élevées",
@@ -289,7 +287,7 @@ const I18N_CV_FR = {
       ctx: "Le programme du PAICV donne la priorité au secteur primaire : irrigation efficace, cultures résistantes à la sécheresse et assurance climatique. Le MpD affirme que le projet de budget 2027 réduit pourtant l’investissement agricole.",
       n: {
         cv_paicv: "Le programme s’engage à développer l’irrigation efficace, à soutenir les cultures résistantes à la sécheresse et à créer une assurance climatique pour les agriculteurs.",
-        cv_mpd: "Paulo Veiga (octobre 2026) a mis en cause les coupes dans l’investissement agricole du projet 2027, qui contredisent selon lui la priorité affichée par le PAICV lui-même pour le secteur primaire.",
+        cv_mpd: "Paulo Veiga (octobre 2026) a mis en cause les coupes dans l’investissement agricole du projet 2027, qui contredisent selon lui la priorité affichée par le PAICV lui-même pour le secteur primaire ; il n’a pas dit combien il faudrait investir à la place.",
         cv_ucid: "Le président de l’UCID, João Santos Luís (juillet 2026), a estimé que le gouvernement devait « soutenir de façon plus cohérente l’agriculture, la pêche et les micro et petites entreprises »."
       } },
     { short: "Une banque publique pour agriculteurs et pêcheurs",
@@ -426,7 +424,7 @@ const I18N_CV_PT = {
       text: "Quando os preços mundiais do petróleo sobem, o Estado deve usar dinheiro público para manter baixos os preços dos combustíveis para os consumidores.",
       ctx: "O Orçamento Retificativo de 2026 reservou cerca de 1,7 mil milhões de escudos para compensar as empresas de combustíveis. Os defensores dizem que conter os preços protege as famílias e trava os custos dos transportes. Os críticos dizem que essas compensações são caras e beneficiam todos os consumidores, incluindo os mais abastados.",
       n: {
-        cv_paicv: "O Orçamento Retificativo do Governo do PAICV (julho de 2026) incluiu cerca de 1,7 mil milhões de escudos para compensar as empresas de combustíveis pelos custos dos combustíveis.",
+        cv_paicv: "Depois de 30 de junho de 2026, o Governo do PAICV manteve a contenção dos preços dos combustíveis apenas para o gás butano e não a alargou aos outros combustíveis, o que o presidente do MpD, Paulo Veiga, criticou em outubro de 2026; ainda assim, o seu Orçamento Retificativo de julho reservou cerca de 1,7 mil milhões de escudos para compensar as empresas de combustíveis.",
         cv_mpd: "O presidente do MpD, Paulo Veiga (outubro de 2026), criticou o fim da contenção dos preços dos combustíveis após 30 de junho, propôs alargá-la a todos os combustíveis e defendeu um cheque-combustível mensal de 8 000 escudos para os táxis e os transportes públicos «em contrapartida pelo congelamento das tarifas»."
       },
       nd: { cv_ucid: "Não há posição documentada da UCID sobre os preços dos combustíveis." } },
@@ -474,10 +472,9 @@ const I18N_CV_PT = {
       text: "O Estado deve ajudar os jovens a comprar a primeira habitação, com crédito bonificado e um imposto mais baixo sobre a transmissão de imóveis.",
       ctx: "A habitação foi um tema recorrente da campanha de maio de 2026. O programa do PAICV promete crédito bonificado até aos 35 anos, uma redução significativa do imposto sobre a transmissão de imóveis (ITI) na primeira habitação e a primeira lei de bases da habitação do país. Os críticos do crédito bonificado dizem que pode fazer subir os preços se a oferta de casas não aumentar.",
       n: {
-        cv_paicv: "O programa promete «crédito bonificado até aos 35 anos» e uma redução significativa do ITI na primeira habitação dos jovens.",
-        cv_ucid: "A UCID fez campanha em São Vicente (2026) por «habitação de qualidade», sem detalhar instrumentos de financiamento."
+        cv_paicv: "O programa promete «crédito bonificado até aos 35 anos» e uma redução significativa do ITI na primeira habitação dos jovens."
       },
-      nd: { cv_mpd: "Não há posição documentada do MpD sobre o crédito bonificado à habitação." } },
+      nd: { cv_mpd: "Não há posição documentada do MpD sobre o crédito bonificado à habitação.", cv_ucid: "A UCID fez campanha em São Vicente (abril de 2026) por «habitação de qualidade», sem dizer como; não foi encontrada posição da UCID sobre o crédito bonificado ou o imposto sobre a transmissão de imóveis." } },
 
     /* ---------- Educação ---------- */
     { short: "Universidade pública gratuita",
@@ -541,10 +538,9 @@ const I18N_CV_PT = {
       text: "Os municípios devem receber uma parte muito maior das receitas do Estado, até 17%.",
       ctx: "Os municípios recebem transferências do Estado através do Fundo de Financiamento Municipal. O programa do PAICV promete aumentar progressivamente o fundo para 17% das receitas do Estado e reforçar a capacidade dos municípios de cobrar receitas próprias. Mais dinheiro local pode melhorar os serviços, mas reduz o que o Governo central pode gastar em prioridades nacionais.",
       n: {
-        cv_paicv: "O programa promete o «aumento progressivo do Fundo de Financiamento Municipal para 17% das receitas do Estado».",
-        cv_ucid: "O programa da UCID de 2026 centrava-se na descentralização («Mais equilíbrio, melhor governação»), sem um valor para o financiamento municipal."
+        cv_paicv: "O programa promete o «aumento progressivo do Fundo de Financiamento Municipal para 17% das receitas do Estado»."
       },
-      nd: { cv_mpd: "Não há posição documentada do MpD sobre a meta de 17%." } },
+      nd: { cv_mpd: "Não há posição documentada do MpD sobre a meta de 17%.", cv_ucid: "O programa da UCID de 2026 centrava-se na descentralização («Mais equilíbrio, melhor governação»), mas não foi encontrada nenhuma declaração da UCID sobre o financiamento municipal." } },
     { short: "Procurador-Geral por concurso público",
       text: "O Procurador-Geral da República e os juízes do Tribunal de Contas devem ser escolhidos por concurso público e não por nomeação política.",
       ctx: "O programa do PAICV propõe escolher o Procurador-Geral da República e os juízes do Tribunal de Contas por concurso público, para reforçar a sua independência. Os defensores dizem que isso protegeria o Ministério Público da influência política; os críticos notam que um concurso também pode ser moldado por quem o desenha. Algumas reformas institucionais exigem uma maioria de dois terços (48 dos 72 lugares), que o PAICV não tem sozinho.",
@@ -567,7 +563,7 @@ const I18N_CV_PT = {
       ctx: "O PAICV prometeu «a gratuitidade total dos cuidados de saúde» e criou um programa «Saúde para Todos», com 100 milhões de escudos no Orçamento Retificativo de 2026. Os defensores dizem que as taxas afastam as famílias pobres dos cuidados de saúde. O MpD pergunta como será financiada a gratuitidade universal.",
       n: {
         cv_paicv: "O Governo criou o «Saúde para Todos» (100 milhões de escudos) e acrescentou 300 milhões de escudos para medicamentos em julho de 2026.",
-        cv_mpd: "O porta-voz do MpD, Celso Ribeiro (setembro de 2026), questionou como serão financiadas a saúde e a educação gratuitas: «o orçamento é despesa e receita».",
+        cv_mpd: "O Governo do MpD (2016–2026) manteve uma abordagem focalizada: alargou a isenção de taxas moderadoras nas consultas, cirurgias e internamentos às crianças até aos 5 anos, grávidas, pessoas com deficiência, pessoas em situação de vulnerabilidade económica, pensionistas do regime não contributivo e dadores de sangue.",
         cv_ucid: "João Santos Luís (julho de 2026) contou o plano de «reforçar a cobertura universal» entre os pontos fortes do programa, mas incluiu a saúde gratuita entre as promessas cujo financiamento não foi demonstrado."
       } },
     { short: "Subir o salário mínimo todos os anos",
@@ -575,7 +571,7 @@ const I18N_CV_PT = {
       ctx: "Os dois principais partidos prometeram em 2026 aumentar os salários de forma gradual. Um salário mínimo mais alto aumenta o rendimento dos trabalhadores mais mal pagos; os empregadores argumentam que aumentos demasiado rápidos podem travar as contratações nas pequenas empresas.",
       n: {
         cv_mpd: "O programa do MpD de 2026 propunha um «aumento gradual do salário mínimo».",
-        cv_paicv: "O programa do PAICV promete uma «melhoria progressiva do salário» e das pensões sociais, sem uma meta concreta para o salário mínimo.",
+        cv_paicv: "O Governo do PAICV (outubro de 2026) prevê aumentos graduais do salário mínimo a partir de 2028 para atingir, até 2031, os 30 mil escudos propostos no seu programa; não foi indicado um calendário anual.",
         cv_ucid: "João Santos Luís (julho de 2026) disse que o aumento do salário mínimo do PAICV estava previsto «sem demonstrar a sua sustentabilidade financeira», embora a UCID também diga que os salários não acompanham o custo de vida."
       } },
     { short: "Pensões sociais mais altas",
@@ -624,7 +620,7 @@ const I18N_CV_PT = {
       ctx: "O programa do PAICV dá prioridade ao setor primário: rega eficiente, culturas resistentes à seca e seguro climático. O MpD diz que, ainda assim, a proposta de Orçamento do Estado para 2027 corta o investimento agrícola.",
       n: {
         cv_paicv: "O programa compromete-se a alargar a rega eficiente, apoiar culturas resistentes à seca e criar um seguro climático para os agricultores.",
-        cv_mpd: "Paulo Veiga (outubro de 2026) questionou os cortes no investimento agrícola na proposta para 2027, dizendo que contradizem a própria aposta do PAICV no setor primário.",
+        cv_mpd: "Paulo Veiga (outubro de 2026) questionou os cortes no investimento agrícola na proposta para 2027, dizendo que contradizem a própria aposta do PAICV no setor primário; não disse quanto deveria ser investido em alternativa.",
         cv_ucid: "O presidente da UCID, João Santos Luís (julho de 2026), disse que o Governo deve «apoiar de forma mais consistente a agricultura, as pescas e as micro e pequenas empresas»."
       } },
     { short: "Banco público para agricultores e pescadores",
