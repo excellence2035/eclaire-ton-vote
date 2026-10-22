@@ -1,6 +1,6 @@
-# Country edition spec — Éclaire ton vote
+# Country edition spec — Vote
 
-Éclaire ton vote is a youth Voting Advice Application for Africa. A young voter picks a country, picks up to three priority issues, answers precise policy statements (strongly agree … strongly disagree), and sees which **political parties** are closest to their answers, overall and issue by issue. Elections are presidential and/or parliamentary, so the platform compares **parties, not personalities**. The reference edition is Nigeria: read `src/parts/part-ng.js` and `src/parts/ng-extra.js` before starting; your edition must reach the same depth and quality.
+Vote is a youth Voting Advice Application for Africa. A young voter picks a country, picks up to three priority issues, answers precise policy statements (strongly agree … strongly disagree), and sees which **political parties** are closest to their answers, overall and issue by issue. Elections are presidential and/or parliamentary, so the platform compares **parties, not personalities**. The reference edition is Nigeria: read `src/parts/part-ng.js` and `src/parts/ng-extra.js` before starting; your edition must reach the same depth and quality.
 
 ## Output
 

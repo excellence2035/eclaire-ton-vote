@@ -4,7 +4,7 @@ Ce qui change sur la plateforme, du plus récent au plus ancien. Les positions d
 
 ## 22 octobre 2026
 
-- Nouveaux pays : Lesotho (questionnaire, 5 partis), Tunisie (questionnaire, 4 forces — couverture encore mince, à approfondir), Angola (fiche d’information : élections prévues en août 2027, date exacte non fixée) ; la fiche est traduite en portugais et en français.
+- Nouveaux pays : Lesotho (questionnaire, 5 partis), Tunisie (questionnaire, 4 forces), Angola (fiche d’information : élections prévues en août 2027, date exacte non fixée) ; la fiche est traduite en portugais et en français.
 - Navigation : l’adresse change à chaque écran (`#/ke/sw`), le bouton Retour du téléphone fonctionne, un rechargement reprend là où tu en étais, les liens directs vers un pays ou une langue marchent.
 - Langue de l’interface : détectée depuis le navigateur au premier passage, puis mémorisée.
 - Questions : bouton ★ « compte double » placé au-dessus des réponses ; confirmation dans la page (et non plus une fenêtre du navigateur) avant d’effacer les réponses.
@@ -18,7 +18,11 @@ Ce qui change sur la plateforme, du plus récent au plus ancien. Les positions d
 - Textes : accroche « On ne te dit pas pour qui voter », nombre de pays à explorer calculé, pages sans élection avec « Retour à la carte » comme action principale, notes longues déplacées dans le profil du parti.
 - Congo-Brazzaville : questionnaire de 27 questions, 5 partis (PCT, Alliance, Les Souverainistes, UPADS, ARD) ; date des législatives non officielle (juillet 2027 au plus tard), traduit en français.
 - Tunisie : approfondie (UGTT 14 questions codées sur 26, Ennahdha 10), traduite en arabe et en français.
-- Tests automatiques : 28 tests, 1532 vérifications.
+- Nouveau nom : la plateforme s’appelle simplement « Vote ».
+- Bannière pays : en choisissant un pays sur la carte, on voit son drapeau, sa carte et son nom dans la langue de l’interface, avant de choisir la langue ; un bandeau plus petit reste sur les écrans suivants (55 drapeaux hébergés avec le site, aucune requête externe).
+- Module de valeurs : 10 affirmations identiques dans tous les pays (5 dans un sens, 5 dans l’autre, aucune sur les droits LGBTQ+), proposées en option après le questionnaire, sur les pages d’information et pour les pays sans élection ; elles ne changent jamais le classement des partis.
+- Thermomètre des valeurs : ta position (libéral·progressiste ↔ conservateur·nationaliste) s’affiche avec les questions qui ont compté ; la barre collective de l’Afrique (envoi anonyme du pays et d’un niveau sur cinq, jamais les réponses) s’activera quand le compteur en ligne sera déployé, et ne s’affiche qu’à partir de 30 contributions.
+- Tests automatiques : 39 tests, 3532 vérifications.
 
 ## 18–19 octobre 2026 (nuit)
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Éclaire ton vote : tests de bout en bout (Python + Playwright, Chromium).
+"""Vote : tests de bout en bout (Python + Playwright, Chromium).
 
     python3 tools/test.py [--shots DIR] [--only NAME[,NAME…]] [--headed]
 
@@ -10,7 +10,7 @@ traductions incomplètes et éditions cassées. Rien n'est écrit dans src/.
 Le dépôt est servi avec `python3 -m http.server` sur un port libre. Aucune requête externe n'est
 autorisée, sauf Google Fonts (remplacé par une feuille vide pendant les tests).
 """
-import argparse, functools, json, math, os, random, re, shutil, socket, subprocess, sys, tempfile, time, traceback, urllib.request
+import argparse, functools, json, math, os, random, re, shutil, socket, subprocess, sys, tempfile, time, traceback, urllib.request, zlib
 
 from playwright.sync_api import sync_playwright
 
@@ -26,7 +26,7 @@ LANGS = ["en", "fr", "pt", "sw", "ar"]
 STR_KEYS = ["tabs", "partial", "presCand", "partyLeader", "partyBasisLeader", "mCodingLead", "mTransl", "legReady", "legInfo",
             "langNoQ", "langNoInfo", "retry", "infoWhy", "infoActors", "proto", "seeResults", "tryNigeria", "mapHint",
             "thinTitle", "straight", "resReady", "double", "themesTitle", "cancel", "confirmRestart", "confirmHome", "footer2"]
-BRAND = "Éclaire ton vote"
+BRAND = "Vote"
 FSI, PDI = "\u2068", "\u2069"
 COV_MIN, TIE, EQ, EARLY = 0.4, 0.03, 0.005, 8   # règles de lecture des résultats (copie de src/app.js)
 
@@ -230,6 +230,10 @@ def answer_all(page, plan, stop_after_prio=False):
             wait_view(page, "question")
             continue
         if view == "results":
+            break
+        if view == "valintro":   # invitation facultative aux 10 questions sur les valeurs : on passe aux résultats
+            page.click('[data-go="vresults"]')
+            wait_view(page, "results")
             break
         qi, i = page.evaluate("[state.order[state.i], state.i]")
         v, dbl = plan(qi)
@@ -568,7 +572,9 @@ def build_outputs(c):
     c("[hidden]{display:none!important}" in art, "artifact keeps the reset")
     for marker in ("const SRC_NG", "const ED_NG", "Allied Peoples Movement", "I18N_NG", "Rassemblement national"):
         c(marker not in idx, f"edition data not inlined ({marker})")
-    c(len(idx.encode()) < 350_000, f"index.html small ({len(idx.encode())} bytes)")
+    c(len(idx.encode()) < 400_000, f"index.html small ({len(idx.encode())} bytes)")
+    c(len(zlib.compress(idx.encode(), 9)) < 130_000, f"index.html small once compressed ({len(zlib.compress(idx.encode(), 9))} bytes)")
+    NOTES.append(f"page weight: index.html {len(idx.encode()) / 1024:.1f} KB ({len(zlib.compress(idx.encode(), 9)) / 1024:.1f} KB compressed)")
     for v in ("--c-apc", "--c-lepen"):
         c(v not in idx, f"old colour token {v} removed")
     cat = json.loads(re.search(r"const CATALOG = (\{.*?\});\n", idx).group(1))
@@ -1016,7 +1022,7 @@ def deep_links(c):
         page.goto(base + "/index.html#ke")
         page.wait_for_selector("#langDlg[open]")
         c(page.evaluate("location.hash") == "#/ke", "#ke normalised to #/ke")
-        c(page.text_content("#langBody .eyebrow").strip() == page.evaluate(f"cname('{cat['ke']['a3']}')"), "#ke: language choice for Kenya")
+        c(page.text_content("#langBody .cb-name").strip() == page.evaluate(f"cname('{cat['ke']['a3']}')"), "#ke: language choice for Kenya")
         page.click('#langBody [data-pick="sw"]')
         page.wait_for_selector(".theme-grid")
         c(page.evaluate("[state.country, state.ui, document.documentElement.lang, location.hash]") == ["ke", "sw", "sw", "#/ke/sw"], "#ke → Kenya in Swahili")
@@ -1959,7 +1965,9 @@ def contrast_tokens(c):
             ("warn", "warn-soft"), ("warn", "lamp-soft"), ("check", "check-soft"), ("muted", "accent-soft")]
     ui = [("ctl", "sheet"), ("ctl", "paper"), ("ctl", "sheet-2"), ("ctl", "accent-soft"), ("accent", "paper"), ("accent", "sheet"), ("on-accent", "accent"),
           ("accent", "sheet-2"), ("accent", "accent-soft"), ("warn", "lamp-soft"), ("up", "sheet"), ("up", "land-bg"), ("none", "sheet"), ("none", "land-bg"),
-          ("up-edge", "map-stroke"), ("up-edge", "sheet"), ("muted", "disputed"), ("muted", "sheet"), ("ink", "sheet"), ("sheet", "up"), ("sheet", "none"), ("ink", "land-bg")]
+          ("up-edge", "map-stroke"), ("up-edge", "sheet"), ("muted", "disputed"), ("muted", "sheet"), ("ink", "sheet"), ("sheet", "up"), ("sheet", "none"), ("ink", "land-bg"),
+          # compteur : remplissages et repère contre la piste (fond de la barre) et contre la carte
+          ("m-pro", "sheet-2"), ("m-con", "sheet-2"), ("m-pro", "sheet"), ("m-con", "sheet"), ("ink", "sheet-2"), ("ctl", "sheet-2")]
     mins = {}
     for name, T in (("light", light), ("dark", dark)):
         for pairs, need, kind in ((text, 4.5, "text"), (ui, 3.0, "non-text")):
@@ -1975,6 +1983,957 @@ def contrast_tokens(c):
         c(r >= 3.0, f"{name}: hatch stripe vs red {r:.2f} >= 3")
         mins[(name, "non-text")] = min(mins[(name, "non-text")], r)
     NOTES.append("contrast minimums: " + ", ".join(f"{k[0]} {k[1]} {v:.2f}" for k, v in sorted(mins.items())))
+
+
+# ------------------------------------------------------------------ APPFIX4 A : drapeau, silhouette et bandeau du pays
+BANNER_PROBE = """() => {
+  const d = document.getElementById('langDlg'), b = d.querySelector('.cbanner');
+  if (!b) return null;
+  const r = e => { const q = e.getBoundingClientRect(); return { l: q.left, r: q.right, t: q.top, b: q.bottom, w: q.width, h: q.height }; };
+  const svg = b.querySelector('.cb-shape'), pa = svg && svg.querySelector('path'), im = b.querySelector('img.flag');
+  const vb = svg && svg.viewBox.baseVal, bb = pa && pa.getBBox(), nm = b.querySelector('.cb-name'), first = d.querySelector('[data-pick]');
+  return { banner: r(b), dlg: r(d), svg: svg && r(svg), path: pa && r(pa), pathD: pa ? pa.getAttribute('d') : '', flag: im && r(im),
+    flagSrc: im ? im.getAttribute('src') : '', flagLoaded: !!(im && im.complete && im.naturalWidth > 0), flagAlt: im ? im.getAttribute('alt') : null,
+    vb: vb && [vb.x, vb.y, vb.width, vb.height], bb: bb && [bb.x, bb.y, bb.width, bb.height], name: nm ? nm.textContent : '',
+    nameSize: nm ? parseFloat(getComputedStyle(nm).fontSize) : 0, nameFont: nm ? getComputedStyle(nm).fontFamily : '',
+    line: (b.querySelector('.cb-line') || {}).textContent || '', firstBtn: first && r(first), dir: getComputedStyle(d).direction,
+    sw: document.documentElement.scrollWidth, iw: window.innerWidth, dlgSw: d.scrollWidth, dlgCw: d.clientWidth };
+}"""
+
+
+def banner_checks(c, P, cc, where, ui, name=None, line=None):
+    c(P is not None, f"{where}: banner present")
+    c(P["flagSrc"] == f"flags/{cc}.svg" and P["flagLoaded"] and P["flagAlt"] == "", f"{where}: flag file flags/{cc}.svg loads (naturalWidth > 0), decorative alt")
+    c(abs(P["flag"]["w"] - 72) <= 1 and abs(P["flag"]["h"] - 54) <= 1, f"{where}: flag is 72×54 ({P['flag']['w']:.0f}×{P['flag']['h']:.0f})")
+    c(len(P["pathD"]) > 20, f"{where}: silhouette path is not empty")
+    vb, bb = P["vb"], P["bb"]
+    c(bb[0] >= vb[0] - 0.01 and bb[1] >= vb[1] - 0.01 and bb[0] + bb[2] <= vb[0] + vb[2] + 0.01 and bb[1] + bb[3] <= vb[1] + vb[3] + 0.01,
+      f"{where}: the whole shape sits inside its viewBox")
+    B = P["banner"]
+    for k in ("svg", "path", "flag"):
+        R = P[k]
+        c(R["l"] >= B["l"] - 0.6 and R["r"] <= B["r"] + 0.6 and R["t"] >= B["t"] - 0.6 and R["b"] <= B["b"] + 0.6, f"{where}: {k} inside the banner")
+    c(max(P["path"]["w"], P["path"]["h"]) >= 30, f"{where}: the silhouette is big enough to read ({P['path']['w']:.0f}×{P['path']['h']:.0f})")
+    c(B["l"] >= P["dlg"]["l"] - 0.6 and B["r"] <= P["dlg"]["r"] + 0.6 and B["r"] <= P["iw"] + 0.6 and B["l"] >= -0.6, f"{where}: banner inside the dialog and the screen")
+    c(P["sw"] <= P["iw"] + 1 and P["dlgSw"] <= P["dlgCw"] + 1, f"{where}: no horizontal overflow ({P['sw']} / {P['iw']}, dialog {P['dlgSw']} / {P['dlgCw']})")
+    c(P["nameSize"] >= 24 and "Bricolage" in P["nameFont"], f"{where}: country name is large, in the display face ({P['nameSize']}px)")
+    c(P["name"].strip() != "" and (name is None or P["name"] == name), f"{where}: country name “{P['name']}”" + (f" == “{name}”" if name else ""))
+    c(P["line"].strip() != "" and (line is None or P["line"].strip() == line), f"{where}: election line “{P['line'][:50]}”")
+    c(P["firstBtn"]["t"] >= B["b"] - 0.6, f"{where}: language buttons come below the banner")
+    # sens de lecture : le drapeau est au début (à gauche en LTR, à droite en RTL), la silhouette après lui
+    if ui == "ar":
+        c(P["dir"] == "rtl" and P["flag"]["r"] >= B["r"] - 2 and P["svg"]["r"] <= P["flag"]["l"] + 0.6, f"{where}: RTL, flag at the start (right), silhouette after it")
+    else:
+        c(P["dir"] == "ltr" and P["flag"]["l"] <= B["l"] + 2 and P["svg"]["l"] >= P["flag"]["r"] - 0.6, f"{where}: LTR, flag at the start (left), silhouette after it")
+
+
+@test
+def banner_dialog(c):
+    """Choix de la langue : bandeau du pays (drapeau 72×54 depuis flags/, silhouette du tracé de la carte, nom dans la langue
+    de l'interface, ligne d'élection) pour le Nigeria, le Kenya, le Cap-Vert, la Libye (arabe), un pays sans élection ;
+    à 320, 390 et 1280 px, en anglais, en français et en arabe (RTL), sans débordement."""
+    cases = [("ng", "566"), ("ke", "404"), ("cv", "132"), ("ly", "434"), ("dz", "012")]
+    fixed = {("ng", "en"): "Nigeria", ("ke", "en"): "Kenya", ("cv", "fr"): "Cap-Vert", ("ly", "ar"): "ليبيا"}
+    for w, h in ((320, 700), (390, 844), (1280, 900)):
+        for ui, locale in (("en", "en-GB"), ("fr", "fr-FR"), ("ar", "ar-EG")):
+            if w == 1280 and ui == "fr":
+                continue
+            S = Session(CTX["browser"], width=w, height=h, locale=locale)
+            page = S.page
+            page.goto(CTX["base"] + "/index.html")
+            page.wait_for_selector("#mapWrap .mk")
+            page.wait_for_timeout(150)
+            c(page.evaluate("state.ui") == ui and not page.evaluate("state.uiChosen"), f"{ui}: interface language follows the browser, nothing chosen yet")
+            L = page.evaluate("T[state.ui]")
+            for cc, a3 in cases:
+                where = f"{cc} {ui} {w}px"
+                if cc == "dz":   # pas de repère sur la carte pour un pays sans élection : on le touche dans la liste
+                    if not page.evaluate("document.getElementById('listBox').open"):
+                        page.click("#listBox summary")
+                    page.click(f'#clist [data-place="{a3}"]')
+                else:
+                    page.click(f'#mapWrap .mk[data-place="{a3}"]')
+                page.wait_for_selector("#langDlg[open] .cbanner")
+                page.wait_for_function("() => { const i = document.querySelector('#langBody img.flag'); return i && i.complete; }")
+                P = page.evaluate(BANNER_PROBE)
+                name = page.evaluate(f"cname('{a3}')")
+                line = L["legNone"] if cc == "dz" else None
+                banner_checks(c, P, cc, where, ui, name=fixed.get((cc, ui)) or name, line=line)
+                c(P["name"] == name, f"{where}: name comes from the app's country names")
+                if cc == "ng":
+                    c("2027" in P["line"], f"{where}: Nigeria election line has the date")
+                if w == 390 and ui == "en" and cc in ("ng", "cv"):
+                    shot(page, f"banner-{cc}-{w}-{ui}.png")
+                if w == 320 and ui in ("en", "ar") and cc == "ng":
+                    shot(page, f"banner-{cc}-{w}-{ui}.png")
+                page.click("#langCancel")
+                page.wait_for_function("() => !document.getElementById('langDlg').open")
+            S.close(c)
+
+
+@test
+def banner_all_countries(c):
+    """Les 54 pays de la carte : drapeau présent dans flags/ et chargé, silhouette non vide (îles et archipels compris),
+    tout dans le bandeau à 320 px ; la France a le même bandeau (fonction du bandeau) ; un drapeau qui ne se charge pas
+    disparaît sans casser le bandeau."""
+    S = Session(CTX["browser"], width=320, height=800)
+    page = S.page
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    page.wait_for_timeout(150)
+    ids = page.evaluate("Object.keys(AFRICA)")
+    c(len(ids) >= 54, f"{len(ids)} countries on the map")
+    small = []
+    for a3 in ids:
+        page.evaluate(f"openLang('{a3}')")
+        page.wait_for_function("() => { const i = document.querySelector('#langBody img.flag'); return i && i.complete; }")
+        P = page.evaluate(BANNER_PROBE)
+        cc = page.evaluate(f"AFRICA['{a3}'].a2.toLowerCase()")
+        banner_checks(c, P, cc, f"{cc} (all countries, 320px)", "en")
+        small.append((max(P["path"]["w"], P["path"]["h"]), cc))
+        page.evaluate("closeLang()")
+    small.sort()
+    NOTES.append("smallest silhouettes at 320 px: " + ", ".join(f"{cc} {s:.0f}px" for s, cc in small[:4]))
+    # France : même bandeau (pas de choix de langue pour la France : une seule langue, hors carte)
+    page.evaluate("""() => { const d = document.createElement('div'); d.id = 'frProbe'; d.style.cssText = 'position:absolute;top:0;left:0;width:300px;background:#fff';
+        d.innerHTML = bannerHTML('fr'); document.body.appendChild(d); }""")
+    page.wait_for_function("() => { const i = document.querySelector('#frProbe img.flag'); return i && i.complete; }")
+    fr = page.evaluate("""() => { const b = document.querySelector('#frProbe .cbanner'), im = b.querySelector('img.flag'), pa = b.querySelector('path'), q = e => e.getBoundingClientRect();
+        return { src: im.getAttribute('src'), ok: im.naturalWidth > 0, d: pa.getAttribute('d').length, pw: q(pa).width, ph: q(pa).height, inside: q(pa).right <= q(b).right + 0.6 && q(pa).bottom <= q(b).bottom + 0.6 && q(pa).left >= q(b).left - 0.6,
+          name: b.querySelector('.cb-name').textContent, line: b.querySelector('.cb-line').textContent }; }""")
+    c(fr["src"] == "flags/fr.svg" and fr["ok"] and fr["d"] > 50 and fr["inside"] and max(fr["pw"], fr["ph"]) > 30, f"France banner: flag, outline, inside the banner {fr}")
+    c(fr["name"] == "France" and "2027" in fr["line"], f"France banner: name and date ({fr['name']}, {fr['line']})")
+    page.evaluate("document.getElementById('frProbe').remove()")
+    # un drapeau qui ne se charge pas disparaît (pas d'icône cassée) ; nom, silhouette et boutons restent
+    page.route("**/flags/ng.svg", lambda r: r.abort())
+    page.evaluate("openLang('566')")
+    page.wait_for_function("() => document.querySelector('#langBody img.flag').hidden === true")
+    P = page.evaluate("""() => ({ name: document.querySelector('#langBody .cb-name').textContent, shape: !!document.querySelector('#langBody .cb-shape path'),
+        btn: document.querySelectorAll('#langBody [data-pick]').length, shown: getComputedStyle(document.querySelector('#langBody img.flag')).display })""")
+    c(P["name"] == "Nigeria" and P["shape"] and P["btn"] == 5 and P["shown"] == "none", f"a flag that fails to load is hidden, the rest stays: {P}")
+    page.evaluate("closeLang()")
+    S.close(c, allow_console=True)
+    # fichiers : un SVG par pays de la carte + la France, jamais incorporés, léger, avec la licence
+    fl = os.path.join(ROOT, "flags")
+    idx = open(os.path.join(ROOT, "index.html"), encoding="utf8").read()
+    c("flags/" not in idx.split("<script>", 1)[0] and 'viewBox="0 0 640 480"' not in idx, "no flag is inlined in index.html")
+    files = sorted(f for f in os.listdir(fl) if f.endswith(".svg"))
+    c(len(files) >= 55 and "fr.svg" in files and "ng.svg" in files, f"{len(files)} flag files")
+    sizes = {f: os.path.getsize(os.path.join(fl, f)) for f in files}
+    c(max(sizes.values()) <= 15 * 1024, f"no flag over 15 KB (largest {max(sizes, key=sizes.get)} {max(sizes.values()) / 1024:.1f} KB)")
+    c(all(open(os.path.join(fl, f), encoding="utf8").read(200).lstrip().startswith("<svg") for f in files), "flag files are SVG")
+    c("MIT" in open(os.path.join(fl, "LICENSE"), encoding="utf8").read(), "flags/LICENSE (MIT) shipped with the flags")
+    NOTES.append(f"flags: {len(files)} files, {sum(sizes.values()) / 1024:.1f} KB in all, largest {max(sizes, key=sizes.get)} {max(sizes.values()) / 1024:.1f} KB")
+
+
+@test
+def banner_screens(c):
+    """Bandeau compact (drapeau 32×24 + nom) au départ, sur les résultats, sur la page d'information et pour la France ; drapeau seul
+    (24×18, nom en texte caché) dans l'en-tête de l'écran de question ; absent sur la carte ; arabe : le drapeau reste du côté du début."""
+    S = Session(CTX["browser"], width=390, height=844)
+    page = S.page
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    c(page.evaluate("document.getElementById('topFlag').hidden"), "map: no flag in the header")
+
+    def band(where, cc, name, w=32, h=24):
+        page.wait_for_function("() => [...document.querySelectorAll('#app .cband img.flag')].some(i => i.complete)")
+        P = page.evaluate("""() => { const b = document.querySelector('#app .cband'), i = b.querySelector('img.flag'), q = i.getBoundingClientRect(), t = b.getBoundingClientRect();
+            return { src: i.getAttribute('src'), ok: i.naturalWidth > 0, w: q.width, h: q.height, text: b.textContent.trim(), fl: q.left, fr: q.right, bl: t.left, br: t.right, dir: getComputedStyle(b).direction }; }""")
+        c(P["src"] == f"flags/{cc}.svg" and P["ok"], f"{where}: band flag flags/{cc}.svg loads")
+        c(abs(P["w"] - w) <= 1 and abs(P["h"] - h) <= 1, f"{where}: band flag is {w}×{h} ({P['w']:.0f}×{P['h']:.0f})")
+        c(P["text"].startswith(name), f"{where}: band shows “{name}” ({P['text'][:40]})")
+        c((P["fr"] >= P["br"] - 1) if P["dir"] == "rtl" else (P["fl"] <= P["bl"] + 1), f"{where}: flag at the start of the band ({P['dir']})")
+
+    def top_flag(where, cc, name):
+        P = page.evaluate("""() => { const t = document.getElementById('topFlag'), i = t.querySelector('img.flag'), s = t.querySelector('.sr'), q = i && i.getBoundingClientRect();
+            return { hidden: t.hidden, src: i && i.getAttribute('src'), ok: !!(i && i.naturalWidth > 0), alt: i && i.getAttribute('alt'), w: q && q.width, h: q && q.height,
+                     sr: s ? s.textContent : '', inView: !!q && q.left >= 0 && q.right <= innerWidth }; }""")
+        c(not P["hidden"] and P["src"] == f"flags/{cc}.svg" and P["ok"] and P["alt"] == "", f"{where}: header flag loads, decorative")
+        c(abs(P["w"] - 24) <= 1 and abs(P["h"] - 18) <= 1 and P["inView"], f"{where}: header flag is 24×18 and on screen ({P['w']:.0f}×{P['h']:.0f})")
+        c(P["sr"] == name, f"{where}: the country name is there as text for screen readers ({P['sr']})")
+
+    open_country(page, "566", "en")
+    page.wait_for_selector(".theme-grid")
+    band("Nigeria start", "ng", "Nigeria")
+    D = json.load(open(os.path.join(ROOT, "data", "ng.json"), encoding="utf8"))
+    page.click(f'[data-prio="{D["ed"]["themes"][0]["id"]}"]')
+    page.click('[data-go="startq"]')
+    wait_view(page, "question")
+    top_flag("Nigeria question", "ng", "Nigeria")
+    set_answers(page, find_answers(D, "closest"))
+    band("Nigeria results", "ng", "Nigeria")
+    c(page.evaluate("document.querySelector('#app .cband').classList.contains('cb-res')"), "results: compact band above the headline")
+    c(page.evaluate("document.getElementById('topFlag').hidden"), "results: the band carries the flag, the header one is hidden (no double)")
+    # page d'information (Kenya) et pays sans page (Algérie : « pas d'élection nationale »)
+    page.goto(CTX["base"] + "/index.html#/ke/en")
+    page.wait_for_selector("#app .cband")
+    band("Kenya start", "ke", "Kenya")
+    page.goto(CTX["base"] + "/index.html#/ao/en")
+    page.wait_for_selector("#app .cband")
+    band("Angola information page", "ao", "Angola")
+    page.goto(CTX["base"] + "/index.html#/dz/en")
+    page.wait_for_selector("#app .cband")
+    band("Algeria page", "dz", "Algeria")
+    # France : une seule langue, hors carte
+    page.goto(CTX["base"] + "/index.html#/fr/fr")
+    page.wait_for_selector(".theme-grid")
+    band("France start", "fr", "France")
+    # arabe : drapeau du côté du début, nom lisible
+    page.goto(CTX["base"] + "/index.html#/ng/ar")
+    page.wait_for_selector(".theme-grid")
+    band("Nigeria start (ar)", "ng", page.evaluate("cname('566')"))
+    c(page.evaluate("document.documentElement.dir") == "rtl", "ar: page is RTL")
+    S.close(c)
+
+
+# ------------------------------------------------------------------ APPFIX4 B : module « valeurs » (10 énoncés) et compteur collectif
+def vset(page, answers):
+    """Remplace les réponses « valeurs » (liste de 10 valeurs ou None) et les enregistre dans la session."""
+    page.evaluate("""a => { state.vals = {}; VALUES.forEach((v, i) => { if (a[i] !== null && a[i] !== undefined) state.vals[v.id] = a[i]; }); save(); }""", answers)
+
+
+def vlevel(page, answers):
+    return page.evaluate("""a => { const vals = {}; VALUES.forEach((v, i) => { if (a[i] !== null && a[i] !== undefined) vals[v.id] = a[i]; });
+        const r = __etv.valuesLevel(vals); return [r.level, r.n]; }""", answers)
+
+
+@test
+def values_logic(c):
+    """Position sur les valeurs : v = ax × réponse / 2, moyenne s, au moins 6 réponses, seuils 0,5 / 0,15 (exacts, en entiers) ;
+    accord ou désaccord avec tout = centre ; séries libérale et conservatrice ; réponses passées ignorées ;
+    les réponses « valeurs » n'entrent jamais dans les scores des partis."""
+    S = Session(CTX["browser"], width=390, height=844)
+    page = S.page
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    V = page.evaluate("VALUES.map(v => ({id: v.id, ax: v.ax, topic: v.topic}))")
+    ax = [v["ax"] for v in V]
+    c(len(V) == 10 and sum(1 for a in ax if a == 1) == 5 and sum(1 for a in ax if a == -1) == 5, "10 statements, 5 / 5 balance")
+    c(len({v["id"] for v in V}) == 10, "unique ids")
+    c(page.evaluate("VALUES.every(v => ['fr','en','pt','sw','ar'].every(l => v[l] && v[l].short && v[l].text))"), "every statement is written in the five languages")
+    c(page.evaluate("typeof __etv.valuesLevel") == "function", "window.__etv.valuesLevel is exported")
+    pro = [2 * a for a in ax]        # d'accord (fort) avec les énoncés libéraux, pas d'accord avec les conservateurs
+    con = [-2 * a for a in ax]
+    c(vlevel(page, [2] * 10) == [0, 10], f"agree with everything → 0 (got {vlevel(page, [2] * 10)})")
+    c(vlevel(page, [-2] * 10) == [0, 10], "disagree with everything → 0")
+    c(vlevel(page, [0] * 10) == [0, 10], "neither → 0")
+    c(vlevel(page, pro) == [2, 10], f"crafted liberal-progressive set → 2 (got {vlevel(page, pro)})")
+    c(vlevel(page, con) == [-2, 10], "crafted conservative-nationalist set → −2")
+    c(vlevel(page, [a for a in ax]) == [2, 10], "mild agreement with each liberal statement (s = 0.5) → 2")
+    mild = [a if i < 5 else 0 for i, a in enumerate(ax)]
+    c(vlevel(page, mild) == [1, 10], f"s between 0.15 and 0.5 → 1 (got {vlevel(page, mild)})")
+    c(vlevel(page, [-a if i < 5 else 0 for i, a in enumerate(ax)]) == [-1, 10], "s between −0.5 and −0.15 → −1")
+    # seuils exacts : 10 réponses, S = Σ ax×réponse ; s = S / 20. S = 3 → s = 0,15 → 0 ; S = 4 → 0,2 → 1 ; S = −3 → 0 ; S = −4 → −1 ; S = 9 → 0,45 → 1 ; S = 10 → 2
+    def with_sum(S):
+        rem, out = S, [0] * 10
+        for i in range(10):
+            take = max(-2, min(2, rem * ax[i]))
+            out[i] = take
+            rem -= take * ax[i]
+        assert rem == 0
+        return out
+    for S_, want in ((3, 0), (4, 1), (9, 1), (10, 2), (-3, 0), (-4, -1), (-9, -1), (-10, -2), (0, 0), (20, 2), (-20, -2)):
+        c(vlevel(page, with_sum(S_)) == [want, 10], f"S = {S_} → {want} (got {vlevel(page, with_sum(S_))})")
+    # au moins 6 réponses ; les réponses passées sont ignorées
+    c(vlevel(page, pro[:5] + [None] * 5) == [None, 5], "5 answered → no level")
+    c(vlevel(page, pro[:6] + [None] * 4) == [2, 6], "6 answered → a level; skipped are ignored")
+    c(vlevel(page, [None, None, None, None] + pro[4:]) == [2, 6], "the same with the first four skipped")
+    c(vlevel(page, [None] * 10) == [None, 0] and page.evaluate("__etv.valuesLevel({}).need") == 6 and page.evaluate("__etv.valuesLevel({}).level") is None, "nothing answered → no level, 6 needed")
+    c(page.evaluate("__etv.valuesLevel(null).level") is None, "null is accepted")
+    c(page.evaluate("__etv.valuesLevel({v1: 7, v2: 'x', v3: 2, nope: 2}).n") == 1, "out-of-range, non-numeric and unknown ids are ignored")
+    # un mélange de skippées et de neutres : 6 répondues dont 3 neutres
+    c(vlevel(page, [0, 0, 0] + pro[3:6] + [None] * 4)[1] == 6, "neutral answers count as answered")
+    # les scores des partis ne changent pas, quelles que soient les réponses « valeurs »
+    D = json.load(open(os.path.join(ROOT, "data", "ng.json"), encoding="utf8"))
+    open_country(page, "566", "en")
+    page.wait_for_selector(".theme-grid")
+    ans = find_answers(D, "closest")
+    set_answers(page, ans)
+    base_rank = [tuple(r) for r in displayed_ranking(page)]
+    base_state = page.evaluate("JSON.stringify([state.answers, state.double, state.priorities, state.order])")
+    c(base_rank == expected_ranking(D, ans, {}, []), "party ranking matches the model before any values answer")
+    for name, vals in (("liberal", pro), ("conservative", con), ("neutral", [0] * 10)):
+        vset(page, vals)
+        page.evaluate("rerender()")
+        page.wait_for_selector("#pan0 .rank li")
+        c([tuple(r) for r in displayed_ranking(page)] == base_rank, f"party ranking unchanged with {name} values answers")
+        c(page.evaluate("JSON.stringify([state.answers, state.double, state.priorities, state.order])") == base_state, f"{name}: party answers untouched")
+    c(not page.evaluate("Object.keys(state.answers).some(k => /^v/.test(k))") and page.evaluate("Object.keys(state.vals).length") == 10, "values answers live in state.vals, apart")
+    S.close(c)
+
+
+def to_bonus(page):
+    """Répond à chaque question de partis (« plutôt d'accord ») jusqu'à l'invitation aux 10 questions sur les valeurs."""
+    page.evaluate("TAP_GUARD = 0")
+    for _ in range(80):
+        view = page.evaluate("state.view")
+        if view == "valintro":
+            return
+        if view == "checkpoint":
+            page.click('[data-go="more"]')
+            wait_view(page, "question")
+            continue
+        assert view == "question", f"unexpected view {view} on the way to the bonus screen"
+        answer_one(page, 1)
+    raise AssertionError("the bonus screen never came")
+
+
+def answer_values(page, answers):
+    """Répond aux 10 énoncés (None = passer), un par un, jusqu'à l'écran « valres »."""
+    page.evaluate("TAP_GUARD = 0")   # Playwright clique plus vite qu'un double tapotement (protection testée à part)
+    for i, a in enumerate(answers):
+        page.wait_for_function("([i]) => state.view === 'valq' && state.vi === i", arg=[i], timeout=5000)
+        page.click('[data-vv="skip"]' if a is None else f'.answers .ans[data-vv="{a}"]')
+    wait_view(page, "valres")
+
+
+def to_bonus_fast(page):
+    """Comme to_bonus, sans cliquer 38 fois : réponses posées dans l'état, dernière question répondue au clic."""
+    page.evaluate("""() => { TAP_GUARD = 0; buildOrder(); state.order.slice(0, -1).forEach(q => { state.answers[q] = 1; });
+        state.i = state.order.length - 1; state.nPrio = 0; viewQuestion(); }""")
+    wait_view(page, "question")
+    answer_one(page, 1)
+    wait_view(page, "valintro")
+
+
+@test
+def values_flow(c):
+    """Invitation après la dernière question de partis (une fois), écran des 10 énoncés (pastille « Valeurs », pas de ★),
+    position, carte des résultats, rechargement, modification, « Recommencer » ; adresses #/…/values ; sans adresse de compteur :
+    carte personnelle seule, aucun bouton d'envoi, aucune requête externe."""
+    S = Session(CTX["browser"], width=390, height=844)
+    page = S.page
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    L = page.evaluate("T.en")
+    c(page.evaluate("__etv.METER_ENDPOINT") == "", "repository build: endpoint empty, collective features off")
+    D, th = ng_start(page)
+    to_bonus(page)
+    c(page.evaluate("[state.view, location.hash]") == ["valintro", "#/ng/en/values"], "after the last party question: the invitation, #/ng/en/values")
+    c(heading_ok(heading_levels(page)), f"invitation: heading order {heading_levels(page)}")
+    c(page.inner_text("#app h1").strip() == L["valIntroTitle"], "invitation title")
+    btn = page.evaluate("[...document.querySelectorAll('#app .actions button')].map(b => b.textContent.trim())")
+    c(btn == [L["valStart"], L["valSkipResults"]], f"two choices: start the 10 / skip to my results ({btn})")
+    c(page.locator("[data-meter],.vsend").count() == 0, "no collective part without an endpoint")
+    c(L["valIntroTextLocal"] in page.inner_text("#app"), "the local wording (nothing is sent) is used")
+    shot(page, "values-intro-390.png", full=True)
+    # passer : résultats ; l'invitation ne revient pas pendant cette session
+    page.click('[data-go="vresults"]')
+    wait_view(page, "results")
+    ans = {int(k): v for k, v in page.evaluate("state.answers").items()}
+    base_rank = [tuple(r) for r in displayed_ranking(page)]
+    c(base_rank == expected_ranking(D, ans, {}, [th]), "party ranking as the model says (values skipped)")
+    c(page.locator(".vcard").count() == 1 and page.inner_text(".vcard h2").strip() == L["valIntroTitle"], "results: the values card invites to answer")
+    c(heading_ok(heading_levels(page)), f"results with the card: heading order {heading_levels(page)}")
+    # depuis la carte : les 10 énoncés, à partir du premier
+    page.click('.vcard [data-go="vopen"]')
+    wait_view(page, "valq")
+    c(page.evaluate("location.hash") == "#/ng/en/values/1", "first statement at #/ng/en/values/1")
+    q = page.evaluate("""() => ({ chip: [...document.querySelectorAll('#app .chip')].map(e => e.textContent.trim()), star: document.querySelectorAll('#app .star').length,
+        h1: document.querySelector('#app h1').textContent.trim(), count: document.querySelector('.q-count').textContent.trim() })""")
+    c(q["chip"] == [L["valChip"]] and q["star"] == 0, f"‘Values’ chip, no ★ ({q['chip']}, {q['star']})")
+    c(q["h1"] == page.evaluate("vtext(VALUES[0]).text") and q["count"] == "1 / 10", "statement 1 of 10")
+    c(page.locator(".q-meta .mini, .q-meta .min, #app .minis").count() == 0, "no ministries line")
+    c(heading_ok(heading_levels(page)), f"statement screen: heading order {heading_levels(page)}")
+    c(page.evaluate("[...document.querySelectorAll('.answers .ans')].map(b => b.dataset.vv).join()") == "2,1,0,-1,-2", "five answers, strongly agree first")
+    c(page.evaluate("document.getElementById('topFlag').hidden") is False, "the country flag stays in the header")
+    shot(page, "values-question-390.png")
+    # reculer et revenir
+    page.click('.answers .ans[data-vv="2"]')
+    page.wait_for_function("state.vi === 1")
+    page.click('[data-go="vprev"]')
+    page.wait_for_function("state.vi === 0")
+    c(page.get_attribute('.answers .ans[data-vv="2"]', "aria-pressed") == "true", "Previous shows the answer already given")
+    # série libérale
+    ax = page.evaluate("VALUES.map(v => v.ax)")
+    pro = [2 * a for a in ax]
+    answer_values(page, pro)
+    c(page.evaluate("[location.hash, Object.keys(state.vals).length]") == ["#/ng/en/values/done", 10], "after the tenth: #/ng/en/values/done, 10 answers saved")
+    c(heading_ok(heading_levels(page)), f"values result: heading order {heading_levels(page)}")
+    c(page.inner_text(".v-level").strip() == L["valLevels"]["2"], "level: clearly liberal–progressive")
+    bar = page.evaluate("""() => { const m = document.querySelector('.vcard .mbar'), k = document.querySelector('.vcard .mmark'), q = e => e.getBoundingClientRect();
+        return { role: m.getAttribute('role'), label: m.getAttribute('aria-label'), mark: (q(k).left + q(k).right) / 2, l: q(m).left, r: q(m).right }; }""")
+    c(bar["role"] == "img" and L["valLevels"]["2"] in bar["label"], "the bar says its level in text")
+    c(abs(bar["mark"] - bar["l"]) < 18, f"the marker sits at the start end for level 2 ({bar['mark'] - bar['l']:.0f}px)")
+    c(page.evaluate("T.en.valBasis(10)") in page.inner_text(".vcard"), "‘computed from your 10 answers…’")
+    page.click(".v-which summary")
+    c(page.locator(".v-list li").count() == 10, "‘Which questions counted?’ lists the 10 statements")
+    c(page.evaluate("[...document.querySelectorAll('.v-list .vq-a b')].every(b => b.textContent.trim() !== '')"), "…with the answer given to each")
+    c(page.locator(".vsend, [data-go='vsend'], [data-meter]").count() == 0, "no send button, no meter without an endpoint")
+    shot(page, "values-result-390.png", full=True)
+    # vers les résultats : le classement n'a pas bougé, la carte est là avec le repère
+    page.click('[data-go="vresults"]')
+    wait_view(page, "results")
+    c([tuple(r) for r in displayed_ranking(page)] == base_rank, "party ranking unchanged after the values answers")
+    c(page.locator(".vcard .mmark").count() == 1 and page.inner_text(".vcard .v-level").strip() == L["valLevels"]["2"], "results: the card shows the marker and the level")
+    shot(page, "values-card-results-390.png", full=True)
+    # rechargement : tout est restitué
+    page.reload()
+    page.wait_for_function("state.view === 'results'")
+    c(page.evaluate("Object.keys(state.vals).length") == 10 and page.locator(".vcard .mmark").count() == 1, "reload: values answers restored")
+    # modifier : retour aux énoncés (depuis le premier), position à jour
+    page.click('.vcard [data-go="vedit"]')
+    wait_view(page, "valq")
+    c(page.evaluate("state.vi") == 0, "‘Change my answers’ starts again at the first statement")
+    answer_values(page, [-a for a in pro])
+    c(page.inner_text(".v-level").strip() == L["valLevels"]["-2"], "changed answers → clearly conservative–nationalist")
+    page.click('[data-go="vresults"]')
+    wait_view(page, "results")
+    c([tuple(r) for r in displayed_ranking(page)] == base_rank, "party ranking still unchanged")
+    # recommencer : tout est effacé, l'invitation reviendra
+    page.click('#app [data-go="restart"]')
+    page.click('#confirmBox [data-go="restart!"]')
+    page.wait_for_function("state.view !== 'results'")
+    c(page.evaluate("[Object.keys(state.vals).length, state.vseen, Object.keys(state.answers).length]") == [0, False, 0], "Start over erases the values answers too")
+    saved = page.evaluate("(() => { const s = JSON.parse(sessionStorage.getItem(SKEY) || '{}'); return [Object.keys(s.vals || {}).length, !!s.vseen]; })()")
+    c(saved == [0, False], f"…and from the saved session ({saved})")
+    # deuxième passage : l'invitation revient ; « Commencer les 10 » mène au premier énoncé
+    page.click(f'[data-prio="{th}"]')
+    page.click('[data-go="startq"]')
+    wait_view(page, "question")
+    to_bonus_fast(page)
+    c(page.evaluate("location.hash") == "#/ng/en/values", "after a restart the invitation comes back")
+    page.click('[data-go="vstart"]')
+    wait_view(page, "valq")
+    c(page.evaluate("[location.hash, state.vi]") == ["#/ng/en/values/1", 0], "‘Start the 10’ opens statement 1")
+    page.go_back()
+    wait_view(page, "valintro")
+    c(page.evaluate("location.hash") == "#/ng/en/values", "Back from statement 1 returns to the invitation")
+    page.go_forward()
+    wait_view(page, "valq")
+    answer_values(page, [None] * 4 + pro[4:])
+    c(page.inner_text(".v-level").strip() == L["valLevels"]["2"], "4 skipped, 6 answered: still a level, skipped ones ignored")
+    c(page.evaluate("T.en.valBasis(6)") in page.inner_text(".vcard"), "…and it says it is computed from 6 answers")
+    page.click('[data-go="vresults"]')
+    wait_view(page, "results")
+    # adresses directes
+    page = S.new_page()   # nouvel onglet : session vide
+    page.goto(CTX["base"] + "/index.html#/ng/en/values/3")
+    wait_view(page, "valq")
+    c(page.evaluate("[state.vi, document.querySelector('.q-count').textContent.trim()]") == [2, "3 / 10"], "#/ng/en/values/3 opens the third statement")
+    page = S.new_page()
+    page.goto(CTX["base"] + "/index.html#/ng/en/values/99")
+    wait_view(page, "valintro")
+    c(page.locator('[data-go="vback"]').count() == 1 and page.locator('[data-go="vresults"]').count() == 0, "no party answers: the invitation offers to go back to the country, not to results")
+    page.click('[data-go="vback"]')
+    page.wait_for_selector(".theme-grid")
+    c(page.evaluate("location.hash") == "#/ng/en", "back to the country page")
+    # pas assez de réponses : pas de niveau
+    page.goto(CTX["base"] + "/index.html#/ng/en/values/1")
+    wait_view(page, "valq")
+    answer_values(page, [2, 2, 2, 2, 2] + [None] * 5)
+    c(page.locator(".v-level").count() == 0 and page.locator(".mbar").count() == 0, "5 answers: no level, no bar")
+    c(page.evaluate("T.en.valNeedMore(1)") in page.inner_text(".vcard"), "…it says how many more are needed")
+    c(page.locator(".vcard [data-go='vopen']").count() == 1, "…and offers to continue")
+    S.close(c)
+
+
+@test
+def values_cards(c):
+    """Carte « Où tu te situes sur les valeurs » sur chaque page de pays sans questionnaire (page d'information, pays sans élection),
+    sans rien de collectif quand l'adresse du compteur est vide ; un seul bouton principal par page ; arabe en RTL."""
+    S = Session(CTX["browser"], width=390, height=844)
+    page = S.page
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    L = page.evaluate("T.en")
+    ax = page.evaluate("VALUES.map(v => v.ax)")
+    for cc, kind in (("ao", "information page"), ("dz", "country without election")):
+        page.goto(CTX["base"] + f"/index.html#/{cc}/en")
+        page.wait_for_selector("#app .cband")
+        c(page.locator(".vcard").count() == 1, f"{kind}: the values card is on the page")
+        c(heading_ok(heading_levels(page)), f"{kind}: heading order {heading_levels(page)}")
+        c(page.locator("#app .btn-primary").count() == 1, f"{kind}: still one primary button")
+        page.click('.vcard [data-go="vopen"]')
+        wait_view(page, "valq")
+        c(page.evaluate("location.hash") == f"#/{cc}/en/values/1", f"{kind}: the card opens #/{cc}/en/values/1")
+        c(page.locator("#topFlag img.flag").count() == 1, f"{kind}: flag in the header")
+        answer_values(page, [2 * a for a in ax])
+        c(page.inner_text(".v-level").strip() == L["valLevels"]["2"], f"{kind}: position computed")
+        c(page.locator('[data-go="vback"]').count() == 1 and page.locator('[data-go="vresults"]').count() == 0, f"{kind}: the way back is the country page")
+        page.click('[data-go="vback"]')
+        page.wait_for_selector("#app .cband")
+        c(page.locator(".vcard .mmark").count() == 1, f"{kind}: back on the page, the card shows the position")
+        c(page.evaluate("location.hash") == f"#/{cc}/en", f"{kind}: back at #/{cc}/en")
+        page.evaluate("state.vals = {}; save()")
+    # arabe : RTL, barre en miroir
+    page.goto(CTX["base"] + "/index.html#/ng/ar/values/done")
+    wait_view(page, "valres")
+    vset(page, [2 * a for a in ax])
+    page.evaluate("rerender()")
+    page.wait_for_selector(".vcard .mmark")
+    R = page.evaluate("""() => { const m = document.querySelector('.vcard .mbar').getBoundingClientRect(), k = document.querySelector('.vcard .mmark').getBoundingClientRect(),
+        e = [...document.querySelectorAll('.vcard .m-end')].map(x => x.getBoundingClientRect().left + x.getBoundingClientRect().width / 2);
+        return { dir: document.documentElement.dir, mark: (k.left + k.right) / 2, l: m.left, r: m.right, ends: e }; }""")
+    c(R["dir"] == "rtl" and abs(R["mark"] - R["r"]) < 18, f"ar: liberal–progressive is at the start = right end ({R['r'] - R['mark']:.0f}px)")
+    c(R["ends"][0] > R["ends"][1], "ar: the liberal–progressive label is on the right, conservative on the left")
+    no_overflow(page, c, "values card ar 390")
+    S.close(c)
+
+
+# ---- compteur collectif : site de test construit avec une adresse fictive, API simulée par des routes Playwright
+EP = "https://meter.example.test"
+Z = {"-2": 0, "-1": 0, "0": 0, "1": 0, "2": 0}
+UPD = "2026-10-20T08:00:00Z"
+
+
+def dist(m2=0, m1=0, z=0, p1=0, p2=0):
+    """Répartition par niveau : −2, −1, 0, 1, 2 (2 = nettement libéral–progressiste)."""
+    return {"-2": m2, "-1": m1, "0": z, "1": p1, "2": p2}
+
+
+DIST = {
+    # majorité progressiste : 200 personnes, 83,5 % progressistes (niveaux 1 et 2), 6,5 % conservateurs, 10 % équilibrés
+    "prog": {"updated": UPD, "total": dist(m2=4, m1=9, z=20, p1=60, p2=107), "byCountry": {"ng": dist(m2=2, m1=5, z=9, p1=22, p2=12), "ke": dist(p1=3)}},
+    # majorité conservatrice : 80 % conservateurs, 7,5 % progressistes, 12,5 % équilibrés
+    "cons": {"updated": UPD, "total": dist(m2=90, m1=70, z=25, p1=12, p2=3), "byCountry": {"ng": dist(m2=20, m1=15, z=5, p1=3, p2=1)}},
+    # à égalité : 40 % / 40 % / 20 %
+    "even": {"updated": UPD, "total": dist(m2=40, m1=40, z=40, p1=40, p2=40), "byCountry": {"ng": dist(m2=8, m1=8, z=8, p1=8, p2=8)}},
+    # pas encore 30 réponses
+    "wait": {"updated": UPD, "total": dist(m2=1, m1=2, z=3, p1=5, p2=2), "byCountry": {"ng": dist(p1=2)}},
+}
+
+
+class MeterMock:
+    """Fausse API du compteur : GET /counts et POST /v, avec la liste de ce qui a été demandé."""
+
+    def __init__(self, ctx, counts, get="ok", post="ok"):
+        self.counts = json.loads(json.dumps(counts)) if counts else None
+        self.get_mode, self.post_mode = get, post
+        self.gets, self.posts, self.other, self.pending = [], [], [], []
+        ctx.route(re.compile(r"^https://meter\.example\.test/"), self.handle)
+
+    def release(self):
+        """Répond aux lectures retenues (mode « hold »)."""
+        for r in self.pending:
+            r.fulfill(status=200, content_type="application/json", headers={"Access-Control-Allow-Origin": "*"}, body=json.dumps(self.counts))
+        self.pending = []
+
+    def handle(self, route):
+        req = route.request
+        cors = {"Access-Control-Allow-Origin": "*"}
+        path = req.url[len(EP):]
+        if req.method == "GET" and path == "/counts":
+            self.gets.append(dict(req.headers))
+            if self.get_mode == "abort":
+                return route.abort()
+            if self.get_mode in ("hang", "hold"):
+                self.pending.append(route)   # « hang » ne répond jamais (rendue par abort à la fin du test) ; « hold » répond après release()
+                return None
+            if self.get_mode == "500":
+                return route.fulfill(status=500, headers=cors, body="oops")
+            if self.get_mode == "garbage":
+                return route.fulfill(status=200, content_type="application/json", headers=cors, body='{"nope": 1}')
+            return route.fulfill(status=200, content_type="application/json", headers=cors, body=json.dumps(self.counts))
+        if req.method == "POST" and path == "/v":
+            self.posts.append({"body": req.post_data, "headers": dict(req.headers), "ok": self.post_mode == "ok"})
+            if self.post_mode != "ok":
+                return route.fulfill(status=500, headers=cors, body="")
+            try:
+                j = json.loads(req.post_data)
+                for tgt in (self.counts["total"], self.counts["byCountry"].setdefault(j["c"], dict(Z))):
+                    tgt[str(j["l"])] += 1
+            except Exception:
+                pass
+            return route.fulfill(status=204, headers=cors)
+        self.other.append((req.method, req.url))
+        return route.fulfill(status=404, headers=cors, body="")
+
+
+def meter_base():
+    """Site construit avec --endpoint (adresse fictive), servi à part ; nettoyé à la fin des tests."""
+    if "meter_base" not in CTX:
+        d = tempfile.mkdtemp(prefix="etv-meter-")
+        r = subprocess.run(["node", os.path.join(ROOT, "tools", "build.js"), "--endpoint", EP, "--out", d], capture_output=True, text=True, timeout=180)
+        assert r.returncode == 0 and "WARN" not in r.stdout + r.stderr, f"meter site build failed: {(r.stdout + r.stderr)[-400:]}"
+        proc, base = serve(d)
+        CTX["meter_base"], CTX["meter_dir"], CTX["meter_proc"] = base, d, proc
+    return CTX["meter_base"]
+
+
+METER_GEOM = """() => { const root = document.querySelector('[data-meter="africa"] .meter'), bar = root.querySelector('.mbar'), halves = bar.querySelectorAll('.mhalf'),
+  pro = bar.querySelector('.mfill.pro'), con = bar.querySelector('.mfill.con'), tick = bar.querySelector('.mtick'), q = e => e.getBoundingClientRect(), t = q(tick), tc = (t.left + t.right) / 2;
+  const cs = e => getComputedStyle(e);
+  return { pro: q(pro).width / q(halves[0]).width, con: q(con).width / q(halves[1]).width, tc, barL: q(bar).left, barR: q(bar).right,
+    proL: q(pro).left, proR: q(pro).right, conL: q(con).left, conR: q(con).right, h0: [q(halves[0]).left, q(halves[0]).right], h1: [q(halves[1]).left, q(halves[1]).right],
+    proImg: cs(pro).backgroundImage, conImg: cs(con).backgroundImage, conCap: parseFloat(cs(con).borderInlineEndWidth), proRad: cs(pro).borderTopLeftRadius + '|' + cs(pro).borderTopRightRadius,
+    role: bar.getAttribute('role'), label: bar.getAttribute('aria-label'), pctPro: root.querySelector('.m-end.m-pro b').textContent, pctCon: root.querySelector('.m-end.m-con b').textContent,
+    sub: root.querySelector('.m-sub').textContent, cav: root.querySelector('.m-cav').textContent, title: root.querySelector('.mt').textContent, h: root.querySelector('.mt').tagName,
+    transition: cs(pro).transitionDuration, go: root.classList.contains('go') }; }"""
+
+
+@test
+def meter_states(c):
+    """Compteur d'Afrique sous le titre de la carte : moins de 30 réponses (« s'ouvre à 30 », ligne de progression), puis trois
+    répartitions fabriquées (majorité progressiste, majorité conservatrice, égalité) : longueurs des remplissages proportionnelles,
+    pourcentages et équilibrés en texte, étiquette aria, motifs différents (pas seulement la teinte), une seule lecture par session ;
+    en arabe la barre est en miroir ; mouvement : remplissage animé en 600 ms au plus, seulement si le mouvement est permis."""
+    base = meter_base()
+    for key in ("prog", "cons", "even"):
+        S = Session(CTX["browser"], width=390, height=844)
+        M = MeterMock(S.ctx, DIST[key])
+        page = S.page
+        page.goto(base + "/index.html")
+        page.wait_for_selector('[data-meter="africa"] .mbar')
+        L = page.evaluate("T.en")
+        d = DIST[key]["total"]
+        tot = sum(d.values())
+        pro, con, bal = d["1"] + d["2"], d["-1"] + d["-2"], d["0"]
+        G = page.evaluate(METER_GEOM)
+        pc = lambda x: page.evaluate(f"pctPlain({x})")
+        c(abs(G["pro"] - pro / tot) < 0.01 and abs(G["con"] - con / tot) < 0.01, f"{key}: fills are proportional to the shares (pro {G['pro']:.3f} vs {pro / tot:.3f}, con {G['con']:.3f} vs {con / tot:.3f})")
+        c(G["pctPro"] == pc(pro / tot) and G["pctCon"] == pc(con / tot), f"{key}: end percentages {G['pctPro']} / {G['pctCon']}")
+        c(page.evaluate(f"T.en.meterBal({json.dumps(pc(bal / tot))})") in G["sub"] and f"{tot}" in G["sub"].replace(",", ""), f"{key}: balanced share and number of people are printed ({G['sub']})")
+        c("2 countries" in G["sub"] if key == "prog" else "1 country" in G["sub"], f"{key}: country count ({G['sub']})")
+        c("20 October 2026" in G["sub"], f"{key}: update date ({G['sub']})")
+        c(G["role"] == "img" and pc(pro / tot) in G["label"] and pc(con / tot) in G["label"] and pc(bal / tot) in G["label"] and str(tot) in G["label"], f"{key}: aria-label states the numbers ({G['label']})")
+        c("representative" in G["cav"], f"{key}: caveat ‘not a representative poll’")
+        c(G["h"] == "H2", f"{key}: meter title is an h2 ({G['h']})")
+        # sens : le côté progressiste est au début (gauche), son remplissage part du centre vers le début ; l'autre à la fin
+        c(abs(G["proR"] - G["tc"]) < 3 and G["proL"] < G["tc"], f"{key}: progressive fill grows from the centre towards the start (left)")
+        c(abs(G["conL"] - G["tc"]) < 3 and G["conR"] > G["tc"], f"{key}: conservative fill grows from the centre towards the end (right)")
+        c(abs(G["tc"] - (G["barL"] + G["barR"]) / 2) < 2, f"{key}: the centre tick is in the middle")
+        # pas seulement la teinte : rayures + bout arrondi d'un côté, points + bout carré marqué de l'autre
+        c("repeating-linear-gradient" in G["proImg"] and "radial-gradient" in G["conImg"], f"{key}: stripes vs dots")
+        c(G["conCap"] >= 3, f"{key}: conservative side has a marked square end ({G['conCap']}px)")
+        c(len(M.gets) == 1 and "cookie" not in M.gets[0] and "authorization" not in M.gets[0], f"{key}: one GET /counts, no cookie ({len(M.gets)})")
+        c(page.inner_text("#footer").strip().endswith(L["footerMeter"]) and "nowhere" not in page.inner_text("#footer"), f"{key}: the footer no longer says ‘sent nowhere’ once an optional send exists")
+        c(not M.posts, f"{key}: nothing is sent just by looking")
+        if key == "prog":
+            shot(page, "meter-prog-390.png")
+            # une seule lecture par session : la navigation ne redemande rien
+            page.goto(base + "/index.html#/ng/en")
+            page.wait_for_selector(".theme-grid")
+            page.goto(base + "/index.html#/")
+            page.wait_for_selector('[data-meter="africa"] .mbar')
+            c(len(M.gets) == 1, f"GET /counts once per session ({len(M.gets)})")
+            # carte du pays sur l'écran de départ : 50 contributions pour le Nigeria → barre « Nigeria » ; Kenya (3) → rien
+            page.goto(base + "/index.html#/ng/en")
+            page.wait_for_selector('[data-meter="country"] .mbar')
+            nt = page.inner_text('[data-meter="country"] .mt').strip()
+            c(nt == "Nigeria" and page.locator('[data-meter="country"] .m-scope').count() == 1, f"Nigeria start screen: country meter (≥ 30 answers) titled ‘{nt}’")
+            c(page.evaluate("document.querySelector('[data-meter=country] .mt').tagName") == "H2", "start screen: standalone meter title is an h2")
+            page.goto(base + "/index.html#/ke/en")
+            page.wait_for_selector("#app .cband")
+            page.wait_for_timeout(200)
+            c(page.evaluate("[...document.querySelectorAll('[data-meter=country]')].every(e => e.hidden || !e.querySelector('.meter'))"), "Kenya (3 answers): no country meter")
+            c(page.locator(".meter-slot[data-state='loading']").count() == 0, "no loading placeholder left behind")
+            c(len(M.gets) == 1, "still a single GET")
+        S.close(c)
+    # pas de saut de mise en page quand les chiffres arrivent (place réservée pendant le chargement) : décalage cumulé quasi nul
+    cls_js = ("window.__cls = 0; window.__src = []; new PerformanceObserver(l => { for (const e of l.getEntries()) if (!e.hadRecentInput) { window.__cls += e.value; "
+              "window.__src.push(e.value.toFixed(4) + ' ' + (e.sources || []).map(s => (s.node && (s.node.id || s.node.className || s.node.tagName)) + ' y' + Math.round(s.previousRect.y) + '→' + Math.round(s.currentRect.y)).join(', ')); } }).observe({type: 'layout-shift', buffered: true});")
+    for w in (320, 390, 1280):
+        S = Session(CTX["browser"], width=w, height=900, motion="no-preference", init=cls_js)
+        M = MeterMock(S.ctx, DIST["prog"], get="hold")
+        page = S.page
+        page.goto(base + "/index.html")
+        page.wait_for_selector("#mapWrap svg")
+        page.wait_for_function("meter.status === 'loading'")
+        c(page.locator('.meter-slot[data-meter="africa"][data-state="loading"]').count() == 1, "space is reserved while the numbers load")
+        before = page.evaluate("window.__cls")   # le décalage du démarrage de la page elle-même (en-tête) n'est pas celui du compteur
+        M.release()
+        page.wait_for_selector('[data-meter="africa"] .mbar')
+        page.wait_for_timeout(900)
+        cls = page.evaluate("window.__cls") - before
+        c(cls < 0.02, f"layout shift when the meter arrives at {w}px: {cls:.4f} < 0.02 {page.evaluate('window.__src')[:4]}")
+        NOTES.append(f"meter layout shift at {w}px: {cls:.4f}")
+        S.close(c)
+    # sous 30 réponses : barre d'attente
+    S = Session(CTX["browser"], width=390, height=844)
+    M = MeterMock(S.ctx, DIST["wait"])
+    page = S.page
+    page.goto(base + "/index.html")
+    page.wait_for_selector(".meter-wait")
+    W = page.evaluate("""() => { const r = document.querySelector('[data-meter=africa] .meter-wait'), p = r.querySelector('[role=progressbar]');
+        return { text: r.textContent, now: p.getAttribute('aria-valuenow'), max: p.getAttribute('aria-valuemax'), bar: r.querySelectorAll('.mbar').length, w: p.firstElementChild.style.inlineSize,
+                 line: !!p.querySelector('span') }; }""")
+    c("30" in W["text"] and "13" in W["text"], f"below 30: ‘The meter opens at 30 answers — 13 so far’ ({W['text'][:80]})")
+    c(W["now"] == "13" and W["max"] == "30" and W["bar"] == 0 and W["line"] and abs(float(W["w"].rstrip("%")) - 13 / 30 * 100) < 0.2, f"below 30: thin progress line, no bar ({W})")
+    c("representative" in W["text"], "below 30: the caveat is there too")
+    shot(page, "meter-wait-390.png")
+    S.close(c)
+    # arabe : barre en miroir
+    S = Session(CTX["browser"], width=390, height=844, locale="ar-EG")
+    M = MeterMock(S.ctx, DIST["prog"])
+    page = S.page
+    page.goto(base + "/index.html")
+    page.wait_for_selector('[data-meter="africa"] .mbar')
+    G = page.evaluate(METER_GEOM)
+    c(page.evaluate("document.documentElement.dir") == "rtl", "ar: RTL")
+    c(abs(G["proL"] - G["tc"]) < 3 and G["proR"] > G["tc"], "ar: progressive fill grows from the centre towards the start (right)")
+    c(abs(G["conR"] - G["tc"]) < 3 and G["conL"] < G["tc"], "ar: conservative fill grows towards the end (left)")
+    ends = page.evaluate("[...document.querySelectorAll('[data-meter=africa] .m-end')].map(e => (e.getBoundingClientRect().left + e.getBoundingClientRect().right) / 2)")
+    c(ends[0] > ends[1], "ar: the progressive percentage is on the right, the conservative one on the left")
+    c(abs(G["pro"] - 167 / 200) < 0.01, "ar: same proportions")
+    c(page.evaluate("document.querySelector('[data-meter=africa] .m-end b').dir") == "ltr", "ar: numbers keep their own direction")
+    no_overflow(page, c, "meter ar 390")
+    shot(page, "meter-ar-390.png")
+    S.close(c)
+    # mouvement : permis → 600 ms au plus ; réduit → pas de transition
+    for motion, check in (("no-preference", lambda t: 0 < float(t.rstrip("s")) <= 0.6), ("reduce", lambda t: float(t.rstrip("s")) == 0)):
+        S = Session(CTX["browser"], width=390, height=844, motion=motion)
+        MeterMock(S.ctx, DIST["prog"])
+        page = S.page
+        page.goto(base + "/index.html")
+        page.wait_for_selector('[data-meter="africa"] .mbar')
+        page.wait_for_timeout(900)
+        G = page.evaluate(METER_GEOM)
+        c(check(G["transition"]), f"motion {motion}: fill transition lasts {G['transition']}")
+        c(abs(G["pro"] - 167 / 200) < 0.01 and G["go"] is not None, f"motion {motion}: the fill ends at its share ({G['pro']:.3f})")
+        S.close(c)
+    # sombre : mêmes motifs, mêmes proportions
+    S = Session(CTX["browser"], width=390, height=844, scheme="dark")
+    MeterMock(S.ctx, DIST["prog"])
+    page = S.page
+    page.goto(base + "/index.html")
+    page.wait_for_selector('[data-meter="africa"] .mbar')
+    G = page.evaluate(METER_GEOM)
+    c(abs(G["pro"] - 167 / 200) < 0.01 and "gradient" in G["proImg"], "dark theme: same bar")
+    shot(page, "meter-dark-390.png")
+    S.close(c)
+
+
+@test
+def meter_send(c):
+    """Envoi anonyme : bouton seulement avec une adresse configurée ; POST <adresse>/v avec {c, l} et rien d'autre (text/plain, sans cookie) ;
+    un seul envoi par pays et par navigateur ; « Merci » puis le compteur se met à jour ; échec : message calme et bouton « Réessayer »."""
+    base = meter_base()
+    S = Session(CTX["browser"], width=390, height=844)
+    M = MeterMock(S.ctx, DIST["prog"])
+    page = S.page
+    page.goto(base + "/index.html")
+    page.wait_for_selector('[data-meter="africa"] .mbar')
+    L = page.evaluate("T.en")
+    c(page.evaluate("__etv.METER_ENDPOINT") == EP, "the build put the endpoint in the page")
+    src = page.evaluate("sendMeter.toString()")
+    c("keepalive: true" in src and 'credentials: "omit"' in src and 'mode: "cors"' in src and '"Content-Type": "text/plain"' in src, "request options: keepalive, credentials omit, cors, text/plain")
+    ax = page.evaluate("VALUES.map(v => v.ax)")
+    pro = [2 * a for a in ax]
+    page.goto(base + "/index.html#/ng/en/values/done")
+    wait_view(page, "valres")
+    c(page.locator(".vsend").count() == 0, "no values answers yet: nothing to send")
+    vset(page, [2] * 5 + [None] * 5)
+    page.evaluate("rerender()")
+    c(page.locator("[data-go='vsend']").count() == 0, "fewer than 6 answers (no level): no send button")
+    vset(page, pro)
+    page.evaluate("rerender()")
+    page.wait_for_selector("[data-go='vsend']")
+    box = page.inner_text(".vsend")
+    c(L["meterSend"] in box and L["meterSentWhat"] in box, "the button says what it does, and what is sent (country code + one of five levels)")
+    c("country code" in L["meterSentWhat"] and "five levels" in L["meterSentWhat"], "…wording: only the country code and one of five levels")
+    c(page.evaluate("document.querySelector('[data-go=vsend]').tagName") == "BUTTON", "send button is a real button")
+    c(len(M.posts) == 0, "nothing is sent before the click")
+    page.click("[data-go='vsend']")
+    page.wait_for_selector(".vsend .m-ok")
+    c(len(M.posts) == 1, "one POST")
+    P = M.posts[0]
+    c(P["body"] == '{"c":"ng","l":2}', f"payload is exactly {{c, l}}: {P['body']}")
+    c(P["headers"].get("content-type", "").startswith("text/plain") and "cookie" not in P["headers"] and "authorization" not in P["headers"], f"text/plain, no cookie, no authorization ({P['headers'].get('content-type')})")
+    c(L["meterThanks"] in page.inner_text(".vsend .m-ok") and page.locator("[data-go='vsend']").count() == 0, "‘Thanks — counted’ replaces the button")
+    page.wait_for_function(f"document.querySelector('[data-meter=africa] .m-sub') && document.querySelector('[data-meter=africa] .m-sub').textContent.includes('201')")
+    c(len(M.gets) == 2, f"the meter is read again after a send ({len(M.gets)} GETs)")
+    c(page.evaluate("localStorage.getItem('etv.sent.ng')") == "1", "one contribution per country per browser: remembered in this browser")
+    # un second envoi pour le même pays est impossible : rechargement, nouvel onglet, nouvelle session
+    page.reload()
+    wait_view(page, "valres")
+    c(page.locator("[data-go='vsend']").count() == 0 and page.locator(".vsend .m-ok").count() == 1, "after a reload: no button, still ‘counted’")
+    page2 = S.new_page()
+    page2.goto(base + "/index.html#/ng/en/values/done")
+    wait_view(page2, "valres")
+    vset(page2, pro)
+    page2.evaluate("rerender()")
+    c(page2.locator("[data-go='vsend']").count() == 0, "another tab of the same browser: no button for Nigeria")
+    # un autre pays : un nouvel envoi, avec son propre code
+    page2.goto(base + "/index.html#/ke/en/values/done")
+    page2.wait_for_function("state.view === 'valres' && curCc() === 'ke'")
+    vset(page2, [-2 * a for a in ax])
+    page2.evaluate("rerender()")
+    page2.wait_for_selector("[data-go='vsend']")
+    page2.click("[data-go='vsend']")
+    page2.wait_for_selector(".vsend .m-ok")
+    c([p["body"] for p in M.posts] == ['{"c":"ng","l":2}', '{"c":"ke","l":-2}'], f"Kenya gets its own contribution ({[p['body'] for p in M.posts]})")
+    c(not M.other, f"no other request to the endpoint ({M.other})")
+    S.close(c)
+    # échec : message calme, bouton « Réessayer », rien n'est mémorisé ; puis réussite
+    S = Session(CTX["browser"], width=390, height=844)
+    M = MeterMock(S.ctx, DIST["prog"], post="fail")
+    page = S.page
+    page.goto(base + "/index.html#/ng/en/values/done")
+    wait_view(page, "valres")
+    vset(page, pro)
+    page.evaluate("rerender()")
+    page.click("[data-go='vsend']")
+    page.wait_for_function("() => { const e = document.getElementById('meterErr'); return e && !e.hidden; }")
+    c(page.inner_text("#meterErr").strip() == L["meterErr"], "failure: a calm message")
+    btn = page.locator("[data-go='vsend']")
+    c(btn.count() == 1 and btn.is_enabled() and btn.inner_text().strip() == L["meterRetry"], "failure: the button comes back as ‘Try again’")
+    c(page.evaluate("localStorage.getItem('etv.sent.ng')") is None, "failure: nothing is remembered as sent")
+    M.post_mode = "ok"
+    btn.click()
+    page.wait_for_selector(".vsend .m-ok")
+    c([p["ok"] for p in M.posts] == [False, True] and M.posts[0]["body"] == M.posts[1]["body"], "retry sends the same payload once more")
+    S.close(c, allow_console=True)
+
+
+@test
+def meter_failures(c):
+    """Compteur injoignable (erreur réseau, erreur 500, réponse absurde, aucune réponse en 6 s) : la partie collective disparaît sans bruit,
+    sans erreur de page, la carte et le reste marchent ; « Réessayer » dans « Comment ça marche ? » ; adresse vide : aucune requête externe."""
+    base = meter_base()
+    for mode in ("abort", "500", "garbage"):
+        S = Session(CTX["browser"], width=390, height=844)
+        M = MeterMock(S.ctx, DIST["prog"], get=mode)
+        page = S.page
+        page.goto(base + "/index.html")
+        page.wait_for_selector("#mapWrap .mk")
+        page.wait_for_function("meter.status === 'fail'")
+        c(page.locator("[data-meter] .meter, [data-meter] .meter-wait").count() == 0, f"{mode}: no meter shown")
+        c(page.locator(".meter-slot:not([hidden])").count() == 0, f"{mode}: the slot is gone, no placeholder left")
+        c(not S.errors, f"{mode}: no page error ({S.errors[:2]})")
+        c(page.locator("#mapWrap .mk").count() >= 15, f"{mode}: the map works as usual")
+        open_country(page, "566", "en")
+        page.wait_for_selector(".theme-grid")
+        c(page.locator('[data-meter="country"] .meter').count() == 0, f"{mode}: no country meter on the start screen")
+        c(len(M.gets) == 1, f"{mode}: no retry storm ({len(M.gets)} GET)")
+        if mode == "abort":
+            # « Réessayer » apparaît dans « Comment ça marche ? » seulement après un échec, et recharge
+            page.goto(base + "/index.html#/ng/en/values/done")
+            wait_view(page, "valres")
+            ax = page.evaluate("VALUES.map(v => v.ax)")
+            vset(page, [2 * a for a in ax])
+            page.evaluate("rerender()")
+            page.click(".v-how summary")
+            retry = page.locator("[data-go='vretry']")
+            c(retry.is_visible(), "after a failure: ‘Try loading it again’ inside the ‘How does this work?’ disclosure")
+            M.get_mode = "ok"
+            retry.click()
+            page.wait_for_selector('.vcard [data-meter="africa"] .mbar')
+            c(len(M.gets) == 2 and page.locator("[data-go='vretry']:visible").count() == 0, "retry reads the meter again; the link goes away")
+            c(heading_ok(heading_levels(page)), f"values result with meters: heading order {heading_levels(page)}")
+        S.close(c, allow_console=True)
+    # aucune réponse : abandon au bout de 6 s
+    S = Session(CTX["browser"], width=390, height=844)
+    M = MeterMock(S.ctx, DIST["prog"], get="hang")
+    page = S.page
+    t0 = time.time()
+    page.goto(base + "/index.html")
+    page.wait_for_selector("#mapWrap .mk")
+    c(page.locator('.meter-slot[data-meter="africa"][data-state="loading"]').count() == 1, "while loading: space is reserved (placeholder)")
+    page.wait_for_function("meter.status === 'fail'", timeout=9000)
+    dt = time.time() - t0
+    c(5.5 <= dt <= 8.5, f"gives up after about 6 s ({dt:.1f} s)")
+    c(page.locator(".meter-slot:not([hidden])").count() == 0 and not S.errors, "…and hides the slot without an error")
+    for r in M.pending:
+        r.abort()
+    S.close(c, allow_console=True)
+    # adresse vide (le site du dépôt) : aucune requête externe, aucun bouton, aucun compteur
+    S = Session(CTX["browser"], width=390, height=844)
+    page = S.page
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap .mk")
+    page.wait_for_timeout(300)
+    c(page.evaluate("[meter.status, __etv.METER_ENDPOINT]") == ["off", ""], "empty endpoint: collective features are off")
+    c(page.locator("[data-meter], .meter, .meter-slot, [data-go='vsend']").count() == 0, "empty endpoint: no meter, no slot, no send button on the map")
+    page.goto(CTX["base"] + "/index.html#/ng/en/values/done")
+    wait_view(page, "valres")
+    page.evaluate("VALUES.forEach(v => state.vals[v.id] = v.ax * 2); save(); rerender()")
+    page.wait_for_selector(".vcard .mmark")
+    c(page.locator("[data-meter], .vsend, [data-go='vsend']").count() == 0, "empty endpoint: the personal bar shows, nothing collective")
+    c(page.evaluate("document.querySelector('.v-how')") is not None and page.locator("[data-go='vretry']:visible").count() == 0, "empty endpoint: no retry link")
+    page.wait_for_timeout(200)
+    S.close(c)    # Session.close vérifie qu'aucune requête externe n'est partie
+
+
+@test
+def meter_build(c):
+    """Le build : lit meter.config.json (--endpoint le remplace), refuse une adresse non https, écrit meter/countries.json et recopie flags/ ;
+    il valide src/values.js (10 énoncés, identifiants uniques, 5 sens +1 et 5 sens −1, 5 langues) et échoue sinon."""
+    node = os.path.join(ROOT, "tools", "build.js")
+    cfg = json.load(open(os.path.join(ROOT, "meter.config.json"), encoding="utf8"))
+    c(cfg == {"endpoint": ""}, f"meter.config.json is empty in the repository: collective features off ({cfg})")
+    idx = open(os.path.join(ROOT, "index.html"), encoding="utf8").read()
+    c('const METER_ENDPOINT = "";' in idx, "repository build: METER_ENDPOINT is empty")
+
+    def build(*args):
+        out = tempfile.mkdtemp(prefix="etv-b4-")
+        return subprocess.run(["node", node, "--out", out, *args], capture_output=True, text=True, timeout=180), out
+
+    r, out = build("--endpoint", "https://m.example.test/")
+    try:
+        page_ = open(os.path.join(out, "index.html"), encoding="utf8").read()
+        c(r.returncode == 0 and 'const METER_ENDPOINT = "https://m.example.test";' in page_, "--endpoint: used, trailing slash removed")
+        c("meter endpoint https://m.example.test" in r.stdout, "the build says which endpoint it uses")
+        art = open(os.path.join(out, "artifact.html"), encoding="utf8").read()
+        c('const METER_ENDPOINT = "https://m.example.test";' in art, "artifact.html gets it too")
+        cc = json.load(open(os.path.join(out, "meter", "countries.json"), encoding="utf8"))
+        c(cc == sorted(cc) and "ng" in cc and "fr" in cc and "ke" in cc and len(cc) == len(set(cc)) and len(cc) >= 55 and all(re.fullmatch(r"[a-z]{2}", x) for x in cc), f"meter/countries.json: {len(cc)} codes, sorted, with France")
+        repo_cc = json.load(open(os.path.join(ROOT, "meter", "countries.json"), encoding="utf8"))
+        c(repo_cc == cc, "the committed meter/countries.json is up to date")
+        c(sorted(os.listdir(os.path.join(out, "flags"))) == sorted(os.listdir(os.path.join(ROOT, "flags"))), "flags/ copied next to the page in --out")
+    finally:
+        shutil.rmtree(out, ignore_errors=True)
+    r, out = build("--endpoint", "http://insecure.example.test")
+    try:
+        page_ = open(os.path.join(out, "index.html"), encoding="utf8").read()
+        c(r.returncode == 0 and 'const METER_ENDPOINT = "";' in page_ and "WARN" in r.stdout and "https" in r.stdout, "an address that is not https turns the feature off with a warning")
+    finally:
+        shutil.rmtree(out, ignore_errors=True)
+    r, out = build("--endpoint", "")
+    try:
+        c('const METER_ENDPOINT = "";' in open(os.path.join(out, "index.html"), encoding="utf8").read() and "WARN" not in r.stdout, "--endpoint '' keeps it off, no warning")
+    finally:
+        shutil.rmtree(out, ignore_errors=True)
+    # copie du dépôt : le fichier de configuration et le validateur des valeurs
+    cp = tempfile.mkdtemp(prefix="etv-b4-repo-")
+    try:
+        for d in ("src", "tools"):
+            shutil.copytree(os.path.join(ROOT, d), os.path.join(cp, d))
+        shutil.copy(os.path.join(ROOT, "meter.config.json"), cp)
+
+        def run(label, want_ok, needle=None):
+            r = subprocess.run(["node", os.path.join(cp, "tools", "build.js"), "--out", os.path.join(cp, "out")], capture_output=True, text=True, timeout=180)
+            out_ = r.stdout + r.stderr
+            c((r.returncode == 0) == want_ok, f"{label}: exit code {r.returncode} ({out_[-200:]})")
+            if needle:
+                c(re.search(needle, out_, re.I) is not None, f"{label}: message mentions {needle} ({out_[-200:]})")
+            return r
+
+        json.dump({"endpoint": "https://cfg.example.test/"}, open(os.path.join(cp, "meter.config.json"), "w"))
+        run("config file with an endpoint", True)
+        c('const METER_ENDPOINT = "https://cfg.example.test";' in open(os.path.join(cp, "out", "index.html"), encoding="utf8").read(), "meter.config.json: endpoint read from the file")
+        json.dump({"endpoint": ""}, open(os.path.join(cp, "meter.config.json"), "w"))
+        run("config file empty", True)
+        vf = os.path.join(cp, "src", "values.js")
+        orig = open(vf, encoding="utf8").read()
+        c(re.search(r"ax:\s*-1", orig) is not None, "values.js uses ax: -1 / +1")
+        first_minus = re.search(r"ax:\s*-1", orig)
+        open(vf, "w", encoding="utf8").write(orig[:first_minus.start()] + "ax: 1" + orig[first_minus.end():])
+        run("values.js with 6 liberal and 4 conservative statements", False, r"values|ax|balance|5")
+        open(vf, "w", encoding="utf8").write(re.sub(r"\n\s*sw:\s*\{[^}]*\},?", "\n", orig, count=1))
+        run("values.js with a missing translation", False, r"values|sw")
+        open(vf, "w", encoding="utf8").write(orig)
+        run("values.js restored", True)
+    finally:
+        shutil.rmtree(cp, ignore_errors=True)
+
+
+@test
+def meter_worker(c):
+    """Le code serveur (meter/worker.js, schema.sql) : test Node avec une fausse base D1 et, si Node a node:sqlite, un vrai SQLite."""
+    r = subprocess.run(["node", "--no-warnings", os.path.join(ROOT, "meter", "test.mjs")], capture_output=True, text=True, timeout=120)
+    out = (r.stdout + r.stderr).strip()
+    m = re.search(r"meter worker: (\d+) checks passed", out)
+    c(r.returncode == 0 and m is not None, f"node meter/test.mjs: {out[-300:]}")
+    c(int(m.group(1)) >= 100, f"{m.group(1)} checks in the Worker test")
+    NOTES.append("meter worker: " + out.splitlines()[-1] + (" (real SQLite included)" if "real SQLite" in out else " (fake D1 only)"))
+    for f in ("worker.js", "schema.sql", "wrangler.toml", "README.md", "test.mjs", "countries.json"):
+        c(os.path.exists(os.path.join(ROOT, "meter", f)), f"meter/{f} exists")
+    toml = open(os.path.join(ROOT, "meter", "wrangler.toml"), encoding="utf8").read()
+    c("[observability]" in toml and "enabled = false" in toml and 'binding = "DB"' in toml, "wrangler.toml: no request logs, DB binding")
+    rd = open(os.path.join(ROOT, "meter", "README.md"), encoding="utf8").read()
+    c(all(k in rd for k in ("wrangler d1 create", "schema.sql", "wrangler deploy", "meter.config.json", "48")), "meter/README.md walks through the steps")
 
 
 # ------------------------------------------------------------------ exécution
@@ -2009,10 +2968,11 @@ def main():
                     RESULTS.append((fn.__name__, False, c.n, msg, time.time() - t1))
             CTX["browser"].close()
     finally:
-        for p in procs:
+        for p in procs + ([CTX["meter_proc"]] if CTX.get("meter_proc") else []):
             p.terminate()
-        if CTX.get("tmp"):
-            shutil.rmtree(CTX["tmp"], ignore_errors=True)
+        for d in (CTX.get("tmp"), CTX.get("meter_dir")):
+            if d:
+                shutil.rmtree(d, ignore_errors=True)
     print()
     for name, ok, n, msg, dt in RESULTS:
         print(f"{'PASS' if ok else 'FAIL'}  {name:<24} {n:>4} checks  {dt:5.1f}s{'  ' + msg if msg else ''}")

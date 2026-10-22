@@ -1,4 +1,4 @@
-<title>Éclaire ton vote</title>
+<title>Vote — Elections in Africa</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=Readex+Pro:wght@300..700&display=swap">
@@ -26,6 +26,7 @@
   --shadow: 0 1px 2px rgba(24, 20, 42, .06), 0 8px 24px rgba(24, 20, 42, .07);
   --on-party: #FFFFFF;
   --up: #2E8B4F; --up-hover: #23703F; --up-edge: #1A5A33; --up-ring: rgba(46, 139, 79, .25); --none: #C4453A; --none-2: #EFCBC8; --none-hover: #A3372E; --none-hatch: rgba(255,255,255,.72);
+  --m-pro: #5A2DB8; --m-con: #A85F00; --m-stripe: rgba(255,255,255,.4);   /* compteur de valeurs : violet-encre et ambre, ni les couleurs des partis ni le vert/rouge de la carte */
   --disputed: #C9C3D3; --land-bg: #E2DEEA; --map-stroke: #FFFFFF;
   --f-display: "Bricolage Grotesque", "Readex Pro", "Segoe UI", system-ui, sans-serif;
   --f-body: "Readex Pro", "Segoe UI", system-ui, -apple-system, sans-serif;
@@ -39,7 +40,7 @@
     --warn: #E8B867; --warn-soft: #33270F; --check: #B5B0C6; --check-soft: #26232F;
     --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .28);
     --on-party: #110F19;
-    --up: #4DB872; --up-hover: #6BCB8C; --up-edge: #A8E6BD; --up-ring: rgba(77, 184, 114, .3); --none: #D9665C; --none-2: #572925; --none-hover: #E8867D; --none-hatch: rgba(0,0,0,.6);
+    --up: #4DB872; --up-hover: #6BCB8C; --up-edge: #A8E6BD; --up-ring: rgba(77, 184, 114, .3); --none: #D9665C; --none-2: #572925; --none-hover: #E8867D; --none-hatch: rgba(0,0,0,.6); --m-pro: #B79FF6; --m-con: #F0B04A; --m-stripe: rgba(17,15,25,.4);
     --disputed: #4A4559; --land-bg: #262236; --map-stroke: #1B1826;
     color-scheme: dark;
   }
@@ -51,7 +52,7 @@
   --warn: #E8B867; --warn-soft: #33270F; --check: #B5B0C6; --check-soft: #26232F;
   --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .28);
   --on-party: #110F19;
-  --up: #4DB872; --up-hover: #6BCB8C; --up-edge: #A8E6BD; --up-ring: rgba(77, 184, 114, .3); --none: #D9665C; --none-2: #572925; --none-hover: #E8867D; --none-hatch: rgba(0,0,0,.6);
+  --up: #4DB872; --up-hover: #6BCB8C; --up-edge: #A8E6BD; --up-ring: rgba(77, 184, 114, .3); --none: #D9665C; --none-2: #572925; --none-hover: #E8867D; --none-hatch: rgba(0,0,0,.6); --m-pro: #B79FF6; --m-con: #F0B04A; --m-stripe: rgba(17,15,25,.4);
   --disputed: #4A4559; --land-bg: #262236; --map-stroke: #1B1826;
   color-scheme: dark;
 }
@@ -455,6 +456,78 @@ dialog::backdrop { background: rgba(14, 10, 28, .58); }
 
 footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; display: grid; gap: 6px; max-width: 760px; margin-inline: auto; }
 
+/* ============ Pays : drapeau, silhouette, bandeau ============ */
+.flag { display: block; flex: none; border-radius: 3px; background: var(--sheet-2); box-shadow: 0 0 0 1px var(--line-strong); object-fit: cover; }
+.cb-flag { width: 72px; height: 54px; border-radius: 6px; }
+.cb-flag-sm { width: 32px; height: 24px; }
+.cb-flag-xs { width: 24px; height: 18px; }
+.cbanner { display: grid; gap: 10px; }
+.cb-art { display: flex; align-items: center; gap: 14px; min-height: 54px; }
+.cb-shape { width: 64px; height: 54px; flex: none; fill: var(--accent); stroke: var(--accent); stroke-width: 1px; stroke-linejoin: round; overflow: visible; }
+.cb-shape path { vector-effect: non-scaling-stroke; }
+.cb-name { font-family: var(--f-display); font-weight: 750; font-size: clamp(1.55rem, 7vw, 2rem); line-height: 1.1; letter-spacing: -.015em; overflow-wrap: anywhere; min-width: 0; }
+.cb-line { margin: 0; }
+.cband { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+.cband > span { min-width: 0; }
+.strip > .cband { flex: 1 1 14rem; }
+.cb-res { font-family: var(--f-display); font-size: 1.05rem; }
+.topflag { display: inline-flex; align-items: center; }
+
+/* ============ Module « valeurs » et compteur ============ */
+.chip.val { background: var(--lamp-soft); color: var(--ink); }
+.vcard { display: grid; gap: 12px; min-width: 0; padding: 18px; background: var(--sheet); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); }
+.vcard h2 { font-size: 1.3rem; font-weight: 750; letter-spacing: -.01em; }
+.vcard .actions { margin-top: 0; }
+.v-level b { font-family: var(--f-display); font-size: 1.2rem; }
+.v-how summary, .v-which summary, .m-defs summary { cursor: pointer; font-weight: 600; color: var(--accent-ink); min-height: 32px; display: flex; align-items: center; }
+.v-how p, .m-defs p { margin-top: 8px; color: var(--muted); max-width: 66ch; font-size: .92rem; }
+.v-list { margin: 8px 0 0; padding-inline-start: 1.4rem; display: grid; gap: 12px; }
+.v-list li { display: grid; gap: 2px; }
+.v-list .vq-t { font-weight: 600; overflow-wrap: anywhere; }
+.v-list .vq-d, .v-list .vq-a { font-size: .84rem; color: var(--muted); }
+.vsend { display: grid; gap: 8px; justify-items: start; padding: 12px 14px; border: 1.5px dashed var(--ctl); border-radius: var(--r-s); }
+.m-sentwhat { font-size: .9rem; }
+.m-ok { font-weight: 700; color: var(--accent-ink); }
+.m-err { color: var(--warn); font-size: .9rem; }
+.meter-slot { min-width: 0; }
+/* Place réservée pendant le chargement du compteur d'Afrique (hauteur proche de la barre une fois remplie : la carte dessous ne saute pas) */
+.meter-slot[data-meter="africa"][data-state="loading"] { min-height: 260px; border-radius: var(--r); background: var(--sheet-2); opacity: .55; }
+@media (max-width: 899px) { .meter-slot[data-meter="africa"][data-state="loading"] { min-height: 300px; } }
+@media (max-width: 360px) { .meter-slot[data-meter="africa"][data-state="loading"] { min-height: 330px; } }
+.vcard .meter-slot[data-state="loading"] { min-height: 0; background: none; opacity: 1; }
+.meter { display: grid; gap: 8px; min-width: 0; padding: 14px 16px; background: var(--sheet); border: 1px solid var(--line); border-radius: var(--r); }
+.vcard .meter { padding: 12px 0 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; }
+.meter .mt { font-family: var(--f-display); font-size: 1.1rem; font-weight: 700; }
+.m-scope { font-size: .84rem; color: var(--muted); }
+.m-ends { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; font-size: .84rem; font-weight: 600; line-height: 1.25; }
+.m-end { display: grid; align-content: start; max-width: 48%; min-width: 0; overflow-wrap: anywhere; }
+.m-end b { font-family: var(--f-display); font-size: 1.3rem; line-height: 1.1; }
+.m-con { text-align: end; }
+.mwrap { position: relative; margin-inline: 10px; }
+.mbar { position: relative; display: grid; grid-template-columns: 1fr 1fr; block-size: 26px; border: 1.5px solid var(--ctl); border-radius: 999px; background: var(--sheet-2); overflow: hidden; }
+.mhalf { display: flex; min-width: 0; }
+.mhalf:first-child .mfill { margin-inline-start: auto; }
+.mfill { display: block; box-sizing: border-box; block-size: 100%; inline-size: var(--w, 0%); }
+.mfill.z { visibility: hidden; }
+/* Deux côtés qui se distinguent autrement que par la teinte : rayures + bout arrondi (progressiste), points + bout carré marqué (conservateur) */
+.mfill.pro { background: repeating-linear-gradient(135deg, var(--m-pro) 0 6px, var(--m-stripe) 6px 9px), var(--m-pro); border-start-start-radius: 999px; border-end-start-radius: 999px; }
+.mfill.con { background: radial-gradient(circle, var(--m-stripe) 1.6px, transparent 2px) 0 0 / 8px 8px, var(--m-con); border-inline-end: 5px solid var(--ink); }
+.mtick { position: absolute; inset-block: 0; inset-inline-start: 50%; inline-size: 2px; margin-inline-start: -1px; background: var(--ink); }
+.mmark { position: absolute; top: 50%; inline-size: 22px; block-size: 22px; margin-block-start: -11px; margin-inline-start: -11px; border-radius: 50%; background: var(--sheet); border: 3px solid var(--ink); box-shadow: 0 0 0 2px var(--sheet); }
+.m-sub { font-size: .86rem; color: var(--muted); }
+.m-cav { font-size: .82rem; color: var(--muted); }
+.mprog { block-size: 10px; border: 1.5px solid var(--ctl); border-radius: 999px; background: var(--sheet-2); overflow: hidden; }
+.mprog > span { display: block; block-size: 100%; background: var(--accent); }
+/* Remplissage animé une seule fois, par transformation (aucun décalage de mise en page), depuis le trait central ; mouvement permis seulement */
+.mfill.pro { transform-origin: right center; }
+.mfill.con { transform-origin: left center; }
+html[dir="rtl"] .mfill.pro { transform-origin: left center; }
+html[dir="rtl"] .mfill.con { transform-origin: right center; }
+@media (prefers-reduced-motion: no-preference) {
+  .meter:not(.go) .mfill { transform: scaleX(0); }
+  .mfill { transition: transform .6s cubic-bezier(.2,.7,.2,1); }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .screen.enter { animation: fade .22s ease-out; }   /* fondu seulement quand l'écran change (pas d'une question à la suivante) */
   .bar span { transition: width .6s cubic-bezier(.2,.7,.2,1); }
@@ -470,9 +543,10 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
     <div class="topbar">
       <button class="brand" id="brand" type="button">
         <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 28 24"><path d="M5 13l6 6L26 1"/></svg></span>
-        <span class="brand-name">Éclaire ton vote</span>
+        <span class="brand-name">Vote</span>
       </button>
       <div class="top-right">
+        <span class="topflag" id="topFlag" hidden></span>
         <div class="langs" id="langs" role="group"></div>
         <span class="proto-tag" id="protoTag"></span>
       </div>

@@ -15,7 +15,7 @@ const UP_FROM = "2026-10", UP_TO = "2027-12-31";
 /* ================== État ==================
    country : le pays affiché (null sur la carte) ; ac : le pays auquel appartiennent les réponses en cours
    (elles survivent à un passage par la carte et à un rechargement de l'onglet ; choisir un autre questionnaire les remplace). */
-const state = { ui: "en", uiChosen: false, country: null, ac: null, place: null, view: null, priorities: [], order: [], nPrio: 0, i: 0, answers: {}, double: {}, tab: 0, ret: null, pending: null, loadCc: null, loadRest: "" };
+const state = { ui: "en", uiChosen: false, country: null, ac: null, place: null, view: null, priorities: [], order: [], nPrio: 0, i: 0, answers: {}, double: {}, tab: 0, ret: null, pending: null, loadCc: null, loadRest: "", vals: {}, vi: 0, vseen: false };
 const PRIOR_ALL = 3, PRIOR_THEME = 1;
 /* Lecture des résultats : couverture minimale pour être classé, égalité avec le premier, scores égaux (ordre alphabétique),
    premier aperçu, réponses presque toutes identiques. */
@@ -23,7 +23,7 @@ const COV_MIN = 0.4, TIE = 0.03, EQ = 0.005, EARLY = 8, STRAIGHT = 0.8;
 let TAP_GUARD = 350;      // ms : un tapotement sur une réponse juste après l'affichage d'une question est ignoré (double tapotement)
 let LOAD_TIMEOUT = 20000; // ms : au-delà, le chargement d'une édition est abandonné (écran d'erreur avec « Réessayer »)
 const TABS = ["ranking", "issues", "questions", "method"];
-const BRAND = "Éclaire ton vote";
+const BRAND = "Vote";
 const $ = id => document.getElementById(id);
 const t = () => T[state.ui] || T.en;
 const edCache = {};
@@ -266,6 +266,69 @@ function statusLine(id) {
 }
 function kindLine(cat, L) { return cat ? (cat.kind === "ed" ? "✓ " + L.legReady : "ⓘ " + L.legInfo) : ""; }
 
+/* ================== Drapeau, silhouette et bandeau du pays ==================
+   Le drapeau est un fichier flags/<cc>.svg à côté de la page (jamais incorporé) ; décoratif (alt vide) puisque le nom est toujours
+   écrit à côté ; s'il ne se charge pas, il disparaît et le bandeau marche sans lui. La silhouette vient du tracé de la carte
+   (src/mapdata.js) : cadre serré sur le pays, toutes ses parties (archipels compris), contour d'au moins 1 px pour les îlots. */
+const FR_PTS = [[2.55, 51.1], [1.6, 50.95], [1.55, 50.2], [1.1, 49.93], [0.1, 49.5], [-1.25, 49.7], [-1.6, 49.65], [-1.5, 48.65], [-2.0, 48.65], [-3.4, 48.85], [-4.75, 48.5], [-4.7, 48.05], [-3.5, 47.75], [-3.0, 47.5], [-2.2, 47.25], [-2.2, 46.9], [-1.2, 46.15], [-1.05, 45.6], [-1.25, 44.65], [-1.78, 43.37], [-0.7, 43.05], [0.7, 42.8], [1.45, 42.45], [2.0, 42.35], [3.15, 42.43], [3.0, 43.0], [3.7, 43.4], [4.6, 43.4], [5.35, 43.3], [5.95, 43.1], [6.75, 43.4], [7.5, 43.78], [7.0, 44.2], [6.85, 45.1], [7.1, 45.9], [6.1, 46.25], [6.9, 47.3], [7.55, 47.6], [7.55, 48.1], [8.2, 48.98], [6.4, 49.45], [5.8, 49.55], [4.85, 50.1], [4.2, 50.3], [3.6, 50.45], [3.1, 50.75]];
+const FR_CORSE = [[8.6, 42.95], [9.4, 43.0], [9.55, 42.2], [9.2, 41.4], [8.7, 41.6], [8.55, 42.3]];
+const FR_PATH = [FR_PTS, FR_CORSE].map(poly => "M" + poly.map(q => ((q[0] + 5.2) * 20.7).toFixed(1) + " " + ((51.2 - q[1]) * 30).toFixed(1)).join("L") + "Z").join("");
+const shapeBoxes = {};
+/* Cadre d'un tracé (mesuré une fois, dans un svg caché : getBBox demande un élément rendu) */
+function shapeBox(key, d) {
+  if (shapeBoxes[key]) return shapeBoxes[key];
+  let box = null;
+  try {
+    const NS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("width", "0"); svg.setAttribute("height", "0");
+    svg.style.cssText = "position:absolute;visibility:hidden;pointer-events:none";
+    const pa = document.createElementNS(NS, "path");
+    pa.setAttribute("d", d);
+    svg.appendChild(pa);
+    document.body.appendChild(svg);
+    const b = pa.getBBox();
+    document.body.removeChild(svg);
+    if (b.width > 0 || b.height > 0) box = [b.x, b.y, Math.max(b.width, 0.5), Math.max(b.height, 0.5)];
+  } catch (e) { box = null; }
+  return (shapeBoxes[key] = box);
+}
+const flagCc = id => id === "fr" ? "fr" : (AFRICA[id] && AFRICA[id].a2 ? AFRICA[id].a2.toLowerCase() : null);
+function flagImg(cc, w, h, cls, eager) {
+  if (!cc) return "";
+  return `<img class="flag ${cls || ""}" src="flags/${cc}.svg" alt="" width="${w}" height="${h}" decoding="async"${eager ? "" : ' loading="lazy"'}>`;
+}
+/* Une image de drapeau qui ne se charge pas disparaît (pas d'icône cassée) */
+document.addEventListener("error", e => { const el = e.target; if (el && el.tagName === "IMG" && el.classList.contains("flag")) el.hidden = true; }, true);
+function silhouetteSVG(id) {
+  const d = id === "fr" ? FR_PATH : MAP.c[id];
+  if (!d) return "";
+  const b = shapeBox(id, d);
+  if (!b) return "";
+  const pad = Math.max(b[2], b[3]) * 0.06 + 0.4;
+  return `<svg class="cb-shape" viewBox="${[b[0] - pad, b[1] - pad, b[2] + 2 * pad, b[3] + 2 * pad].map(v => v.toFixed(2)).join(" ")}" aria-hidden="true" focusable="false"><path d="${d}"></path></svg>`;
+}
+/* Ligne d'élection du bandeau : dates connues, ou « pas d'élection nationale avant fin 2027 » */
+function bannerLine(id) {
+  if (id === "fr") return ((CATALOG.fr && CATALOG.fr.ev) || []).map(evText).join(state.ui === "ar" ? " ؛ " : " ; ");
+  return statusLine(id);
+}
+/* Grand bandeau (choix de la langue) : drapeau, silhouette, nom du pays, ligne d'élection. id : identifiant de la carte, ou « fr ». */
+function bannerHTML(id) {
+  const name = id === "fr" ? catName("fr") : cname(id);
+  const line = bannerLine(id);
+  return `<div class="cbanner">
+    <div class="cb-art">${flagImg(flagCc(id), 72, 54, "cb-flag", true)}${silhouetteSVG(id)}</div>
+    <p class="cb-name">${esc(name)}</p>
+    ${line ? `<p class="st cb-line">${esc(line)}</p>` : ""}
+  </div>`;
+}
+/* Bandeau compact : drapeau 32 × 24 + nom (écrans du pays) */
+function bandHTML(cc, name) { return `<span class="cband">${flagImg(cc, 32, 24, "cb-flag-sm")}<b>${esc(name)}</b></span>`; }
+const edCc = E => (E.a3 && AFRICA[E.a3] ? flagCc(E.a3) : /^[a-z]{2}$/.test(E.cc || "") ? E.cc : null);
+/* Pays affiché (code ISO alpha-2 minuscule) : l'édition ouverte, ou le pays sans édition */
+function curCc() { return state.country || (state.place && AFRICA[state.place] ? flagCc(state.place) : null); }
+
 /* ================== Mémoire : la session (cet onglet) et la langue (cet appareil) ==================
    sessionStorage garde le questionnaire en cours (langue, pays, priorités, ordre, réponses, « compte double », question,
    onglet) : un rechargement ou un onglet mis en veille par le téléphone ne perd rien ; rien ne part sur le réseau.
@@ -275,7 +338,7 @@ const SKEY = "etv.session", UKEY = "etv.ui";
 function getItem(kind, k) { try { const s = window[kind]; return s ? s.getItem(k) : null; } catch (e) { return null; } }
 function setItem(kind, k, v) { try { const s = window[kind]; if (s) { if (v == null) s.removeItem(k); else s.setItem(k, v); } } catch (e) { } }
 function save() {
-  setItem("sessionStorage", SKEY, JSON.stringify({ v: 1, ui: state.ui, uiChosen: state.uiChosen, country: state.ac, priorities: state.priorities, order: state.order, nPrio: state.nPrio, answers: state.answers, double: state.double, i: state.i, tab: state.tab, ret: state.ret }));
+  setItem("sessionStorage", SKEY, JSON.stringify({ v: 1, ui: state.ui, uiChosen: state.uiChosen, country: state.ac, priorities: state.priorities, order: state.order, nPrio: state.nPrio, answers: state.answers, double: state.double, i: state.i, tab: state.tab, ret: state.ret, vals: state.vals, vi: state.vi, vseen: state.vseen }));
 }
 function restore() {
   let s = null;
@@ -283,6 +346,11 @@ function restore() {
   if (!s || typeof s !== "object" || s.v !== 1) return;
   if (T[s.ui] && langOf(s.ui)) state.ui = s.ui;
   state.uiChosen = s.uiChosen === true;
+  // Module « valeurs » : indépendant du pays et du questionnaire (réponses −2…2, ou null pour passée)
+  state.vals = {};
+  if (s.vals && typeof s.vals === "object") VALUES.forEach(v => { const a = s.vals[v.id]; if (a === null || [-2, -1, 0, 1, 2].includes(a)) state.vals[v.id] = a; });
+  state.vi = Number.isInteger(s.vi) && s.vi >= 0 && s.vi < VALUES.length ? s.vi : 0;
+  state.vseen = s.vseen === true;
   if (typeof s.country !== "string" || !CATALOG[s.country]) return;
   const ints = a => Array.isArray(a) && a.every(x => Number.isInteger(x) && x >= 0);
   state.ac = s.country;
@@ -333,6 +401,7 @@ function setUi(code, picked) {
    #/<cc>/<langue>/q/<n>           question n (1 = la première dans l'ordre en cours)
    #/<cc>/<langue>/checkpoint      fin des sujets prioritaires
    #/<cc>/<langue>/results[/<onglet>]   onglets : ranking, issues, questions, method
+   #/<cc>/<langue>/values[/<n>|/done]   module « valeurs » (10 questions communes) : présentation, question n, position (n'importe quel pays)
    Formes courtes acceptées (certains hébergeurs ne transmettent que « #mot ») : #ke, #cv-pt. Le prototype France : #/fr/fr.
    Les réponses ne vont jamais dans l'adresse.
 
@@ -360,6 +429,10 @@ function hashFor() {
   const v = state.view, ui = state.ui;
   if (v === "info") return `#/${AFRICA[state.place].a2.toLowerCase()}/${ui}`;
   if (v === "loading" || v === "loaderror") return `#/${state.loadCc}/${ui}${state.loadRest}`;
+  if (v === "valintro" || v === "valq" || v === "valres") {
+    const vb = `#/${curCc()}/${ui}/values`;
+    return v === "valq" ? `${vb}/${state.vi + 1}` : v === "valres" ? `${vb}/done` : vb;
+  }
   if (!state.country) return "#/";
   const b = `#/${state.country}/${ui}`;
   if (v === "question") return `${b}/q/${state.i + 1}`;
@@ -414,9 +487,10 @@ function route(h) {
   }
   closeLang();
   setUi(lang, false);
-  if (!cat) return viewInfo(id);
+  const vrest = r.rest[0] === "values" ? r.rest.slice(1) : null;
+  if (!cat) return vrest ? viewValues(vrest, id) : viewInfo(id);
   state.loadRest = r.rest.length ? "/" + r.rest.join("/") : "";
-  openEdition(r.cc, () => renderStep(r.rest));
+  openEdition(r.cc, () => vrest ? viewValues(vrest) : renderStep(r.rest));
 }
 function renderStep(rest) {
   const D = DATA[state.country];
@@ -509,12 +583,17 @@ function renderChrome() {
   $("langTip").textContent = L.langWhy;
   // Le slogan de prudence sur les positions codées n'a de sens que là où des positions de partis sont affichées
   const pos = ["start", "question", "checkpoint", "results"].includes(state.view);
-  $("footer").innerHTML = `${pos ? `<span>${L.footer1}</span>` : ""}<span>${L.footer2}</span>`;
+  $("footer").innerHTML = `${pos ? `<span>${L.footer1}</span>` : ""}<span>${METER_ENDPOINT ? L.footerMeter : L.footer2}</span>`;
   // Lien d'évitement : seulement sur la carte (premier élément focalisable de la page)
   const sk = $("skip");
   sk.textContent = L.skipList;
   sk.hidden = state.view !== "map";
-  document.body.classList.toggle("qv", state.view === "question");
+  const inQ = state.view === "question" || state.view === "valq";
+  document.body.classList.toggle("qv", inQ);
+  // Écran de question : seulement le drapeau (24 × 18), le nom du pays reste lisible pour les lecteurs d'écran
+  const tf = $("topFlag"), qc = inQ ? curCc() : null;
+  tf.hidden = !qc;
+  tf.innerHTML = qc ? `${flagImg(qc === "fr" ? "fr" : qc, 24, 18, "cb-flag-xs", true)}<span class="sr">${esc(qc === "fr" ? catName("fr") : cname(A2ID[qc]))}</span>` : "";
 }
 /* Infobulle d'une langue indisponible : au survol, au focus ou au toucher ; placée sous le bouton, sans déborder de l'écran. */
 let langTipTimer = null;
@@ -578,6 +657,7 @@ function show(html, step, cls, keep) {
   document.title = h ? titleOf(h) : BRAND;
   if (!keep) land(h);
   booted = true;
+  meterHook();
 }
 function rerender() {
   const y = window.scrollY;
@@ -592,6 +672,9 @@ function rerender() {
   else if (v === "question") viewQuestion(true);
   else if (v === "checkpoint") viewCheckpoint(true);
   else if (v === "results") viewResults(true);
+  else if (v === "valintro") viewValuesIntro(true);
+  else if (v === "valq") viewValuesQ(true);
+  else if (v === "valres") viewValuesDone(true);
   window.scrollTo({ top: y });
 }
 
@@ -724,6 +807,7 @@ function viewMap(keep) {
       <p class="kicker">${L.heroKicker(inAfrica.length)}</p>
       <h1 class="map-title">${L.mapTitle}</h1>
       <p class="lead">${L.mapLead}</p>
+      ${meterSlot("africa", null, 2)}
     </div>
     <div class="map-card">
       <div class="map-wrap" id="mapWrap">${mapSVG()}</div>
@@ -841,7 +925,8 @@ function openLang(id) {
     return `<button type="button" class="lang-btn${l.code === state.ui && !off ? " cur" : ""}" data-pick="${l.code}" lang="${l.code}" dir="${l.rtl ? "rtl" : "ltr"}"${off ? ` aria-disabled="true" aria-describedby="ln-${l.code}"` : ""}><span><span>${l.name}</span>${off ? `<span class="lnote" id="ln-${l.code}" lang="${state.ui}" dir="${uiDir}">${esc(note)}</span>` : ""}</span><span class="lc">${l.code.toUpperCase()}</span></button>`;
   };
   $("langBody").innerHTML = `
-    <div><p class="eyebrow">${esc(cname(id))}</p><h2 id="langTitle">${L.chooseLang}</h2><p class="st">${esc(statusLine(id))}</p>${cat ? `<p class="st">${esc(kindLine(cat, L))}</p>` : ""}</div>
+    ${bannerHTML(id)}
+    <div><h2 id="langTitle">${L.chooseLang}</h2>${cat ? `<p class="st">${esc(kindLine(cat, L))}</p>` : ""}</div>
     <div class="lang-grid"><h3>${L.langCountry}</h3>${mine.map(btn).join("")}</div>
     <div class="lang-grid"><h3>${L.langOther}</h3>${other.map(btn).join("")}</div>
     <div><button class="btn btn-ghost" type="button" id="langCancel">${L.cancel}</button></div>`;
@@ -940,7 +1025,7 @@ function viewInfo(id, keep) {
   const s = (cat && cat.evSrc) || SRC_AF[c.src];
   show(`
     <div class="strip">
-      <span><b>${esc(name)}</b>${up ? `<br><span class="sd">${esc(L.upcoming)}</span>` : ""}</span>
+      <span class="cband">${flagImg(flagCc(id), 32, 24, "cb-flag-sm")}<span><b>${esc(name)}</b>${up ? `<br><span class="sd">${esc(L.upcoming)}</span>` : ""}</span></span>
       <button class="link" type="button" data-go="home">${L.changeCountry}</button>
     </div>
     <div class="block">
@@ -949,6 +1034,7 @@ function viewInfo(id, keep) {
     ${lines.length ? `<ul class="ev-list">${lines.join("")}</ul>` : ""}
     ${s ? `<p class="src muted">${L.source}${C()} ${srcA(s)}</p>` : ""}
     ${up ? `<p class="lead">${L.prepText}</p>` : ""}
+    ${valuesCardHTML(true)}
     <div class="actions">
       <button class="btn btn-primary" type="button" data-go="home">${L.backMap}</button>
       ${CATALOG.ng ? `<button class="link" type="button" data-go="nigeria">${L.tryNigeria}</button>` : ""}
@@ -964,7 +1050,7 @@ function viewEdInfo(keep) {
   const all = [...used, ...Object.keys(E.src).filter(id => !used.includes(id))];
   show(`
     <div class="strip">
-      <span><b>${esc(name)} · ${esc(E.strip)}</b><br><span class="sd">${esc(E.stripDate)}</span></span>
+      <span class="cband">${flagImg(edCc(E), 32, 24, "cb-flag-sm")}<span><b>${esc(name)} · ${esc(E.strip)}</b><br><span class="sd">${esc(E.stripDate)}</span></span></span>
       <button class="link" type="button" data-go="home">${L.changeCountry}</button>
     </div>
     <div class="block">
@@ -996,6 +1082,7 @@ function viewEdInfo(keep) {
       <ol class="src-list">${all.map(id => { const s = E.src[id]; return `<li><a href="${esc(s.u)}" target="_blank" rel="noopener">${esc(s.t)}</a> · ${esc(s.o)}, ${esc(srcDate(s.d))}</li>`; }).join("")}</ol>
       ${E.lang !== E.baseLang ? `<p class="caveat">${L.mTransl}</p>` : ""}
     </section>
+    ${valuesCardHTML(true)}
     <div class="actions">
       <button class="btn btn-primary" type="button" data-go="home">${L.backMap}</button>
       ${CATALOG.ng && E.cc !== "ng" ? `<button class="link" type="button" data-go="nigeria">${L.tryNigeria}</button>` : ""}
@@ -1012,7 +1099,7 @@ function viewStart(keep) {
   const done = answeredCount();
   show(`
     <div class="strip">
-      <span><b>${esc(edName(E))} · ${esc(E.strip)}</b><br><span class="sd">${esc(E.stripDate)}</span></span>
+      <span class="cband">${flagImg(edCc(E), 32, 24, "cb-flag-sm")}<span><b>${esc(edName(E))} · ${esc(E.strip)}</b><br><span class="sd">${esc(E.stripDate)}</span></span></span>
       <button class="link" type="button" data-go="home">${L.changeCountry}</button>
     </div>
     ${noteHTML(E, L)}
@@ -1040,6 +1127,7 @@ function viewStart(keep) {
       <h1 class="big-title">${L.themesTitle}</h1>
       <p class="lead">${L.themesLead}</p>
     </div>
+    ${meterSlot("country", edCc(E), 2)}
     ${done && state.order.length ? `<div class="resume"><p>${esc(L.resumeText(done))}</p><button class="btn btn-primary" type="button" data-go="resume">${L.resumeBtn}</button></div>` : ""}
     <div class="theme-grid">${E.themes.map(th => {
       const on = state.priorities.includes(th.id);
@@ -1151,7 +1239,12 @@ function nextQ() {
     viewCheckpoint(); return;
   }
   if (state.i < last) { state.i++; viewQuestion(); }
-  else toResults();
+  else finishParty();
+}
+/* Fin du questionnaire de partis : une fois par session, l'invitation (facultative) aux 10 questions sur les valeurs, puis les résultats */
+function finishParty() {
+  if (!state.vseen && !Object.keys(state.vals).length) { navMode = "push"; return viewValuesIntro(); }
+  toResults();
 }
 /* Vers les résultats. Si la question affichée a été ouverte depuis les résultats (entrée d'historique marquée « ret »),
    on revient en arrière dans l'historique au lieu d'empiler un second écran de résultats. */
@@ -1220,7 +1313,8 @@ function viewResults(keep) {
   const H = headline(rank, a);
   show(`
     <div class="res-head">
-      <p class="eyebrow">${L.resEyebrow} · ${esc(edName(E))}</p>
+      <div class="cband cb-res">${flagImg(edCc(E), 32, 24, "cb-flag-sm")}<b>${esc(edName(E))}</b></div>
+      <p class="eyebrow">${L.resEyebrow}</p>
       <h1 class="big-title">${esc(H.title)}</h1>
       ${H.straight ? `<p class="notice">${L.straight}</p>` : ""}
       <p>${esc(H.summary)}</p>
@@ -1231,6 +1325,7 @@ function viewResults(keep) {
     <div class="panel" role="tabpanel" id="pan1" aria-labelledby="tab1" ${state.tab === 1 ? "" : "hidden"}>${panelThemes()}</div>
     <div class="panel" role="tabpanel" id="pan2" aria-labelledby="tab2" ${state.tab === 2 ? "" : "hidden"}>${panelQuestions()}</div>
     <div class="panel" role="tabpanel" id="pan3" aria-labelledby="tab3" ${state.tab === 3 ? "" : "hidden"}>${panelMethod()}</div>
+    ${valuesCardHTML()}
     <div class="actions">
       <button class="btn btn-ghost" type="button" data-go="edit">${L.actEdit}</button>
       <button class="btn btn-ghost" type="button" data-go="restart">${L.actRestart}</button>
@@ -1352,6 +1447,288 @@ function panelMethod() {
   </div>`;
 }
 
+/* ================== Module « valeurs » et compteur collectif ==================
+   10 énoncés identiques dans tous les pays (src/values.js). Les réponses ne servent jamais à classer les partis : elles vivent
+   à part (state.vals) et donnent une position personnelle sur cinq niveaux, que l'on peut — si une adresse de compteur est
+   configurée (meter.config.json) — ajouter, anonymement, au compteur de toute l'Afrique. Rien ne part sans un geste explicite,
+   et seuls partent le code du pays et un niveau (jamais les réponses). */
+const VAL_MIN = 6;      // réponses minimum pour avoir une position
+const METER_MIN = 30;   // contributions minimum avant d'afficher un compteur
+/* Position : v = ax × réponse / 2, s = moyenne de v sur les énoncés répondus (les passés sont ignorés), au moins 6 réponses.
+   Seuils : s ≥ 0,5 → 2 ; 0,15 < s < 0,5 → 1 ; |s| ≤ 0,15 → 0 ; −0,5 < s < −0,15 → −1 ; s ≤ −0,5 → −2.
+   Calculé en entiers (S = Σ ax × réponse, n réponses : s = S / 2n) pour que les seuils soient exacts. */
+function valuesLevel(vals) {
+  let S = 0, n = 0;
+  VALUES.forEach(v => { const a = vals && vals[v.id]; if (typeof a === "number" && a >= -2 && a <= 2) { S += v.ax * a; n++; } });
+  const out = { n: n, need: Math.max(0, VAL_MIN - n), s: n ? S / (2 * n) : 0, level: null };
+  if (n < VAL_MIN) return out;
+  out.level = S >= n ? 2 : 10 * S > 3 * n ? 1 : 10 * S >= -3 * n ? 0 : S > -n ? -1 : -2;
+  return out;
+}
+const vtext = v => v[state.ui] || v.en;
+const valStarted = () => Object.keys(state.vals).length > 0;
+
+/* ---------- Compteur collectif : lecture (GET <adresse>/counts, une fois par session) ---------- */
+const meter = { status: METER_ENDPOINT ? "idle" : "off", data: null, p: null, sent: {} };
+function normCounts(j) {
+  const num = o => { const r = {}; [-2, -1, 0, 1, 2].forEach(k => { const v = o && +o[k]; r[k] = v > 0 && isFinite(v) ? Math.floor(v) : 0; }); return r; };
+  if (!j || typeof j !== "object" || !j.total || typeof j.total !== "object") throw new Error("bad counts");
+  const by = {};
+  if (j.byCountry && typeof j.byCountry === "object") Object.keys(j.byCountry).forEach(c => { if (/^[a-z]{2}$/.test(c)) by[c] = num(j.byCountry[c]); });
+  return { updated: typeof j.updated === "string" ? j.updated : "", total: num(j.total), byCountry: by };
+}
+function loadMeter(force) {
+  if (!METER_ENDPOINT) return Promise.resolve(null);
+  if (force) { meter.status = "idle"; meter.p = null; }
+  if (meter.p) return meter.p;
+  if (meter.status === "fail") return Promise.resolve(null);
+  meter.status = "loading";
+  const ac = typeof AbortController === "function" ? new AbortController() : null;
+  let timer = null;
+  const timeout = new Promise((_, rej) => { timer = setTimeout(() => { if (ac) ac.abort(); rej(new Error("timeout")); }, 6000); });
+  const get = fetch(METER_ENDPOINT + "/counts", ac ? { credentials: "omit", mode: "cors", signal: ac.signal } : { credentials: "omit", mode: "cors" })
+    .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }).then(normCounts);
+  meter.p = Promise.race([get, timeout]).then(d => { clearTimeout(timer); meter.data = d; meter.status = "ok"; return d; },
+    () => { clearTimeout(timer); meter.status = "fail"; meter.p = null; return null; });
+  return meter.p;
+}
+function retryMeter() { loadMeter(true).then(fillMeters); fillMeters(); }
+const nfmt = n => { try { return new Intl.NumberFormat(locale()).format(n); } catch (e) { return String(n); } };
+const fillSpan = (kind, w) => `<span class="mfill ${kind}${w > 0 ? "" : " z"}" style="--w:${w.toFixed(1)}%"></span>`;
+function meterShares(c) {
+  const g = k => (c && +c[k]) || 0;
+  return { tot: g(-2) + g(-1) + g(0) + g(1) + g(2), pro: g(1) + g(2), con: g(-1) + g(-2), bal: g(0) };
+}
+/* Emplacement d'un compteur (rempli quand les chiffres sont arrivés) : « africa » = toute l'Afrique, « country » = ce pays */
+function meterSlot(scope, cc, h) {
+  if (!METER_ENDPOINT) return "";
+  return `<div class="meter-slot" data-meter="${scope}"${cc ? ` data-cc="${esc(cc)}"` : ""}${h ? ` data-h="${h}"` : ""}${meter.status === "ok" || meter.status === "fail" ? "" : ' data-state="loading"'}></div>`;
+}
+function meterHTML(scope, cc, h) {
+  h = h || 3;
+  const L = t(), d = meter.data;
+  if (!d) return "";
+  const africa = scope === "africa";
+  const m = meterShares(africa ? d.total : d.byCountry[cc]);
+  if (!africa && m.tot < METER_MIN) return "";
+  if (m.tot < METER_MIN) {
+    return `<section class="meter meter-wait" aria-labelledby="mt-${scope}">
+      <h${h} class="mt" id="mt-${scope}">${L.meterTitle}</h${h}>
+      <p>${L.meterOpens(nfmt(m.tot))}</p>
+      <div class="mprog" role="progressbar" aria-label="${esc(L.meterTitle)}" aria-valuemin="0" aria-valuemax="${METER_MIN}" aria-valuenow="${m.tot}"><span style="inline-size:${(m.tot / METER_MIN * 100).toFixed(1)}%"></span></div>
+      <p class="m-cav">${L.meterCaveat}</p>
+    </section>`;
+  }
+  const pct = k => pctPlain(m[k] / m.tot);
+  const countries = Object.keys(d.byCountry).filter(c => meterShares(d.byCountry[c]).tot > 0).length;
+  const people = L.meterPeople(nfmt(m.tot), africa ? countries : 1);
+  const when = d.updated && /^\d{4}-\d\d-\d\d/.test(d.updated) ? L.meterUpdated(fmtDate(d.updated.slice(0, 10))) : "";
+  const label = africa ? L.meterAfrica : cname(A2ID[cc]);
+  const aria = L.meterAria(label, pct("pro"), pct("con"), pct("bal"), people, when || "");
+  return `<section class="meter" aria-labelledby="mt-${scope}">
+    <h${h} class="mt" id="mt-${scope}">${africa ? L.meterTitle : esc(label)}</h${h}>
+    ${africa ? "" : `<p class="m-scope">${L.meterTitle}</p>`}
+    <div class="m-ends"><span class="m-end m-pro"><b dir="ltr">${pct("pro")}</b> ${L.meterPro}</span><span class="m-end m-con"><b dir="ltr">${pct("con")}</b> ${L.meterCon}</span></div>
+    <div class="mwrap"><div class="mbar" role="img" aria-label="${esc(aria)}"><div class="mhalf">${fillSpan("pro", m.pro / m.tot * 100)}</div><div class="mhalf">${fillSpan("con", m.con / m.tot * 100)}</div><i class="mtick"></i></div></div>
+    <p class="m-sub">${esc(L.meterBal(pct("bal")))} · ${esc(people)}${when ? " · " + esc(when) : ""}</p>
+    <p class="m-cav">${L.meterCaveat}</p>
+    <details class="m-defs"><summary>${L.meterDefsSummary}</summary><p>${L.meterDefs}</p></details>
+  </section>`;
+}
+function fillMeters() {
+  const slots = document.querySelectorAll("[data-meter]");
+  if (!slots.length) return;
+  slots.forEach(el => {
+    const html = meter.status === "ok" ? meterHTML(el.dataset.meter, el.dataset.cc, +el.dataset.h || 3) : "";
+    if (meter.status === "ok" || meter.status === "fail") el.removeAttribute("data-state");
+    el.innerHTML = html;
+    el.hidden = !html && meter.status !== "idle" && meter.status !== "loading";
+    // Remplissage animé une seule fois (mouvement autorisé seulement) : la barre garde sa place, rien ne bouge autour
+    const box = el.firstElementChild;
+    if (box && box.classList.contains("meter")) { box.classList.remove("go"); window.requestAnimationFrame(() => window.requestAnimationFrame(() => box.classList.add("go"))); }
+  });
+  // « Réessayer » dans le texte « comment ça marche » seulement quand le chargement a échoué
+  document.querySelectorAll("[data-meterfail]").forEach(el => { el.hidden = meter.status !== "fail"; });
+}
+/* Après chaque affichage : remplit les compteurs présents (depuis la mémoire, ou après le chargement) */
+function meterHook() {
+  if (!METER_ENDPOINT || !document.querySelector("[data-meter],[data-meterfail]")) return;
+  if (meter.status === "ok" || meter.status === "fail") fillMeters();
+  else loadMeter().then(fillMeters);
+}
+
+/* ---------- Compteur collectif : envoi (POST <adresse>/v, {c, l}), un seul par pays et par navigateur ---------- */
+const sentKey = cc => "etv.sent." + cc;
+const alreadySent = cc => !!cc && (meter.sent[cc] || getItem("localStorage", sentKey(cc)) === "1");
+function sendBlockHTML() {
+  if (!METER_ENDPOINT) return "";
+  const L = t(), cc = curCc();
+  return `<div class="vsend">
+    <p class="m-sentwhat">${L.meterSentWhat}</p>
+    ${alreadySent(cc) ? `<p class="m-ok" role="status">✓ ${L.meterThanks}</p>` : `<button class="btn btn-primary" type="button" data-go="vsend">${L.meterSend}</button>`}
+    <p class="m-err" role="status" id="meterErr" hidden></p>
+  </div>`;
+}
+function sendMeter(btn) {
+  const L = t(), cc = curCc(), r = valuesLevel(state.vals);
+  if (!METER_ENDPOINT || !cc || r.level === null || (btn && btn.disabled)) return;
+  const err = $("meterErr");
+  if (err) err.hidden = true;
+  if (btn) { btn.disabled = true; btn.textContent = L.meterSending; }
+  const fail = () => {
+    if (btn) { btn.disabled = false; btn.textContent = L.meterRetry; btn.focus({ preventScroll: true }); }
+    if (err) { err.textContent = L.meterErr; err.hidden = false; }
+  };
+  let req;
+  try {
+    req = fetch(METER_ENDPOINT + "/v", { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ c: cc, l: r.level }), keepalive: true, credentials: "omit", mode: "cors" });
+  } catch (e) { return fail(); }
+  req.then(res => {
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    meter.sent[cc] = true;
+    setItem("localStorage", sentKey(cc), "1");
+    const box = btn && btn.closest(".vsend");
+    if (box) { const ok = document.createElement("p"); ok.className = "m-ok"; ok.setAttribute("role", "status"); ok.setAttribute("tabindex", "-1"); ok.textContent = "✓ " + L.meterThanks; btn.replaceWith(ok); ok.focus({ preventScroll: true }); }
+    announce(L.meterThanks);
+    loadMeter(true).then(fillMeters);
+  }).catch(fail);
+}
+
+/* ---------- Position personnelle : barre à deux sens (comme le compteur), avec un repère ---------- */
+const MY_FILL = { "2": 100, "1": 50, "0": 0, "-1": 50, "-2": 100 };
+const MY_POS = { "2": 0, "1": 25, "0": 50, "-1": 75, "-2": 100 };   // % depuis le côté « début » de la barre
+function myBarHTML(level) {
+  const L = t();
+  const side = k => (k === "pro" ? level > 0 : level < 0) ? MY_FILL[level] : 0;
+  return `<div class="mwrap"><div class="mbar" role="img" aria-label="${esc(L.valBarLabel + " : " + L.valLevels[level])}"><div class="mhalf">${fillSpan("pro", side("pro"))}</div><div class="mhalf">${fillSpan("con", side("con"))}</div><i class="mtick"></i></div><i class="mmark" style="inset-inline-start:${MY_POS[level]}%"></i></div>
+    <div class="m-ends"><span class="m-end m-pro">${L.meterPro}</span><span class="m-end m-con">${L.meterCon}</span></div>`;
+}
+/* « Comment ça marche ? » : le module mesure des valeurs, pas la gauche ou la droite économique ; le compteur montre des participants volontaires */
+function valHowHTML() {
+  const L = t();
+  return `<details class="v-how"><summary>${L.valHowSummary}</summary>${L.valHow.map(x => `<p>${x}</p>`).join("")}<p class="m-defs-p">${L.meterDefs}</p>
+    <p data-meterfail hidden><button class="link" type="button" data-go="vretry">${L.meterRetryLoad}</button></p></details>`;
+}
+function valWhichHTML() {
+  const L = t();
+  return `<details class="v-which"><summary>${L.valWhich}</summary><ol class="v-list">${VALUES.map(v => {
+    const a = state.vals[v.id], tx = vtext(v);
+    const ans = typeof a === "number" ? L.ans[a] : L.valSkippedA;
+    return `<li><span class="vq-t">${esc(tx.text)}</span><span class="vq-d">${v.ax === 1 ? L.valDirPro : L.valDirCon}</span><span class="vq-a">${L.valYourAns}${C()} <b>${esc(ans)}</b></span></li>`;
+  }).join("")}</ol></details>`;
+}
+/* La carte « Où tu te situes sur les valeurs » (résultats, fin du module, pages de pays) */
+function valuesCardHTML(quiet) {
+  const L = t(), r = valuesLevel(state.vals);
+  const intro = METER_ENDPOINT ? L.valIntroText : L.valIntroTextLocal;
+  if (r.level === null) {
+    const started = valStarted();
+    return `<section class="vcard" aria-labelledby="vcT">
+      <h2 id="vcT">${started ? L.valCardTitle : L.valIntroTitle}</h2>
+      <p>${started ? L.valNeedMore(r.need) : intro}</p>
+      <div class="actions"><button class="btn btn-${quiet ? "ghost" : "primary"}" type="button" data-go="vopen">${started ? L.valContinue : L.valAnswerCta}</button></div>
+      ${valHowHTML()}
+      ${meterSlot("africa")}${meterSlot("country", curCc())}
+    </section>`;
+  }
+  return `<section class="vcard" aria-labelledby="vcT">
+    <h2 id="vcT">${L.valCardTitle}</h2>
+    <p class="v-level"><b>${L.valLevels[r.level]}</b></p>
+    ${myBarHTML(r.level)}
+    <p class="muted">${L.valBasis(r.n)}</p>
+    ${valWhichHTML()}
+    ${sendBlockHTML()}
+    ${meterSlot("africa")}${meterSlot("country", curCc())}
+    ${valHowHTML()}
+    <div class="actions"><button class="btn btn-ghost" type="button" data-go="vedit">${L.valChange}</button></div>
+  </section>`;
+}
+
+/* ---------- Écrans : présentation, questions, position ---------- */
+const hasPartyResults = () => !!(state.country && DATA[state.country] && DATA[state.country].kind === "ed" && state.order.length && answeredCount() > 0);
+function valBand() {
+  const cc = curCc();
+  if (!cc) return "";
+  const name = cc === "fr" ? catName("fr") : cname(A2ID[cc]);
+  return `<div class="cband cb-res">${flagImg(cc, 32, 24, "cb-flag-sm")}<b>${esc(name)}</b></div>`;
+}
+function viewValues(rest, id) {
+  if (id) { state.place = id; state.country = null; }
+  const a = rest[0];
+  if (a === "done") return viewValuesDone();
+  const n = parseInt(a, 10);
+  if (n >= 1 && n <= VALUES.length) { state.vi = n - 1; return viewValuesQ(); }
+  return viewValuesIntro();
+}
+function viewValuesIntro(keep) {
+  state.view = "valintro";
+  state.vseen = true;
+  const L = t();
+  show(`
+    ${valBand()}
+    <div class="block">
+      <p class="eyebrow">${L.valBonusEyebrow}</p>
+      <h1 class="big-title">${L.valIntroTitle}</h1>
+      <p class="lead">${METER_ENDPOINT ? L.valIntroText : L.valIntroTextLocal}</p>
+    </div>
+    ${METER_ENDPOINT ? `<p class="muted">${L.meterSentWhat}</p>` : ""}
+    ${valHowHTML()}
+    <div class="actions">
+      <button class="btn btn-primary" type="button" data-go="vstart">${L.valStart}</button>
+      <button class="btn btn-ghost" type="button" data-go="${hasPartyResults() ? "vresults" : "vback"}">${hasPartyResults() ? L.valSkipResults : L.valBackCountry}</button>
+    </div>
+  `, null, "screen", keep);
+}
+function viewValuesQ(keep) {
+  state.view = "valq";
+  const L = t(), v = VALUES[state.vi], tx = vtext(v), cur = state.vals[v.id];
+  const n = VALUES.length, pos = state.vi + 1;
+  show(`
+    <div class="q-top">
+      <span class="q-count mono" dir="ltr">${pos} / ${n}</span>
+      <div class="qbar" role="progressbar" aria-label="${esc(L.valProgress)}" aria-valuemin="1" aria-valuemax="${n}" aria-valuenow="${pos}" aria-valuetext="${esc(L.qOf(pos, n))}"><span style="width:${(pos / n * 100).toFixed(1)}%"></span></div>
+    </div>
+    <div class="q-meta"><span class="chip val">${L.valChip}</span></div>
+    <div class="slip"><h1>${esc(tx.text)}</h1></div>
+    <fieldset class="answers" data-vq="${v.id}"><legend class="sr">${L.yourAnswer}</legend>
+      ${[2, 1, 0, -1, -2].map(val => `<button type="button" class="ans" data-vv="${val}" aria-pressed="${cur === val}"><span class="box" aria-hidden="true">${CHECK}</span><span>${L.ans[val]}</span></button>`).join("")}
+    </fieldset>
+    <div class="q-nav">
+      <button class="btn btn-ghost" type="button" data-go="vprev" ${state.vi === 0 ? "disabled" : ""}>${L.prev}</button>
+      <div class="actions"><button class="btn btn-ghost" type="button" data-vv="skip">${cur === null ? L.skipped : L.skip}</button></div>
+    </div>
+  `, null, "screen q-screen", keep);
+  qShownAt = now();
+  if (!keep) announce(L.qOf(pos, n));
+}
+function valAnswer(val, id) {
+  if (state.view !== "valq" || VALUES[state.vi].id !== id) return;
+  state.vals[id] = val;
+  document.querySelectorAll(".answers .ans").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.vv === val)));
+  save();
+  clearTimeout(advanceTimer);
+  advanceTimer = setTimeout(nextV, 240);
+}
+function nextV() {
+  if (state.view !== "valq") return;
+  if (state.vi < VALUES.length - 1) { state.vi++; viewValuesQ(); }
+  else viewValuesDone();
+}
+function viewValuesDone(keep) {
+  state.view = "valres";
+  const L = t();
+  show(`
+    ${valBand()}
+    <div class="block">
+      <h1 class="big-title">${L.valDoneTitle}</h1>
+    </div>
+    ${valuesCardHTML()}
+    <div class="actions">
+      ${hasPartyResults() ? `<button class="btn btn-primary" type="button" data-go="vresults">${L.valToResults}</button>` : `<button class="btn btn-primary" type="button" data-go="vback">${L.valBackCountry}</button>`}
+    </div>
+  `, null, "screen", keep);
+}
+
 /* ================== Fiche parti ================== */
 function openFiche(pid) {
   const E = ed(), L = t();
@@ -1406,7 +1783,7 @@ function askConfirm(kind, el) {
 }
 
 /* ================== Navigation ================== */
-function resetAnswers() { state.answers = {}; state.double = {}; state.i = 0; state.tab = 0; state.order = []; state.nPrio = 0; state.ret = null; }
+function resetAnswers() { state.answers = {}; state.double = {}; state.i = 0; state.tab = 0; state.order = []; state.nPrio = 0; state.ret = null; state.vals = {}; state.vi = 0; state.vseen = false; }
 function goHome(clear) {
   loadSeq++;
   closeFiche();
@@ -1435,6 +1812,14 @@ function go(where, el) {
       return viewQuestion();
     }
     case "qlist": return openQList();
+    case "vstart": state.vi = 0; navMode = "push"; return viewValuesQ();
+    case "vopen": { const k = VALUES.findIndex(v => state.vals[v.id] === undefined); state.vi = k >= 0 ? k : 0; navMode = "push"; return viewValuesQ(); }
+    case "vprev": if (state.vi > 0) { state.vi--; viewValuesQ(); } return;
+    case "vedit": state.vi = 0; navMode = "push"; return viewValuesQ();
+    case "vresults": state.tab = 0; state.ret = null; navMode = state.view === "valintro" ? "replace" : "push"; return viewResults();
+    case "vback": return navTo(`#/${curCc()}/${state.ui}`);
+    case "vsend": return sendMeter(el);
+    case "vretry": return retryMeter();
     case "prev": if (state.i > 0) { state.i--; viewQuestion(); } return;
     case "more": state.i = state.nPrio; return viewQuestion();
     case "results": state.tab = 0; return toResults();
@@ -1457,7 +1842,7 @@ document.addEventListener("click", e => {
   if (e.target === $("langDlg")) return closeLang();
   if (e.target === $("fiche")) return closeFiche();
   if (e.target === $("qDlg")) return closeQList();
-  const el = e.target.closest("[data-pick],[data-place],[data-lang],[data-go],[data-prio],[data-val],[data-dbl],[data-goto],[data-tab],[data-fiche],[data-qjump],#ficheClose,#langCancel,#qClose,#skip,#brand");
+  const el = e.target.closest("[data-pick],[data-place],[data-lang],[data-go],[data-prio],[data-val],[data-vv],[data-dbl],[data-goto],[data-tab],[data-fiche],[data-qjump],#ficheClose,#langCancel,#qClose,#skip,#brand");
   if (!el) return;
   if (el.id === "skip") { e.preventDefault(); return skipToList(); }
   if (el.id === "qClose") return closeQList();
@@ -1488,6 +1873,11 @@ document.addEventListener("click", e => {
     const again = document.querySelector(`[data-prio="${CSS.escape(id)}"]`); if (again) again.focus({ preventScroll: true });
     announce(t().chosen(state.priorities.length));
     return;
+  }
+  if (el.dataset.vv !== undefined) {
+    if (e.detail > 0 && now() - qShownAt < TAP_GUARD) return;
+    const host = el.closest("[data-vq]");
+    return valAnswer(el.dataset.vv === "skip" ? null : +el.dataset.vv, host ? host.dataset.vq : VALUES[state.vi].id);
   }
   if (el.dataset.val) {
     // Un second tapotement juste après l'affichage (double tapotement) ne répond pas à la question suivante ; le clavier (detail 0) n'est pas freiné
@@ -1539,6 +1929,9 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") langTip(null
 window.addEventListener("popstate", () => route(location.hash));
 window.addEventListener("hashchange", () => { if (location.hash !== curHash) route(location.hash); });
 try { history.scrollRestoration = "manual"; } catch (e) { }
+
+/* Pour les tests : le calcul de la position et les parts du compteur sont des fonctions pures */
+window.__etv = { valuesLevel: valuesLevel, meterShares: meterShares, VALUES: VALUES, METER_ENDPOINT: METER_ENDPOINT, METER_MIN: METER_MIN, VAL_MIN: VAL_MIN };
 
 /* Démarrage : langue (appareil → navigateur → anglais), session de cet onglet, puis l'écran que décrit l'adresse. */
 state.ui = initialUi();
