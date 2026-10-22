@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* Éclaire ton vote : construit le site à partir de src/.
  *
- *   node tools/build.js [--extra <dir>]... [--out <dir>] [--strict]
+ *   node tools/build.js [--extra <dir>]... [--out <dir>] [--endpoint <url>] [--strict]
  *
  * - Lit chaque src/editions/<cc>.js (et src/i18n/<cc>.js s'il existe), le valide avec
  *   src/tools/validate-edition.js et écrit data/<cc>.json. Une édition qui ne passe pas est ignorée
@@ -12,6 +12,10 @@
  * - --extra <dir> ajoute des éditions de <dir>/editions/<cc>.js (+ <dir>/i18n/<cc>.js), par ex. pour les tests ;
  *   elles remplacent une édition de même code. --out <dir> écrit ailleurs qu'à la racine du dépôt.
  *   --strict : code de sortie 1 s'il y a eu le moindre avertissement.
+ * - src/values.js (module « valeurs », 10 énoncés) est vérifié (10 énoncés, identifiants uniques, 5 signes +1 et 5 signes −1, 5 langues)
+ *   puis intégré à l'application. meter.config.json ({ "endpoint": "" }) donne l'adresse du compteur collectif : vide, les
+ *   fonctions collectives sont éteintes ; --endpoint <url> la remplace (tests). flags/ (drapeaux) est recopié dans le dossier
+ *   de sortie quand --out en change ; meter/countries.json (liste des pays acceptés par le Worker) est généré depuis src/africa.js.
  * Aucune dépendance : Node ≥ 18.
  */
 "use strict";
@@ -21,21 +25,22 @@ const ROOT = path.resolve(__dirname, "..");
 const SRC = path.join(ROOT, "src");
 const VALIDATOR = path.join(SRC, "tools", "validate-edition.js");
 const EXEMPT = new Set(["fr"]);
-const UI_FILES = ["ui/t-fr-en.js", "ui/t-pt-sw-ar.js", "ui/t-party.js", "ui/t-party-pt-sw-ar.js", "ui/t-multi.js", "ui/t-v2.js"];
+const UI_FILES = ["ui/t-fr-en.js", "ui/t-pt-sw-ar.js", "ui/t-party.js", "ui/t-party-pt-sw-ar.js", "ui/t-multi.js", "ui/t-v2.js", "ui/t-meter.js"];
 const DESCRIPTION = "Réponds à des questions précises par ministère et découvre quels partis pensent comme toi. Carte des élections dans les 54 pays d’Afrique, questionnaires par pays, en 5 langues.";
 const FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%235A2DB8'/%3E%3Cpath d='M8 17l6 6L27 7' fill='none' stroke='%23F2B42C' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E";
 const RESET = "<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>";
 
 /* ---------- Arguments ---------- */
 const extras = [];
-let OUT = ROOT, strict = false;
+let OUT = ROOT, strict = false, endpointArg = null;
 const argv = process.argv.slice(2);
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i];
   if (a === "--extra" && argv[i + 1]) extras.push(path.resolve(argv[++i]));
   else if (a === "--out" && argv[i + 1]) OUT = path.resolve(argv[++i]);
+  else if (a === "--endpoint" && argv[i + 1] !== undefined) endpointArg = argv[++i];
   else if (a === "--strict") strict = true;
-  else if (a === "-h" || a === "--help") { console.log("usage: node tools/build.js [--extra <dir>]... [--out <dir>] [--strict]"); process.exit(0); }
+  else if (a === "-h" || a === "--help") { console.log("usage: node tools/build.js [--extra <dir>]... [--out <dir>] [--endpoint <url>] [--strict]"); process.exit(0); }
   else { console.error(`unknown argument: ${a}`); process.exit(2); }
 }
 
@@ -116,6 +121,42 @@ const UI_LANGS = runFile(path.join(SRC, "ui/t-fr-en.js"), ["LANGS"]).LANGS.map(l
 const AFRICA = runFile(path.join(SRC, "africa.js"), ["AFRICA"]).AFRICA;
 const A2_TO_NUM = {};
 Object.entries(AFRICA).forEach(([num, c]) => { A2_TO_NUM[c.a2.toLowerCase()] = num; });
+
+/* ---------- Module « valeurs » (src/values.js) : 10 énoncés, 5 de chaque signe, 5 langues ---------- */
+function checkValues() {
+  const errors = [];
+  let V;
+  try { V = runFile(path.join(SRC, "values.js"), ["VALUES"]).VALUES; } catch (e) { return [`cannot load src/values.js (${e.message})`]; }
+  if (!Array.isArray(V) || V.length !== 10) return [`VALUES must hold 10 items (found ${Array.isArray(V) ? V.length : typeof V})`];
+  const ids = new Set();
+  V.forEach((v, i) => {
+    if (!isStr(v.id) || ids.has(v.id)) errors.push(`item ${i + 1}: id missing or duplicated (${v.id})`);
+    ids.add(v.id);
+    if (v.ax !== 1 && v.ax !== -1) errors.push(`${v.id}: ax must be +1 or -1`);
+    if (!isStr(v.topic)) errors.push(`${v.id}: topic missing`);
+    UI_LANGS.forEach(l => { if (!v[l] || !isStr(v[l].short) || !isStr(v[l].text)) errors.push(`${v.id}: ${l} short/text missing`); });
+  });
+  const pos = V.filter(v => v.ax === 1).length, neg = V.filter(v => v.ax === -1).length;
+  if (pos !== 5 || neg !== 5) errors.push(`signs must be 5 × +1 and 5 × -1 (found ${pos} / ${neg})`);
+  return errors;
+}
+const valuesErrors = checkValues();
+if (valuesErrors.length) { console.error("src/values.js: " + valuesErrors.join("; ")); process.exit(1); }
+
+/* ---------- Compteur collectif : adresse du Worker (meter.config.json, vide = fonctions collectives éteintes) ---------- */
+function meterEndpoint() {
+  let v = "";
+  const f = path.join(ROOT, "meter.config.json");
+  if (fs.existsSync(f)) {
+    try { v = String(JSON.parse(read(f)).endpoint || ""); } catch (e) { warn("meter.config.json is not valid JSON, collective features off"); }
+  }
+  if (endpointArg !== null) v = endpointArg;
+  v = v.trim().replace(/\/+$/, "");
+  if (v && !/^https:\/\/[^\s/]+(\/[^\s]*)?$/.test(v)) { warn(`meter endpoint “${v}” is not an https:// address, collective features off`); v = ""; }
+  return v;
+}
+const METER_ENDPOINT = meterEndpoint();
+console.log(`meter ${METER_ENDPOINT ? "endpoint " + METER_ENDPOINT : "endpoint empty: collective features off"}`);
 
 /* ---------- Éditions ---------- */
 const sources = new Map(); // cc → { file, i18n }
@@ -297,9 +338,10 @@ function lateSyntax(code) {
 
 const catalog = {};
 built.forEach(({ cc, cat }) => { catalog[cc] = cat; });
-const scripts = [...UI_FILES, "africa.js", "mapdata.js"].map(f => read(path.join(SRC, f)).replace(/\s+$/, "") + "\n").join("")
+const scripts = [...UI_FILES, "values.js", "africa.js", "mapdata.js"].map(f => read(path.join(SRC, f)).replace(/\s+$/, "") + "\n").join("")
   + "\n/* ================== Catalogue des éditions (généré par tools/build.js) ================== */\n"
   + `const CATALOG = ${JSON.stringify(catalog)};\n`
+  + `const METER_ENDPOINT = ${JSON.stringify(METER_ENDPOINT)};   // meter.config.json : vide = fonctions collectives éteintes\n`
   + app.replace(/\s+$/, "") + "\n";
 
 const late = lateSyntax(shellBody.slice(shellBody.indexOf("<script>") + 8) + scripts);
@@ -330,6 +372,21 @@ const artifact = shell.slice(0, nl + 1) + RESET + "\n" + shell.slice(nl + 1).rep
 fs.writeFileSync(path.join(OUT, "index.html"), index);
 fs.writeFileSync(path.join(OUT, "artifact.html"), artifact);
 sizes.unshift(["index.html", Buffer.byteLength(index)], ["artifact.html", Buffer.byteLength(artifact)]);
+
+/* Drapeaux : fichiers à côté de la page (jamais incorporés). Recopiés quand --out change de dossier. */
+const flagsSrc = path.join(ROOT, "flags");
+if (!fs.existsSync(flagsSrc)) warn("flags/ is missing: run node tools/flags.js (the banners show without flags until then)");
+else {
+  const cc2 = new Set([...Object.values(AFRICA).map(c => c.a2.toLowerCase()), "fr"]);
+  cc2.forEach(cc => { if (!fs.existsSync(path.join(flagsSrc, cc + ".svg"))) warn(`flags/${cc}.svg is missing: run node tools/flags.js`); });
+  if (path.resolve(OUT) !== ROOT) {
+    fs.mkdirSync(path.join(OUT, "flags"), { recursive: true });
+    fs.readdirSync(flagsSrc).forEach(f => fs.copyFileSync(path.join(flagsSrc, f), path.join(OUT, "flags", f)));
+  }
+}
+/* Liste des pays que le Worker accepte : tous les pays de la carte et la France (mêmes codes que le site) */
+fs.mkdirSync(path.join(OUT, "meter"), { recursive: true });
+fs.writeFileSync(path.join(OUT, "meter", "countries.json"), JSON.stringify([...new Set([...Object.values(AFRICA).map(c => c.a2.toLowerCase()), "fr"])].sort()) + "\n");
 
 console.log(`\n${built.length} edition(s): ${built.map(b => `${b.cc} (${b.cat.kind})`).join(", ") || "none"}`);
 sizes.forEach(([f, n]) => console.log(`  ${f.padEnd(18)} ${(n / 1024).toFixed(1).padStart(7)} KB`));

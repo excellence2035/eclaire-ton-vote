@@ -231,6 +231,10 @@ def answer_all(page, plan, stop_after_prio=False):
             continue
         if view == "results":
             break
+        if view == "valintro":   # invitation facultative aux 10 questions sur les valeurs : on passe aux résultats
+            page.click('[data-go="vresults"]')
+            wait_view(page, "results")
+            break
         qi, i = page.evaluate("[state.order[state.i], state.i]")
         v, dbl = plan(qi)
         if dbl:
@@ -1016,7 +1020,7 @@ def deep_links(c):
         page.goto(base + "/index.html#ke")
         page.wait_for_selector("#langDlg[open]")
         c(page.evaluate("location.hash") == "#/ke", "#ke normalised to #/ke")
-        c(page.text_content("#langBody .eyebrow").strip() == page.evaluate(f"cname('{cat['ke']['a3']}')"), "#ke: language choice for Kenya")
+        c(page.text_content("#langBody .cb-name").strip() == page.evaluate(f"cname('{cat['ke']['a3']}')"), "#ke: language choice for Kenya")
         page.click('#langBody [data-pick="sw"]')
         page.wait_for_selector(".theme-grid")
         c(page.evaluate("[state.country, state.ui, document.documentElement.lang, location.hash]") == ["ke", "sw", "sw", "#/ke/sw"], "#ke → Kenya in Swahili")
