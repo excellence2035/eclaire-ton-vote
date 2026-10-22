@@ -5,14 +5,27 @@
 const DATA = {};
 const A3CC = {};
 Object.entries(CATALOG).forEach(([cc, c]) => { if (c.a3) A3CC[c.a3] = cc; });
+/* Code ISO alpha-2 en minuscules → identifiant numérique de la carte (liens vers un pays sans édition, par ex. #/ao) */
+const A2ID = {};
+Object.entries(AFRICA).forEach(([id, c]) => { if (c.a2) A2ID[c.a2.toLowerCase()] = id; });
+const ccOf = id => A3CC[id] || (AFRICA[id] && AFRICA[id].a2 ? AFRICA[id].a2.toLowerCase() : null);
 const catFor = id => (A3CC[id] ? CATALOG[A3CC[id]] : null);
 const UP_FROM = "2026-10", UP_TO = "2027-12-31";
 
-/* ================== État ================== */
-const state = { ui: "fr", country: null, place: null, view: "map", priorities: [], order: [], nPrio: 0, i: 0, answers: {}, double: {}, tab: 0, pending: null, loadCc: null };
+/* ================== État ==================
+   country : le pays affiché (null sur la carte) ; ac : le pays auquel appartiennent les réponses en cours
+   (elles survivent à un passage par la carte et à un rechargement de l'onglet ; choisir un autre questionnaire les remplace). */
+const state = { ui: "en", uiChosen: false, country: null, ac: null, place: null, view: null, priorities: [], order: [], nPrio: 0, i: 0, answers: {}, double: {}, tab: 0, ret: null, pending: null, loadCc: null, loadRest: "" };
 const PRIOR_ALL = 3, PRIOR_THEME = 1;
+/* Lecture des résultats : couverture minimale pour être classé, égalité avec le premier, scores égaux (ordre alphabétique),
+   premier aperçu, réponses presque toutes identiques. */
+const COV_MIN = 0.4, TIE = 0.03, EQ = 0.005, EARLY = 8, STRAIGHT = 0.8;
+let TAP_GUARD = 350;      // ms : un tapotement sur une réponse juste après l'affichage d'une question est ignoré (double tapotement)
+let LOAD_TIMEOUT = 20000; // ms : au-delà, le chargement d'une édition est abandonné (écran d'erreur avec « Réessayer »)
+const TABS = ["ranking", "issues", "questions", "method"];
+const BRAND = "Éclaire ton vote";
 const $ = id => document.getElementById(id);
-const t = () => T[state.ui] || T.fr;
+const t = () => T[state.ui] || T.en;
 const edCache = {};
 const ed = () => {
   const key = state.country + ":" + state.ui;
@@ -20,16 +33,25 @@ const ed = () => {
   return edCache[key];
 };
 const nn = n => String(n).padStart(2, "0");
-const C = () => state.ui === "fr" ? " :" : ":";
+const C = () => state.ui === "fr" ? " :" : ":";
 const pctTxt = s => Math.round(s * 100) + '<span class="pu"> %</span>';
+const pctPlain = s => Math.round(s * 100) + (state.ui === "fr" ? " %" : "%");
 const esc = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const uniq = a => a.filter((v, i) => v && a.indexOf(v) === i);
 const label = p => `${p.sigle} · ${p.nom}`;
+/* Isolation bidirectionnelle (FSI … PDI) : un nom latin dans une phrase arabe garde son ordre, parenthèses comprises. */
 const ISO = [String.fromCharCode(0x2068), String.fromCharCode(0x2069)];
 const pname = p => ISO[0] + p.nom + ISO[1];
+const plabel = p => ISO[0] + `${p.nom} (${p.sigle})` + ISO[1];
+const psig = p => ISO[0] + p.sigle + ISO[1];
 const hname = p => esc(pname(p));
 const langOf = code => LANGS.find(l => l.code === code);
-const locale = () => (langOf(state.ui) || LANGS[1]).locale;
+const locale = () => (langOf(state.ui) || LANGS[0]).locale;
+function listFmt(a) {
+  if (a.length < 2) return a.join("");
+  try { return new Intl.ListFormat(locale(), { style: "long", type: "conjunction" }).format(a); } catch (e) { return a.join(", "); }
+}
+const now = () => (window.performance && performance.now ? performance.now() : Date.now());
 
 /* Traduction d'une édition : le texte de base est remplacé, champ par champ, par celui de I18N quand il existe. */
 function localizeEdition(D, lang) {
@@ -39,6 +61,9 @@ function localizeEdition(D, lang) {
   E.langs = LANGS.map(l => ({ code: l.code, label: l.code.toUpperCase(), name: l.name, ready: D.langs.includes(l.code) }));
   const L = lang !== D.lang && D.i18n && D.i18n[lang];
   E.lang = L ? lang : D.lang;
+  // Note de l'édition (report, doute sur la date…) : traduite quand la traduction fournit « note »
+  E.note = E.meta.note || ""; E.noteLang = D.lang;
+  if (L && E.note && typeof L.note === "string" && L.note.trim()) { E.note = L.note; E.noteLang = lang; }
   if (!L) return E;
   const same = (a, b) => Array.isArray(a) && Array.isArray(b) && a.length === b.length;
   ["strip", "stripDate", "status", "why"].forEach(k => { if (typeof L[k] === "string" && L[k]) E[k] = L[k]; });
@@ -78,16 +103,28 @@ function injectColours(D) {
   st.textContent = `:root{${vars(0)}}@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){${vars(1)}}}:root[data-theme="dark"]{${vars(1)}}`;
   (document.head || document.documentElement).appendChild(st);
 }
+/* Un seul téléchargement par pays à la fois (pays rouvert pendant le chargement) ; abandon au bout de LOAD_TIMEOUT. */
+const inflight = {};
 function loadEdition(cc) {
   if (DATA[cc]) return Promise.resolve(DATA[cc]);
-  return fetch(`data/${encodeURIComponent(cc)}.json`)
-    .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-    .then(D => {
-      if (!D || D.id !== cc || !(D.ed || D.info)) throw new Error("bad data");
-      DATA[cc] = D;
-      injectColours(D);
-      return D;
-    });
+  if (inflight[cc]) return inflight[cc];
+  const ac = typeof AbortController === "function" ? new AbortController() : null;
+  const p = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => { if (ac) ac.abort(); reject(new Error("timeout")); }, LOAD_TIMEOUT);
+    fetch(`data/${encodeURIComponent(cc)}.json`, ac ? { signal: ac.signal } : {})
+      .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(D => {
+        if (!D || D.id !== cc || !(D.ed || D.info)) throw new Error("bad data");
+        DATA[cc] = D;
+        injectColours(D);
+        return D;
+      })
+      .then(D => { clearTimeout(timer); resolve(D); }, e => { clearTimeout(timer); reject(e); });
+  });
+  inflight[cc] = p;
+  const done = () => { delete inflight[cc]; };
+  p.then(done, done);
+  return p;
 }
 
 function badge(p, size) {
@@ -111,8 +148,7 @@ function candLine(p, E, L) {
   return `${lead ? L.partyLeader : L.presCand}${C()} ${esc(p.cand)}${p.candNote ? ` <span class="cand-note">(${esc(p.candNote)})</span>` : ""}`;
 }
 function noteHTML(E, L) {
-  const n = E.meta && E.meta.note;
-  return n ? `<p class="caveat"><b>${L.noteLabel}${C()}</b> <span lang="${esc(E.baseLang)}">${esc(n)}</span></p>` : "";
+  return E.note ? `<p class="caveat"><b>${L.noteLabel}${C()}</b> <span lang="${esc(E.noteLang)}" dir="auto">${esc(E.note)}</span></p>` : "";
 }
 
 /* ================== Pays, dates et langues ================== */
@@ -171,6 +207,173 @@ function statusLine(id) {
 }
 function kindLine(cat, L) { return cat ? (cat.kind === "ed" ? "✓ " + L.legReady : "ⓘ " + L.legInfo) : ""; }
 
+/* ================== Mémoire : la session (cet onglet) et la langue (cet appareil) ==================
+   sessionStorage garde le questionnaire en cours (langue, pays, priorités, ordre, réponses, « compte double », question,
+   onglet) : un rechargement ou un onglet mis en veille par le téléphone ne perd rien ; rien ne part sur le réseau.
+   localStorage garde seulement la langue choisie. Chaque accès est protégé : sans stockage (navigation privée,
+   iframe en bac à sable), l'application marche quand même. */
+const SKEY = "etv.session", UKEY = "etv.ui";
+function getItem(kind, k) { try { const s = window[kind]; return s ? s.getItem(k) : null; } catch (e) { return null; } }
+function setItem(kind, k, v) { try { const s = window[kind]; if (s) { if (v == null) s.removeItem(k); else s.setItem(k, v); } } catch (e) { } }
+function save() {
+  setItem("sessionStorage", SKEY, JSON.stringify({ v: 1, ui: state.ui, uiChosen: state.uiChosen, country: state.ac, priorities: state.priorities, order: state.order, nPrio: state.nPrio, answers: state.answers, double: state.double, i: state.i, tab: state.tab, ret: state.ret }));
+}
+function restore() {
+  let s = null;
+  try { s = JSON.parse(getItem("sessionStorage", SKEY) || "null"); } catch (e) { s = null; }
+  if (!s || typeof s !== "object" || s.v !== 1) return;
+  if (T[s.ui] && langOf(s.ui)) state.ui = s.ui;
+  state.uiChosen = s.uiChosen === true;
+  if (typeof s.country !== "string" || !CATALOG[s.country]) return;
+  const ints = a => Array.isArray(a) && a.every(x => Number.isInteger(x) && x >= 0);
+  state.ac = s.country;
+  state.priorities = Array.isArray(s.priorities) ? s.priorities.filter(x => typeof x === "string").slice(0, 3) : [];
+  state.order = ints(s.order) ? s.order : [];
+  state.nPrio = Number.isInteger(s.nPrio) && s.nPrio >= 0 ? s.nPrio : 0;
+  state.answers = {}; state.double = {};
+  if (s.answers && typeof s.answers === "object") Object.keys(s.answers).forEach(k => { const v = s.answers[k]; if (/^\d+$/.test(k) && (v === null || [-2, -1, 0, 1, 2].includes(v))) state.answers[k] = v; });
+  if (s.double && typeof s.double === "object") Object.keys(s.double).forEach(k => { if (/^\d+$/.test(k) && s.double[k] === true) state.double[k] = true; });
+  state.i = Number.isInteger(s.i) && s.i >= 0 ? s.i : 0;
+  state.tab = Number.isInteger(s.tab) && s.tab >= 0 && s.tab < TABS.length ? s.tab : 0;
+  state.ret = s.ret && Number.isInteger(s.ret.until) ? { until: s.ret.until } : null;
+}
+/* Une session restaurée doit correspondre à l'édition chargée (nombre de questions, thèmes) ; sinon on l'écarte en partie. */
+function checkSession(E) {
+  const n = E.questions.length;
+  const okI = x => Number.isInteger(x) && x >= 0 && x < n;
+  if (state.order.length !== n || !state.order.every(okI) || new Set(state.order).size !== n) { state.order = []; state.nPrio = 0; state.i = 0; }
+  state.nPrio = Math.min(state.nPrio, state.order.length);
+  state.i = Math.min(state.i, Math.max(0, state.order.length - 1));
+  state.priorities = state.priorities.filter(id => E.themes.some(th => th.id === id));
+  Object.keys(state.answers).forEach(k => { if (!okI(+k)) delete state.answers[k]; });
+  Object.keys(state.double).forEach(k => { if (!okI(+k)) delete state.double[k]; });
+  if (state.ret && !okI(state.ret.until)) state.ret = null;
+}
+/* Langue de départ : celle choisie sur cet appareil, sinon la première langue du navigateur que l'interface connaît, sinon l'anglais. */
+function initialUi() {
+  const saved = getItem("localStorage", UKEY);
+  if (saved && T[saved] && langOf(saved)) return saved;
+  let navs = [];
+  try { navs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language]; } catch (e) { navs = []; }
+  for (const l of navs) {
+    const p = String(l || "").toLowerCase().split(/[-_]/)[0];
+    if (T[p] && langOf(p)) return p;
+  }
+  return "en";
+}
+function setUi(code, picked) {
+  if (!T[code] || !langOf(code)) return;
+  state.ui = code;
+  if (picked) { state.uiChosen = true; setItem("localStorage", UKEY, code); }
+}
+
+/* ================== Adresse et historique ==================
+   #/                              la carte
+   #/<cc>                          pays choisi : choix de la langue, ou directement la suite si une langue a déjà été choisie dans cet onglet
+   #/<cc>/<langue>                 départ (élection + priorités) ou page d'information
+   #/<cc>/<langue>/q/<n>           question n (1 = la première dans l'ordre en cours)
+   #/<cc>/<langue>/checkpoint      fin des sujets prioritaires
+   #/<cc>/<langue>/results[/<onglet>]   onglets : ranking, issues, questions, method
+   Formes courtes acceptées (certains hébergeurs ne transmettent que « #mot ») : #ke, #cv-pt. Le prototype France : #/fr/fr.
+   Les réponses ne vont jamais dans l'adresse.
+
+   Historique, pensé pour le bouton Retour d'Android : chaque nouvel écran ajoute une entrée (pushState), mais le
+   questionnaire n'en occupe qu'une, remplacée à chaque question (avance automatique, « Précédente », saut par la barre
+   de progression, fin des priorités). Retour depuis une question ramène donc à l'écran d'avant le questionnaire : le
+   départ, où « Reprendre » attend avec toutes les réponses, ou les résultats si l'on y corrigeait une réponse ; pas
+   38 questions en arrière, ce qui obligerait à « traverser » tout le questionnaire pour en sortir. Pour revenir d'une
+   question, il y a « Précédente ». Retour depuis les résultats ramène au questionnaire, là où on l'a quitté. */
+let navMode = "replace";   // pour le prochain écran affiché : "push", "push-ret" (question ouverte depuis les résultats), "replace", "none"
+let curHash = null;
+function parseHash(h) {
+  let s = String(h || "").replace(/^#/, "");
+  try { s = decodeURIComponent(s); } catch (e) { }
+  s = s.trim().toLowerCase();
+  const m = /^([a-z]{2})(?:-([a-z]{2}))?$/.exec(s);
+  if (m) return { cc: m[1], lang: m[2] || null, rest: [] };
+  const parts = s.split("/").filter(Boolean);
+  if (!parts.length) return {};
+  if (!/^[a-z]{2}$/.test(parts[0])) return { bad: true };
+  const lang = parts[1] && /^[a-z]{2}$/.test(parts[1]) ? parts[1] : null;
+  return { cc: parts[0], lang, rest: lang ? parts.slice(2) : [] };
+}
+function hashFor() {
+  const v = state.view, ui = state.ui;
+  if (v === "info") return `#/${AFRICA[state.place].a2.toLowerCase()}/${ui}`;
+  if (v === "loading" || v === "loaderror") return `#/${state.loadCc}/${ui}${state.loadRest}`;
+  if (!state.country) return "#/";
+  const b = `#/${state.country}/${ui}`;
+  if (v === "question") return `${b}/q/${state.i + 1}`;
+  if (v === "checkpoint") return `${b}/checkpoint`;
+  if (v === "results") return `${b}/results${state.tab ? "/" + TABS[state.tab] : ""}`;
+  return b;
+}
+function setHash(h, push, st) {
+  const cur = location.hash || "#/";   // une adresse sans # vaut la carte : on ne la touche pas au chargement
+  try {
+    if (push && cur !== h) history.pushState(st || {}, "", h);
+    else if (cur !== h || st) history.replaceState(st || history.state || {}, "", h);
+  } catch (e) { }
+  curHash = location.hash;
+}
+function syncUrl() {
+  const mode = navMode;
+  navMode = "replace";
+  if (mode === "none") { curHash = location.hash; return; }
+  setHash(hashFor(), mode === "push" || mode === "push-ret", mode === "push-ret" ? { ret: 1 } : mode === "push" ? {} : undefined);
+}
+function navTo(h) { setHash(h, true, {}); route(location.hash); }
+/* Affiche l'écran que décrit l'adresse. Une adresse inconnue ou qui ne correspond plus à la session (question sans
+   questionnaire en cours, par ex. un lien partagé) se dégrade vers l'écran le plus proche, et l'adresse est corrigée. */
+function route(h) {
+  const r = parseHash(h);
+  navMode = "replace";
+  loadSeq++;
+  clearTimeout(advanceTimer); clearTimeout(backTimer);
+  closeFiche();
+  curHash = location.hash;
+  const cat = r.cc ? CATALOG[r.cc] : null;
+  const id = cat ? cat.a3 : r.cc ? A2ID[r.cc] : null;
+  if (!r.cc || (!cat && !id)) {
+    closeLang();
+    // Déjà sur la carte (choix de langue annulé, Retour) : on ne la redessine pas, défilement et focus restent en place
+    if (state.view === "map" && !r.bad && (r.cc == null)) { syncUrl(); return; }
+    return viewMap();
+  }
+  const onMap = !!(id && AFRICA[id]);
+  let lang = r.lang && langOf(r.lang) ? r.lang : null;
+  if (!lang) {
+    const avail = cat ? cat.langs : LANGS.map(l => l.code);
+    if ((state.uiChosen || !onMap) && avail.includes(state.ui)) lang = state.ui;
+    else if (!onMap) lang = avail[0];
+    else {
+      if (location.hash !== "#/" + r.cc) setHash("#/" + r.cc, false);
+      if (state.view !== "map") { navMode = "none"; viewMap(); }
+      return openLang(id);
+    }
+    setHash(`#/${r.cc}/${lang}`, false, {});
+  }
+  closeLang();
+  setUi(lang, false);
+  if (!cat) return viewInfo(id);
+  state.loadRest = r.rest.length ? "/" + r.rest.join("/") : "";
+  openEdition(r.cc, () => renderStep(r.rest));
+}
+function renderStep(rest) {
+  const D = DATA[state.country];
+  if (D.kind === "info") return viewEdInfo();
+  const step = rest[0], arg = rest[1];
+  const has = state.order.length > 0;
+  if (step === "q" && has) {
+    const n = parseInt(arg, 10);
+    state.i = Math.min(Math.max((n || 1) - 1, 0), state.order.length - 1);
+    return viewQuestion();
+  }
+  if (step === "checkpoint" && has && state.nPrio) return viewCheckpoint();
+  if (step === "results" && has) { const k = TABS.indexOf(arg); state.tab = k >= 0 ? k : 0; return viewResults(); }
+  return viewStart();
+}
+
 /* ================== Calcul ================== */
 function accord(v, p) { return 1 - Math.abs(v - p) / 4; }
 function weight(qi, inTheme) {
@@ -198,16 +401,39 @@ function score(pid, theme) {
   const prior = theme ? PRIOR_THEME : PRIOR_ALL;
   return { s: (num + prior * 0.5) / (den + prior), k };
 }
+/* Groupes : « ok » (classé : au moins 2 réponses comparées, 1 par sujet, et couverture ≥ 40 %), « thin » (assez de réponses
+   mais couverture < 40 % : montré à part, sans rang), « out » (trop peu). Dans un groupe : par score, puis par sigle quand
+   les scores sont égaux (à 0,005 près), jamais dans l'ordre de l'édition. */
+const bySig = (x, y) => (x.p.sigle < y.p.sigle ? -1 : x.p.sigle > y.p.sigle ? 1 : 0);
+const GROUP = { ok: 0, thin: 1, out: 2 };
 function ranking(theme) {
   const min = theme ? 1 : 2;
-  const a = answeredIn(theme) || 1;
+  const a = answeredIn(theme);
   return ed().parties.map(p => {
     const r = score(p.id, theme);
-    return { p, ...r, ok: r.k >= min, partial: r.k / a < 0.5 };
-  }).sort((x, y) => (x.ok !== y.ok) ? (x.ok ? -1 : 1) : ((y.s ?? -1) - (x.s ?? -1)));
+    const cov = a ? r.k / a : 0;
+    const grp = r.k < min ? "out" : cov < COV_MIN ? "thin" : "ok";
+    return { p, s: r.s, k: r.k, cov, grp, ok: grp === "ok" };
+  }).sort((x, y) => {
+    if (x.grp !== y.grp) return GROUP[x.grp] - GROUP[y.grp];
+    if (x.grp === "out") return bySig(x, y);
+    const d = y.s - x.s;
+    return Math.abs(d) < EQ ? bySig(x, y) : d;
+  });
 }
+/* Les partis à moins de 3 points du premier partagent la première place. */
+function topGroup(rows) { return rows.filter(r => rows[0].s - r.s < TIE); }
 function answeredCount() { return Object.values(state.answers).filter(v => typeof v === "number").length; }
 function documented(pid) { return ed().questions.filter(q => q.cells[pid]).length; }
+/* Première question pas encore vue (sinon la première passée) dans l'ordre en cours ; -1 s'il n'y en a pas. */
+function firstOpen() {
+  const k = state.order.findIndex(x => state.answers[x] === undefined);
+  return k >= 0 ? k : state.order.findIndex(x => state.answers[x] === null);
+}
+function lastSeen() {
+  for (let k = state.order.length - 1; k >= 0; k--) if (state.answers[state.order[k]] !== undefined) return k;
+  return -1;
+}
 
 /* ================== Rendu général ================== */
 function renderChrome() {
@@ -215,7 +441,9 @@ function renderChrome() {
   document.documentElement.lang = state.ui;
   document.documentElement.dir = (langOf(state.ui) || {}).rtl ? "rtl" : "ltr";
   $("protoTag").textContent = L.proto;
-  const list = state.country && DATA[state.country] ? ed().langs : LANGS.map(l => ({ code: l.code, label: l.code.toUpperCase(), name: l.name, ready: true }));
+  // Pendant le chargement d'un pays, seules ses langues sont proposées (les autres restent visibles mais désactivées)
+  const loadCat = (state.view === "loading" || state.view === "loaderror") && CATALOG[state.loadCc];
+  const list = state.country && DATA[state.country] ? ed().langs : LANGS.map(l => ({ code: l.code, label: l.code.toUpperCase(), name: l.name, ready: !loadCat || loadCat.langs.includes(l.code) }));
   $("langs").innerHTML = list.map(l => `<button type="button" data-lang="${l.code}" aria-pressed="${state.ui === l.code}" ${l.ready ? "" : "disabled"} title="${l.name}${l.ready ? "" : " · " + L.soonLang}" lang="${l.code}">${l.label}</button>`).join("");
   $("langs").setAttribute("aria-label", L.langLabel);
   $("footer").innerHTML = `<span>${L.footer1}</span><span>${L.footer2}</span>`;
@@ -226,24 +454,58 @@ function renderSteps(active) {
   el.hidden = false;
   el.innerHTML = t().steps.map((s, k) => `<li class="${k < active ? "done" : k === active ? "on" : ""}"${k === active ? ' aria-current="step"' : ""}><span class="n">${k < active ? "✓" : k + 1}</span>${s}</li>`).join("");
 }
-function show(html, step, cls, keepScroll) {
+/* Annonces pour les lecteurs d'écran : une seule région aria-live, hors de #app, jamais recréée. */
+let liveTimer = null;
+function announce(msg) {
+  const el = $("live");
+  if (!el) return;
+  el.textContent = "";
+  clearTimeout(liveTimer);
+  liveTimer = setTimeout(() => { el.textContent = msg; }, 60);
+}
+function titleOf(h) {
+  let s = h.textContent.replace(/[\u2066-\u2069]/g, "").replace(/\s+/g, " ").trim().replace(/[.:]$/, "");
+  if (s.length > 70) s = s.slice(0, 68).trim() + "…";
+  return s ? `${s} · ${BRAND}` : BRAND;
+}
+/* Après un changement d'écran : le focus va au titre de l'écran (h1, tabindex -1), qui est rendu visible ; sur une
+   question, la page défile jusqu'à la question (et non en haut) quand les réponses ne tiennent pas dans l'écran. */
+let booted = false;
+function land(h) {
+  let y = 0;
+  if (state.view === "question") {
+    const meta = $("app").querySelector(".q-meta"), ans = $("app").querySelectorAll(".ans");
+    const last = ans[ans.length - 1];
+    if (meta && last && last.getBoundingClientRect().bottom + window.scrollY > window.innerHeight) y = Math.max(0, meta.getBoundingClientRect().top + window.scrollY - 8);
+  }
+  window.scrollTo({ top: y });
+  if (h && booted) { try { h.focus({ preventScroll: true }); } catch (e) { h.focus(); } }
+}
+function show(html, step, cls, keep) {
   $("app").innerHTML = `<section class="${cls || "screen"}">${html}</section>`;
   renderChrome();
   renderSteps(step);
-  if (!keepScroll) window.scrollTo({ top: 0 });
+  syncUrl();
+  save();
+  const h = $("app").querySelector("h1");
+  if (h) h.setAttribute("tabindex", "-1");
+  document.title = h ? titleOf(h) : BRAND;
+  if (!keep) land(h);
+  booted = true;
 }
 function rerender() {
   const y = window.scrollY;
   const v = state.view;
+  navMode = "replace";
   if (v === "map") viewMap(true);
   else if (v === "info") viewInfo(state.place, true);
   else if (v === "loading") viewLoading(true);
   else if (v === "loaderror") viewLoadError(true);
   else if (v === "edinfo") viewEdInfo(true);
   else if (v === "start") viewStart(true);
-  else if (v === "question") viewQuestion();
-  else if (v === "checkpoint") viewCheckpoint();
-  else if (v === "results") viewResults();
+  else if (v === "question") viewQuestion(true);
+  else if (v === "checkpoint") viewCheckpoint(true);
+  else if (v === "results") viewResults(true);
   window.scrollTo({ top: y });
 }
 
@@ -355,10 +617,17 @@ function bindMap() {
   wrap.addEventListener("focusout", () => { tip.hidden = true; });
   wrap.addEventListener("keydown", e => {
     const el = e.target.closest("[data-place]");
-    if (el && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openLang(el.dataset.place); }
+    if (el && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); chooseCountry(el.dataset.place); }
   });
   const s = $("csearch");
   if (s) s.addEventListener("input", () => { $("clist").innerHTML = countryList(s.value); });
+}
+/* Un pays touché sur la carte ou dans la liste : nouvelle entrée d'historique #/<cc> (Retour referme le choix de langue). */
+function chooseCountry(id) {
+  const cc = ccOf(id);
+  if (!cc) return;
+  setHash(`#/${cc}`, true, { dlg: 1 });
+  route(location.hash);
 }
 
 /* ================== Choix de la langue ================== */
@@ -390,26 +659,41 @@ function openLang(id) {
 function closeLang() { const d = $("langDlg"); if (d.open) { if (typeof d.close === "function") d.close(); else d.removeAttribute("open"); } }
 function pickLang(code) {
   const id = state.pending;
+  const cc = ccOf(id);
+  if (!cc) return closeLang();
+  setUi(code, true);
+  // L'entrée #/<cc> du choix de langue est remplacée : Retour depuis le pays ramène à la carte, pas au choix de langue.
+  setHash(`#/${cc}/${code}`, false, {});
   closeLang();
-  state.ui = code;
-  if (A3CC[id]) { openEdition(A3CC[id]); return; }
-  viewInfo(id);
+  route(location.hash);
 }
+/* Fermeture du choix de langue sans choisir (Annuler, Échap, fond, Retour d'Android) : on revient à #/. */
+$("langDlg").addEventListener("close", () => {
+  const r = parseHash(location.hash);
+  if (!r.cc || r.lang) return;
+  if (history.state && history.state.dlg) { try { history.back(); return; } catch (e) { } }
+  setHash("#/", false, {});
+});
 
 /* ================== Chargement d'une édition ================== */
 let loadSeq = 0;
-function openEdition(cc) {
-  if (!CATALOG[cc]) return;
+function openEdition(cc, after) {
+  if (!CATALOG[cc]) return viewMap();
   closeFiche();
   const seq = ++loadSeq;
   state.loadCc = cc;
+  if (!CATALOG[cc].langs.includes(state.ui)) state.ui = CATALOG[cc].langs[0];
   const ready = () => {
     if (seq !== loadSeq) return;
     const D = DATA[cc];
     state.country = cc; state.place = null;
     if (!D.langs.includes(state.ui)) state.ui = D.lang;
-    resetAnswers(); state.priorities = [];
-    if (D.kind === "info") viewEdInfo(); else viewStart();
+    if (D.kind === "ed") {
+      if (state.ac !== cc) { resetAnswers(); state.priorities = []; state.ac = cc; }
+      checkSession(D.ed);
+    }
+    if (after) after();
+    else if (D.kind === "info") viewEdInfo(); else viewStart();
   };
   if (DATA[cc]) { ready(); return; }
   const timer = setTimeout(() => { if (seq === loadSeq) viewLoading(); }, 120);
@@ -531,6 +815,7 @@ function viewStart(keep) {
   const E = ed(), L = t();
   const full = state.priorities.length >= 3;
   const n = state.priorities.length;
+  const done = answeredCount();
   const openDetails = [...document.querySelectorAll(".about details")].map(d => d.open);
   show(`
     <div class="strip">
@@ -562,6 +847,7 @@ function viewStart(keep) {
       <h1 class="big-title">${L.themesTitle}</h1>
       <p class="lead">${L.themesLead}</p>
     </div>
+    ${done && state.order.length ? `<div class="resume"><p>${esc(L.resumeText(done))}</p><button class="btn btn-primary" type="button" data-go="resume">${L.resumeBtn}</button></div>` : ""}
     <div class="theme-grid">${E.themes.map(th => {
       const on = state.priorities.includes(th.id);
       const rank = state.priorities.indexOf(th.id) + 1;
@@ -574,8 +860,8 @@ function viewStart(keep) {
       </button>`;
     }).join("")}</div>
     <div class="sticky-go">
-      <button class="btn btn-primary" type="button" data-go="startq" ${n ? "" : "disabled"}>${L.startPrio}</button>
-      <span class="mono muted" style="font-size:.85rem" aria-live="polite">${L.chosen(n)}</span>
+      <button class="btn btn-${done && state.order.length ? "ghost" : "primary"}" type="button" data-go="startq" ${n ? "" : "disabled"}>${L.startPrio}</button>
+      <span class="mono muted" style="font-size:.85rem">${L.chosen(n)}</span>
     </div>
   `, 0, "screen", keep);
   if (keep) document.querySelectorAll(".about details").forEach((d, i) => { d.open = !!openDetails[i]; });
@@ -590,8 +876,8 @@ function buildOrder() {
 }
 
 /* ================== Questionnaire ================== */
-let advanceTimer = null;
-function viewQuestion() {
+let advanceTimer = null, backTimer = null, qShownAt = 0;
+function viewQuestion(keep) {
   state.view = "question";
   const E = ed(), L = t();
   const qi = state.order[state.i];
@@ -612,6 +898,7 @@ function viewQuestion() {
     ].join(" ");
     return `<button type="button" class="${cls}" data-goto="${k}" aria-label="${L.qOf(k + 1, state.order.length)}"${k === state.i ? ' aria-current="step"' : ""}></button>`;
   }).join("");
+  // « Compte double » : bouton à bascule au-dessus des réponses, lié à CETTE question (data-dbl), jamais à state.i au moment du clic
   show(`
     <nav class="progress" aria-label="${L.steps[1]}">${progress}</nav>
     <div class="q-meta">
@@ -620,38 +907,61 @@ function viewQuestion() {
     </div>
     <p class="q-min">${L.ministries}${C()} ${esc(th.min)}</p>
     <div class="slip">
-      <h2>${esc(q.text)}</h2>
+      <h1>${esc(q.text)}</h1>
+      <button type="button" class="star" data-dbl="${qi}" aria-pressed="${!!state.double[qi]}"><span class="st" aria-hidden="true">★</span><span>${L.double}</span></button>
       <details><summary>${L.background}</summary><p>${esc(q.ctx)}</p></details>
     </div>
-    <fieldset class="answers"><legend class="sr">${L.yourAnswer}</legend>
+    <fieldset class="answers" data-q="${qi}"><legend class="sr">${L.yourAnswer}</legend>
       ${[2, 1, 0, -1, -2].map(val => `<button type="button" class="ans" data-val="${val}" aria-pressed="${v === val}"><span class="box" aria-hidden="true">${CHECK}</span><span>${L.ans[val]}</span></button>`).join("")}
     </fieldset>
-    <label class="double"><input type="checkbox" id="qDouble" ${state.double[qi] ? "checked" : ""}> ${L.double}</label>
     <div class="q-nav">
       <button class="btn btn-ghost" type="button" data-go="prev" ${state.i === 0 ? "disabled" : ""}>${L.prev}</button>
       <div class="actions">
-        <button class="btn btn-ghost" type="button" data-val="skip">${v === null ? L.skipped : L.skip}</button>
+        <button class="btn btn-ghost" type="button" data-val="skip" data-q="${qi}">${v === null ? L.skipped : L.skip}</button>
         ${allPrioSeen ? `<button class="btn btn-primary" type="button" data-go="results">${L.seeResults}</button>` : ""}
       </div>
     </div>
-  `, 1);
+  `, 1, "screen", keep);
+  qShownAt = now();
+  if (!keep) announce(L.qOf(state.i + 1, state.order.length));
 }
-function answer(val) {
-  const qi = state.order[state.i];
+function answer(val, qi) {
+  if (state.view !== "question" || qi !== state.order[state.i]) return;
   state.answers[qi] = val;
   document.querySelectorAll(".ans").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.val === val)));
+  save();
   clearTimeout(advanceTimer);
   advanceTimer = setTimeout(nextQ, 240);
 }
 function nextQ() {
+  if (state.view !== "question") return;
   const last = state.order.length - 1;
+  // Correction lancée depuis les résultats : retour aux résultats à la fin de la plage corrigée
+  if (state.ret && state.i >= state.ret.until) return toResults();
   if (state.i === state.nPrio - 1 && state.nPrio < state.order.length && !state.order.slice(state.nPrio).some(x => state.answers[x] !== undefined)) {
     viewCheckpoint(); return;
   }
   if (state.i < last) { state.i++; viewQuestion(); }
-  else viewResults();
+  else toResults();
 }
-function viewCheckpoint() {
+/* Vers les résultats. Si la question affichée a été ouverte depuis les résultats (entrée d'historique marquée « ret »),
+   on revient en arrière dans l'historique au lieu d'empiler un second écran de résultats. */
+function toResults() {
+  clearTimeout(advanceTimer);
+  const back = !!(state.ret && history.state && history.state.ret);
+  state.ret = null;
+  if (back) {
+    try { history.back(); } catch (e) { }
+    // Repli si l'hébergeur bloque l'historique : afficher quand même les résultats. Annulé dès que Retour aboutit
+    // (route) ou que l'utilisateur fait autre chose (go) : sinon il pourrait surgir sur un écran ouvert ensuite.
+    clearTimeout(backTimer);
+    backTimer = setTimeout(() => { if (state.view === "question") { navMode = "push"; viewResults(); } }, 500);
+    return;
+  }
+  navMode = "push";
+  viewResults();
+}
+function viewCheckpoint(keep) {
   state.view = "checkpoint";
   const L = t();
   const rest = state.order.length - state.nPrio;
@@ -665,34 +975,49 @@ function viewCheckpoint() {
       <button class="btn btn-primary" type="button" data-go="results">${L.seeResults}</button>
       <button class="btn btn-ghost" type="button" data-go="more">${L.cpMore(rest)}</button>
     </div>
-  `, 1);
+  `, 1, "screen", keep);
 }
 
 /* ================== Résultats ================== */
-function viewResults() {
+/* Le titre (souvent partagé en capture d'écran) reste court et ne dit jamais plus que ce que les données permettent. */
+function headline(rank, a) {
+  const E = ed(), L = t();
+  const ranked = rank.filter(r => r.grp === "ok"), thin = rank.filter(r => r.grp === "thin");
+  const pr = state.priorities.map(id => (E.themes.find(x => x.id === id) || {}).name).filter(Boolean).join(", ") || L.none;
+  const nums = Object.values(state.answers).filter(v => typeof v === "number");
+  const most = nums.length ? Math.max(...[-2, -1, 0, 1, 2].map(v => nums.filter(x => x === v).length)) : 0;
+  const H = { summary: L.resSummary(a, E.questions.length, pr), early: a < EARLY, straight: a >= 6 && most / a >= STRAIGHT, more: firstOpen() >= 0 };
+  if (!ranked.length) {
+    H.title = thin.length ? L.resThin : L.resNone;
+    H.summary = thin.length ? L.resThinText : L.resNoneText;
+    return H;
+  }
+  const lead = topGroup(ranked);
+  const who = lead.length > 1 ? listFmt(lead.map(r => psig(r.p))) : plabel(lead[0].p);
+  const pct = pctPlain(ranked[0].s);
+  if (a < EARLY) H.title = L.resEarly(a, who, lead.length);
+  else if (ranked[0].s < 0.5) H.title = L.resFar(who, pct, lead.length);
+  else if (lead.length > 1) H.title = L.resTie(who, pct);
+  else H.title = L.resClosest(who);
+  return H;
+}
+function viewResults(keep) {
   state.view = "results";
+  state.ret = null;
   clearTimeout(advanceTimer);
   const E = ed(), L = t();
   const a = answeredCount();
   const rank = ranking();
-  const eligible = rank.filter(r => r.ok);
-  let title, summary;
-  if (!eligible.length) {
-    title = L.resNone; summary = L.resNoneText;
-  } else {
-    const top = Math.round(eligible[0].s * 100);
-    const tied = eligible.filter(r => Math.round(r.s * 100) === top);
-    title = tied.length > 1 ? L.resTie(tied.map(r => pname(r.p)).join(", ")) : L.resClosest(`${pname(eligible[0].p)} (${eligible[0].p.sigle})`);
-    const pr = state.priorities.map(id => E.themes.find(x => x.id === id).name).join(", ") || L.none;
-    summary = L.resSummary(a, E.questions.length, pr);
-  }
+  const H = headline(rank, a);
   show(`
     <div class="res-head">
       <p class="eyebrow">${L.resEyebrow} · ${esc(edName(E))}</p>
-      <h1 class="big-title">${esc(title)}</h1>
-      <p>${esc(summary)}</p>
+      <h1 class="big-title">${esc(H.title)}</h1>
+      ${H.straight ? `<p class="notice">${L.straight}</p>` : ""}
+      <p>${esc(H.summary)}</p>
+      ${H.early && H.more ? `<div class="early"><p>${L.earlyText(EARLY)}</p><button class="btn btn-primary" type="button" data-go="continue">${L.earlyBtn}</button></div>` : ""}
     </div>
-    <div class="tabs" role="tablist">${L.tabs.map((x, k) => `<button class="tab" role="tab" id="tab${k}" aria-controls="pan${k}" aria-selected="${state.tab === k}" type="button" data-tab="${k}">${x}</button>`).join("")}</div>
+    <div class="tabs" role="tablist">${L.tabs.map((x, k) => `<button class="tab" role="tab" id="tab${k}" aria-controls="pan${k}" aria-selected="${state.tab === k}" tabindex="${state.tab === k ? 0 : -1}" type="button" data-tab="${k}">${x}</button>`).join("")}</div>
     <div class="panel" role="tabpanel" id="pan0" aria-labelledby="tab0" ${state.tab === 0 ? "" : "hidden"}>${panelRanking(rank, a)}</div>
     <div class="panel" role="tabpanel" id="pan1" aria-labelledby="tab1" ${state.tab === 1 ? "" : "hidden"}>${panelThemes()}</div>
     <div class="panel" role="tabpanel" id="pan2" aria-labelledby="tab2" ${state.tab === 2 ? "" : "hidden"}>${panelQuestions()}</div>
@@ -702,24 +1027,30 @@ function viewResults() {
       <button class="btn btn-ghost" type="button" data-go="restart">${L.actRestart}</button>
       <button class="btn btn-ghost" type="button" data-go="home">${L.changeCountry}</button>
     </div>
-  `, 2);
+  `, 2, "screen", keep);
+  if (!keep) announce(L.resReady);
 }
 function panelRanking(rank, a) {
   const E = ed(), L = t();
-  let pos = 0;
-  return `<ol class="rank">${rank.map(r => {
-    const has = r.s !== null;
-    if (r.ok) pos++;
-    return `<li class="${r.ok ? (pos === 1 ? "top" : "") : "out"}">
-      <span class="pos">${r.ok ? pos : "–"}</span>
+  const ranked = rank.filter(r => r.grp === "ok"), thin = rank.filter(r => r.grp === "thin"), out = rank.filter(r => r.grp === "out");
+  const lead = ranked.length ? topGroup(ranked) : [];
+  const tie = lead.length > 1;
+  const row = (r, pos, cls) => {
+    const shown = r.grp !== "out";
+    return `<li class="${cls}">
+      <span class="pos">${pos}</span>
       ${badge(r.p)}
       <div class="rank-main">
-        <div class="rank-head"><b>${hname(r.p)}</b><span class="pct">${has && r.ok ? pctTxt(r.s) : "–"}</span></div>
-        <div class="bar" style="--pc:var(${pvar(r.p.id)}, var(--accent))" role="img" aria-label="${has && r.ok ? Math.round(r.s * 100) + " " + L.pctWord : L.notRanked}"><span style="width:${has && r.ok ? (r.s * 100).toFixed(1) : 0}%"></span></div>
-        <div class="rank-sub"><span>${candLine(r.p, E, L)}</span><span>${r.ok ? L.compared(r.k, a) : L.notRanked}</span>${r.ok && r.partial ? `<span class="chip warn">${L.partial}</span>` : ""}${r.p.chip ? `<span class="chip grey">${esc(r.p.chip)}</span>` : ""}<button class="link" type="button" data-fiche="${esc(r.p.id)}">${L.seeProfile}</button></div>
+        <div class="rank-head"><b>${hname(r.p)}</b><span class="pct">${shown ? pctTxt(r.s) : "–"}</span></div>
+        <div class="bar" style="--pc:var(${pvar(r.p.id)}, var(--accent))" role="img" aria-label="${shown ? Math.round(r.s * 100) + " " + L.pctWord : L.notRanked}"><span style="width:${shown ? (r.s * 100).toFixed(1) : 0}%"></span></div>
+        <div class="rank-sub"><span>${candLine(r.p, E, L)}</span><span>${shown ? L.compared(r.k, a) : L.notRanked}</span>${r.grp === "ok" && r.cov < 0.5 ? `<span class="chip warn">${L.partial}</span>` : ""}${r.p.chip ? `<span class="chip grey">${esc(r.p.chip)}</span>` : ""}<button class="link" type="button" data-fiche="${esc(r.p.id)}">${L.seeProfile}</button></div>
       </div>
     </li>`;
-  }).join("")}</ol>
+  };
+  const pos = (r, i) => tie && lead.includes(r) ? `<span aria-hidden="true" dir="ltr">1=</span><span class="sr">${L.posTie}</span>` : String(i + 1);
+  return `${ranked.length ? `<ol class="rank">${ranked.map((r, i) => row(r, pos(r, i), lead.includes(r) ? "top" : "")).join("")}</ol>` : ""}
+  ${thin.length ? `<h2 class="rank-h">${L.thinTitle}</h2><p class="rank-hp">${L.thinText}</p><ul class="rank">${thin.map(r => row(r, "", "thin")).join("")}</ul>` : ""}
+  ${out.length ? `<ul class="rank">${out.map(r => row(r, "–", "out")).join("")}</ul>` : ""}
   <p class="caveat">${L.rankCaveat}</p>`;
 }
 function panelThemes() {
@@ -732,24 +1063,23 @@ function panelThemes() {
     const answered = qIdx.some(i => typeof state.answers[i] === "number");
     const head = `<div class="tc-head"><h3>${esc(th.name)}</h3>${on ? `<span class="chip">${L.prio}</span>` : ""}</div>`;
     if (!answered) {
-      const first = state.order.indexOf(qIdx[0]);
-      return `<article class="theme-card${on ? " prio-on" : ""}">${head}<p class="skipped-note">${L.themeNotAnswered}</p><div><button class="link" type="button" data-goto="${first}">${L.answerTheme}</button></div></article>`;
+      const ks = qIdx.map(i => state.order.indexOf(i)).filter(k => k >= 0);
+      return `<article class="theme-card${on ? " prio-on" : ""}">${head}<p class="skipped-note">${L.themeNotAnswered}</p><div><button class="link" type="button" data-goto="${Math.min(...ks)}" data-until="${Math.max(...ks)}">${L.answerTheme}</button></div></article>`;
     }
     const r = ranking(th.id);
-    const ok = r.filter(x => x.ok);
+    const ok = r.filter(x => x.grp === "ok"), thin = r.filter(x => x.grp === "thin");
     let phrase;
-    if (!ok.length) phrase = L.themeNoData;
+    if (!ok.length) phrase = thin.length ? L.themeThin : L.themeNoData;
     else {
-      const top = Math.round(ok[0].s * 100);
-      const tied = ok.filter(x => Math.round(x.s * 100) === top);
-      phrase = tied.length > 1
-        ? L.themeTie(esc(th.name), tied.map(x => `<b>${hname(x.p)}</b>`).join(", "), pctTxt(ok[0].s))
-        : L.themeVerdict(esc(th.name), esc(`${pname(ok[0].p)} (${ok[0].p.sigle})`), pctTxt(ok[0].s), ok[0].k);
+      const lead = topGroup(ok);
+      phrase = lead.length > 1
+        ? L.themeTie(esc(th.name), listFmt(lead.map(x => `<b>${hname(x.p)}</b>`)), pctTxt(ok[0].s))
+        : L.themeVerdict(esc(th.name), esc(plabel(ok[0].p)), pctTxt(ok[0].s), ok[0].k);
     }
     return `<article class="theme-card${on ? " prio-on" : ""}">${head}
       <p class="verdict-line">${phrase}</p>
-      <div class="mini">${r.map(x => x.ok
-        ? `<div class="mini-row">${badge(x.p, "sm")}<span class="name">${hname(x.p)}</span><div class="bar" style="--pc:var(${pvar(x.p.id)}, var(--accent))"><span style="width:${(x.s * 100).toFixed(1)}%"></span></div><span class="pct">${pctTxt(x.s)}</span></div>`
+      <div class="mini">${r.map(x => x.grp !== "out"
+        ? `<div class="mini-row${x.grp === "thin" ? " thin" : ""}">${badge(x.p, "sm")}<span class="name">${hname(x.p)}${x.grp === "thin" ? ` <span class="chip warn">${L.partial}</span>` : ""}</span><div class="bar" style="--pc:var(${pvar(x.p.id)}, var(--accent))"><span style="width:${(x.s * 100).toFixed(1)}%"></span></div><span class="pct">${pctTxt(x.s)}</span></div>`
         : `<div class="mini-row nd">${badge(x.p, "sm")}<span class="name">${hname(x.p)}</span><span class="ndt" style="font-size:.82rem;font-style:italic">${L.notDoc}</span><span></span></div>`).join("")}
       </div>
     </article>`;
@@ -796,6 +1126,8 @@ function panelMethod() {
     <p>${L.mFormula1}</p>
     <p class="formula" dir="ltr">${L.formula}</p>
     <p>${L.mFormula2}</p>
+    <h3>${L.mRulesTitle}</h3>
+    <ul class="rules">${L.mRules.map(x => `<li>${x}</li>`).join("")}</ul>
     <h3>${L.mCodingTitle}</h3>
     <ul>${coding.map(x => `<li>${x}</li>`).join("")}${E.lang !== E.baseLang ? `<li class="transl">${L.mTransl}</li>` : ""}</ul>
     <h3>${L.mCovTitle}</h3>
@@ -837,35 +1169,96 @@ function openFiche(pid) {
 }
 function closeFiche() { const d = $("fiche"); if (d.open) { if (typeof d.close === "function") d.close(); else d.removeAttribute("open"); } }
 
+/* ================== Confirmation avant d'effacer des réponses ==================
+   Dans la page (confirm() est bloqué chez certains hébergeurs) : une ligne sous le bouton, avec « Effacer… » et « Annuler ». */
+let confirmFrom = null;
+function needsConfirm() { return ["start", "question", "checkpoint", "results"].includes(state.view) && answeredCount() > 0; }
+function dropConfirm(refocus) {
+  const box = $("confirmBox");
+  if (box) box.remove();
+  if (refocus && confirmFrom && document.contains(confirmFrom)) confirmFrom.focus();
+  confirmFrom = null;
+}
+function askConfirm(kind, el) {
+  const L = t();
+  dropConfirm();
+  confirmFrom = el || null;
+  const box = document.createElement("div");
+  box.className = "confirm"; box.id = "confirmBox";
+  box.setAttribute("role", "group"); box.setAttribute("aria-labelledby", "confirmMsg");
+  box.innerHTML = `<p id="confirmMsg" tabindex="-1" data-focus-target>${esc(L.confirmLose(answeredCount()))}</p><div class="actions"><button class="btn btn-primary" type="button" data-go="${kind}!">${kind === "home" ? L.confirmHome : L.confirmRestart}</button><button class="btn btn-ghost" type="button" data-go="noconfirm">${L.cancel}</button></div>`;
+  const anchor = el && $("app").contains(el) ? el.closest(".actions, .strip, .q-nav") : null;
+  if (anchor) anchor.insertAdjacentElement("afterend", box);
+  else { const sec = $("app").firstElementChild; sec.insertBefore(box, sec.firstChild); }
+  $("confirmMsg").focus({ preventScroll: true });
+  box.scrollIntoView({ block: "nearest" });
+}
+
 /* ================== Navigation ================== */
-function resetAnswers() { state.answers = {}; state.double = {}; state.i = 0; state.tab = 0; state.order = []; }
-function go(where) {
-  clearTimeout(advanceTimer);
+function resetAnswers() { state.answers = {}; state.double = {}; state.i = 0; state.tab = 0; state.order = []; state.nPrio = 0; state.ret = null; }
+function goHome(clear) {
+  loadSeq++;
+  closeFiche();
+  if (clear) { resetAnswers(); state.priorities = []; state.ac = null; }
+  navMode = state.view === "map" ? "replace" : "push";
+  viewMap();
+}
+function go(where, el) {
+  clearTimeout(advanceTimer); clearTimeout(backTimer);
   switch (where) {
-    case "home": loadSeq++; closeFiche(); viewMap(); break;
-    case "france": state.ui = "fr"; openEdition("fr"); break;
-    case "nigeria": openEdition("ng"); break;
-    case "retry": openEdition(state.loadCc); break;
-    case "startq": buildOrder(); state.i = 0; viewQuestion(); break;
-    case "prev": if (state.i > 0) { state.i--; viewQuestion(); } break;
-    case "more": state.i = state.nPrio; viewQuestion(); break;
-    case "results": state.tab = 0; viewResults(); break;
-    case "edit": state.i = 0; viewQuestion(); break;
-    case "restart": resetAnswers(); state.priorities = []; viewStart(); break;
+    case "home": if (needsConfirm()) return askConfirm("home", el); return goHome(false);
+    case "home!": return goHome(true);
+    case "restart": if (needsConfirm()) return askConfirm("restart", el);
+    // falls through
+    case "restart!": resetAnswers(); state.priorities = []; navMode = "push"; return viewStart();
+    case "noconfirm": return dropConfirm(true);
+    case "france": return navTo("#/fr/fr");
+    case "nigeria": return navTo(`#/ng/${CATALOG.ng.langs.includes(state.ui) ? state.ui : CATALOG.ng.langs[0]}`);
+    case "retry": return route(location.hash);
+    case "startq": buildOrder(); state.i = 0; state.ret = null; navMode = "push"; return viewQuestion();
+    case "resume": {
+      const qi = state.order[state.i];
+      buildOrder();
+      state.i = Math.max(0, state.order.indexOf(qi));
+      state.ret = null; navMode = "push";
+      return viewQuestion();
+    }
+    case "prev": if (state.i > 0) { state.i--; viewQuestion(); } return;
+    case "more": state.i = state.nPrio; return viewQuestion();
+    case "results": state.tab = 0; return toResults();
+    case "edit": {
+      const u = lastSeen();
+      state.ret = { until: u >= 0 ? u : state.order.length - 1 };
+      state.i = 0; navMode = "push-ret";
+      return viewQuestion();
+    }
+    case "continue": {
+      const k = firstOpen();
+      if (k < 0) return;
+      state.ret = { until: state.order.length - 1 };
+      state.i = k; navMode = "push-ret";
+      return viewQuestion();
+    }
   }
 }
 document.addEventListener("click", e => {
   if (e.target === $("langDlg")) return closeLang();
   if (e.target === $("fiche")) return closeFiche();
-  const el = e.target.closest("[data-pick],[data-place],[data-lang],[data-go],[data-prio],[data-val],[data-goto],[data-tab],[data-fiche],#ficheClose,#langCancel,#brand");
+  const el = e.target.closest("[data-pick],[data-place],[data-lang],[data-go],[data-prio],[data-val],[data-dbl],[data-goto],[data-tab],[data-fiche],#ficheClose,#langCancel,#brand");
   if (!el) return;
   if (el.id === "ficheClose") return closeFiche();
   if (el.id === "langCancel") return closeLang();
-  if (el.id === "brand") return go("home");
+  if (el.id === "brand") return go("home", el);
   if (el.dataset.pick) return pickLang(el.dataset.pick);
-  if (el.dataset.place) return openLang(el.dataset.place);
-  if (el.dataset.lang) { state.ui = el.dataset.lang; return rerender(); }
-  if (el.dataset.go) return go(el.dataset.go);
+  if (el.dataset.place) return chooseCountry(el.dataset.place);
+  if (el.dataset.lang) {
+    const code = el.dataset.lang;
+    setUi(code, true);
+    rerender();
+    const b = document.querySelector(`#langs [data-lang="${code}"]`); if (b) b.focus({ preventScroll: true });
+    return;
+  }
+  if (el.dataset.go) return go(el.dataset.go, el);
   if (el.dataset.fiche) return openFiche(el.dataset.fiche);
   if (el.dataset.prio) {
     const id = el.dataset.prio;
@@ -875,32 +1268,56 @@ document.addEventListener("click", e => {
     viewStart(true);
     window.scrollTo({ top: y });
     const again = document.querySelector(`[data-prio="${CSS.escape(id)}"]`); if (again) again.focus({ preventScroll: true });
+    announce(t().chosen(state.priorities.length));
     return;
   }
-  if (el.dataset.val) return answer(el.dataset.val === "skip" ? null : +el.dataset.val);
+  if (el.dataset.val) {
+    // Un second tapotement juste après l'affichage (double tapotement) ne répond pas à la question suivante ; le clavier (detail 0) n'est pas freiné
+    if (e.detail > 0 && now() - qShownAt < TAP_GUARD) return;
+    const host = el.closest("[data-q]");
+    return answer(el.dataset.val === "skip" ? null : +el.dataset.val, host ? +host.dataset.q : state.order[state.i]);
+  }
+  if (el.dataset.dbl) {
+    const qi = +el.dataset.dbl;
+    if (state.double[qi]) delete state.double[qi]; else state.double[qi] = true;
+    el.setAttribute("aria-pressed", String(!!state.double[qi]));
+    save();
+    return;
+  }
   if (el.dataset.goto) {
     closeFiche();
     if (!state.order.length) buildOrder();
-    state.i = +el.dataset.goto; return viewQuestion();
+    const k = +el.dataset.goto;
+    // Depuis les résultats : nouvel écran, et retour aux résultats une fois la question (ou le sujet) corrigée
+    if (state.view === "results") { state.ret = { until: el.dataset.until ? +el.dataset.until : k }; navMode = "push-ret"; }
+    state.i = k; return viewQuestion();
   }
   if (el.dataset.tab) {
     state.tab = +el.dataset.tab;
-    document.querySelectorAll('[role="tab"]').forEach((b, k) => b.setAttribute("aria-selected", String(k === state.tab)));
+    document.querySelectorAll('[role="tab"]').forEach((b, k) => { b.setAttribute("aria-selected", String(k === state.tab)); b.tabIndex = k === state.tab ? 0 : -1; });
     document.querySelectorAll('[role="tabpanel"]').forEach((p, k) => { p.hidden = k !== state.tab; });
+    setHash(hashFor(), false);
+    save();
   }
 });
-document.addEventListener("change", e => {
-  if (e.target.id === "qDouble") state.double[state.order[state.i]] = e.target.checked;
-});
+/* Onglets : tabindex mobile, flèches (inversées de droite à gauche), Début et Fin. */
 document.addEventListener("keydown", e => {
   if (!e.target.closest || !e.target.closest('[role="tablist"]')) return;
-  if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+  if (!["ArrowRight", "ArrowLeft", "Home", "End"].includes(e.key)) return;
   const tabs = [...document.querySelectorAll('[role="tab"]')];
   const k = tabs.indexOf(document.activeElement);
   if (k < 0) return;
-  const n = (k + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length;
+  e.preventDefault();
+  const fwd = (e.key === "ArrowRight") !== (document.documentElement.dir === "rtl");
+  const n = e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : (k + (fwd ? 1 : tabs.length - 1)) % tabs.length;
   tabs[n].focus(); tabs[n].click();
 });
+window.addEventListener("popstate", () => route(location.hash));
+window.addEventListener("hashchange", () => { if (location.hash !== curHash) route(location.hash); });
+try { history.scrollRestoration = "manual"; } catch (e) { }
 
-viewMap();
+/* Démarrage : langue (appareil → navigateur → anglais), session de cet onglet, puis l'écran que décrit l'adresse. */
+state.ui = initialUi();
+restore();
+route(location.hash);
 </script>

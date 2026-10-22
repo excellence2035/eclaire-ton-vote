@@ -67,6 +67,8 @@ button { font: inherit; color: inherit; }
 .muted { color: var(--muted); }
 .eyebrow { font-size: .74rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* Titre d'écran qui reçoit le focus après chaque changement d'écran (lecteurs d'écran, clavier) : pas de cadre */
+h1[tabindex="-1"]:focus, [data-focus-target]:focus { outline: none; }
 
 /* Barre du haut */
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 10px 14px; flex-wrap: wrap; padding-block: 6px 12px; }
@@ -248,7 +250,7 @@ details > summary { cursor: pointer; color: var(--accent-ink); font-weight: 600;
 .q-theme { font-family: var(--f-display); font-weight: 700; font-size: 1.05rem; color: var(--ink); margin-inline-end: 6px; }
 .q-min { font-size: .84rem; color: var(--muted); margin-top: -14px; }
 .slip { background: var(--sheet); border: 1px solid var(--line); border-radius: var(--r-l); padding: 26px 24px 20px; display: grid; gap: 16px; box-shadow: var(--shadow); }
-.slip h2 { font-weight: 600; font-size: clamp(1.25rem, 4.2vw, 1.62rem); line-height: 1.3; letter-spacing: -.01em; }
+.slip h1 { font-weight: 600; font-size: clamp(1.25rem, 4.2vw, 1.62rem); line-height: 1.3; letter-spacing: -.01em; }
 .slip details p { margin-top: 10px; color: var(--muted); max-width: 66ch; }
 .answers { border: 0; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
 .ans { display: grid; justify-items: center; align-content: start; gap: 10px; padding: 16px 8px 14px; border: 1.5px solid var(--line); border-radius: var(--r); background: var(--sheet); cursor: pointer; text-align: center; font-size: .92rem; font-weight: 500; line-height: 1.25; transition: border-color .15s, background-color .15s, transform .12s; }
@@ -262,8 +264,12 @@ details > summary { cursor: pointer; color: var(--accent-ink); font-weight: 600;
   .answers { grid-template-columns: 1fr; gap: 6px; }
   .ans { grid-template-columns: auto 1fr; justify-items: start; align-items: center; text-align: start; padding: 13px 16px; font-size: 1rem; }
 }
-.double { display: flex; align-items: center; gap: 10px; cursor: pointer; width: fit-content; font-size: .95rem; }
-.double input { width: 20px; height: 20px; accent-color: var(--accent); }
+/* « Compte double » : bouton à bascule au-dessus des réponses, lié à la question affichée */
+.star { display: inline-flex; align-items: center; gap: 8px; width: fit-content; min-height: 40px; padding: 6px 14px 6px 10px; border: 1.5px solid var(--line-strong); border-radius: 999px; background: var(--sheet); color: var(--ink); cursor: pointer; font-size: .92rem; font-weight: 600; line-height: 1.25; text-align: start; }
+.star .st { font-size: 1.15rem; line-height: 1; color: var(--muted); }
+.star:hover { border-color: var(--ink); }
+.star[aria-pressed="true"] { background: var(--lamp-soft); border-color: var(--warn); }
+.star[aria-pressed="true"] .st { color: var(--warn); }
 .q-nav { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 16px; }
 
 /* ============ Résultats ============ */
@@ -276,10 +282,20 @@ details > summary { cursor: pointer; color: var(--accent-ink); font-weight: 600;
 @media (max-width: 480px) { .tab { padding: 8px 10px; font-size: .9rem; } }
 .panel { display: grid; gap: 18px; }
 .rank { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.rank li { display: grid; grid-template-columns: 22px 44px minmax(0, 1fr); gap: 14px; align-items: center; padding: 14px 16px; background: var(--sheet); border: 1px solid var(--line); border-radius: var(--r); }
+.rank li { display: grid; grid-template-columns: 26px 44px minmax(0, 1fr); gap: 14px; align-items: center; padding: 14px 16px; background: var(--sheet); border: 1px solid var(--line); border-radius: var(--r); }
 .rank li.top { border: 2px solid var(--lamp); box-shadow: var(--shadow); }
 .rank li.out { opacity: .62; background: transparent; }
-.rank .pos { font-family: var(--f-display); color: var(--muted); font-weight: 700; text-align: end; font-variant-numeric: tabular-nums; }
+.rank li.thin { border-style: dashed; border-color: var(--line-strong); }
+.rank-h { font-size: 1.05rem; font-weight: 700; margin-top: 4px; }
+.rank-hp { font-size: .9rem; color: var(--muted); max-width: 66ch; margin-top: -10px; }
+.res-head .notice { font-size: .95rem; color: var(--ink); background: var(--lamp-soft); border-radius: var(--r-s); padding: 10px 14px; }
+.res-head .early { display: grid; gap: 10px; justify-items: start; }
+/* Confirmation dans la page avant d'effacer des réponses (confirm() est bloqué chez certains hébergeurs) */
+.confirm { display: grid; gap: 12px; padding: 14px 16px; border: 2px solid var(--warn); background: var(--warn-soft); border-radius: var(--r); }
+.confirm p { font-weight: 600; color: var(--ink); }
+.resume { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 14px 16px; background: var(--sheet); border: 1.5px solid var(--accent); border-radius: var(--r); }
+.resume p { flex: 1 1 14rem; }
+.rank .pos { font-family: var(--f-display); color: var(--muted); font-weight: 700; text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .rank-main { display: grid; gap: 7px; min-width: 0; }
 .rank-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
 .rank-head b { font-family: var(--f-display); font-weight: 700; font-size: 1.12rem; line-height: 1.2; }
@@ -409,6 +425,7 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
   <main id="app"></main>
   <footer id="footer"></footer>
 </div>
+<div id="live" class="sr" aria-live="polite" aria-atomic="true"></div>
 
 <dialog id="fiche" aria-labelledby="ficheTitle"><div class="fiche" id="ficheBody"></div></dialog>
 <dialog id="langDlg" aria-labelledby="langTitle"><div class="lang-box" id="langBody"></div></dialog>

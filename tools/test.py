@@ -10,7 +10,7 @@ traductions incomplètes et éditions cassées. Rien n'est écrit dans src/.
 Le dépôt est servi avec `python3 -m http.server` sur un port libre. Aucune requête externe n'est
 autorisée, sauf Google Fonts (remplacé par une feuille vide pendant les tests).
 """
-import argparse, json, math, os, re, shutil, socket, subprocess, sys, tempfile, time, traceback, urllib.request
+import argparse, functools, json, math, os, random, re, shutil, socket, subprocess, sys, tempfile, time, traceback, urllib.request
 
 from playwright.sync_api import sync_playwright
 
@@ -24,7 +24,11 @@ os.makedirs(ARGS.shots, exist_ok=True)
 
 LANGS = ["en", "fr", "pt", "sw", "ar"]
 STR_KEYS = ["tabs", "partial", "presCand", "partyLeader", "partyBasisLeader", "mCodingLead", "mTransl", "legReady", "legInfo",
-            "langNoQ", "langNoInfo", "retry", "infoWhy", "infoActors", "proto", "seeResults", "tryNigeria", "mapHint"]
+            "langNoQ", "langNoInfo", "retry", "infoWhy", "infoActors", "proto", "seeResults", "tryNigeria", "mapHint",
+            "thinTitle", "straight", "resReady", "double", "themesTitle", "cancel", "confirmRestart", "confirmHome", "footer2"]
+BRAND = "Éclaire ton vote"
+FSI, PDI = "\u2068", "\u2069"
+COV_MIN, TIE, EQ, EARLY = 0.4, 0.03, 0.005, 8   # règles de lecture des résultats (copie de src/app.js)
 
 
 # ------------------------------------------------------------------ petite infrastructure
@@ -71,10 +75,12 @@ def serve(directory):
 class Session:
     """Un contexte navigateur : capture des erreurs JS et blocage des requêtes externes."""
 
-    def __init__(self, browser, width=1280, height=900, scheme="light", motion="reduce"):
+    def __init__(self, browser, width=1280, height=900, scheme="light", motion="reduce", locale="en-GB", init=None):
         # Mouvement réduit par défaut : Playwright n'attend pas la fin de l'animation d'entrée à chaque clic
-        self.ctx = browser.new_context(viewport={"width": width, "height": height}, color_scheme=scheme, locale="en-GB", reduced_motion=motion)
-        self.errors, self.console, self.external = [], [], []
+        self.ctx = browser.new_context(viewport={"width": width, "height": height}, color_scheme=scheme, locale=locale, reduced_motion=motion)
+        if init:
+            self.ctx.add_init_script(init)
+        self.errors, self.console, self.external, self.dialogs = [], [], [], []
 
         def outside(route):
             url = route.request.url
@@ -85,15 +91,22 @@ class Session:
                 route.abort()
 
         self.ctx.route(re.compile(r"^https?://(?!127\.0\.0\.1[:/])"), outside)
-        self.page = self.ctx.new_page()
-        self.page.on("pageerror", lambda e: self.errors.append(str(e)))
-        self.page.on("console", lambda m: m.type == "error" and self.console.append(m.text))
+        self.page = self.new_page()
+
+    def new_page(self):
+        page = self.ctx.new_page()
+        page.on("pageerror", lambda e: self.errors.append(str(e)))
+        page.on("console", lambda m: m.type == "error" and self.console.append(m.text))
+        # confirm()/alert() sont bloqués chez certains hébergeurs : l'application ne doit jamais les appeler
+        page.on("dialog", lambda d: (self.dialogs.append(d.type), d.dismiss()))
+        return page
 
     def close(self, c, allow_console=False):
         try:
             c(not self.errors, f"page errors: {self.errors[:3]}")
             c(allow_console or not self.console, f"console errors: {self.console[:3]}")
             c(not self.external, f"external requests: {self.external[:3]}")
+            c(not self.dialogs, f"native dialogs opened: {self.dialogs[:3]}")
         finally:
             self.ctx.close()
 
@@ -120,10 +133,36 @@ def shot(page, name, full=False):
     page.screenshot(path=os.path.join(ARGS.shots, name), full_page=full)
 
 
-def open_country(page, a3, lang):
-    page.click(f'#mapWrap [data-place="{a3}"]')
-    page.wait_for_selector("#langDlg[open]")
-    page.click(f'#langBody [data-pick="{lang}"]')
+def open_country(page, a3, lang, from_list=False):
+    """Touche un pays (carte ou liste) puis choisit la langue. Une fois une langue choisie dans l'onglet, le choix de
+    langue n'est plus proposé (on va droit au pays) : on change alors de langue dans l'en-tête si besoin."""
+    if from_list:
+        if not page.evaluate("document.getElementById('listBox').open"):
+            page.click("#listBox summary")
+        page.click(f'#clist [data-place="{a3}"]')
+    else:
+        page.click(f'#mapWrap [data-place="{a3}"]')
+    page.wait_for_function("() => document.getElementById('langDlg').open || state.view !== 'map'")
+    if page.evaluate("document.getElementById('langDlg').open"):
+        page.click(f'#langBody [data-pick="{lang}"]')
+        return
+    if page.evaluate("state.ui") != lang:
+        page.wait_for_function("() => state.view !== 'loading'")
+        page.click(f'#langs [data-lang="{lang}"]')
+
+
+def fresh_tab(page):
+    """Oublie la session de l'onglet (sessionStorage) : le choix de langue réapparaît, les réponses sont oubliées."""
+    page.evaluate("() => { try { sessionStorage.clear(); } catch (e) {} }")
+
+
+def live_text(page):
+    page.wait_for_timeout(120)  # l'annonce est écrite 60 ms après avoir vidé la région
+    return page.inner_text("#live").strip()
+
+
+def focused_heading(page):
+    return page.evaluate("() => { const a = document.activeElement; return a && a.tagName === 'H1' && a.closest('#app') ? a.textContent.trim() : null }")
 
 
 # ------------------------------------------------------------------ calcul attendu (copie du modèle de l'application)
@@ -131,28 +170,55 @@ def js_round(x):
     return math.floor(x + 0.5)
 
 
-def expected_ranking(D, answers, double, prios):
+def model_rows(D, answers, double, prios, theme=None):
+    """Classement attendu : formule de l'application, puis groupes « ok » (classé : k ≥ 2 et couverture ≥ 40 %),
+    « thin » (k ≥ 2, couverture < 40 %), « out » (k < 2) ; par sujet, k ≥ 1. Dans un groupe : score décroissant,
+    sigle à score égal (à 0,005 près) ; « out » par sigle."""
+    E = D["ed"]
+    a = sum(1 for qi, v in answers.items() if isinstance(v, int) and (not theme or E["questions"][qi]["theme"] == theme))
     rows = []
-    for p in D["ed"]["parties"]:
+    for p in E["parties"]:
         num = den = k = 0
-        for qi, q in enumerate(D["ed"]["questions"]):
+        for qi, q in enumerate(E["questions"]):
             v = answers.get(qi)
             c = q["cells"].get(p["id"])
-            if not isinstance(v, int) or not c:
+            if not isinstance(v, int) or not c or (theme and q["theme"] != theme):
                 continue
-            w = (2 if double.get(qi) else 1) * (2 if q["theme"] in prios else 1)
+            w = (2 if double.get(qi) else 1) * (1 if theme else (2 if q["theme"] in prios else 1))
             num += w * (1 - abs(v - c["p"]) / 4)
             den += w
             k += 1
-        s = (num + 3 * 0.5) / (den + 3) if k else None
-        rows.append((p["sigle"], s, k >= 2))
-    rows.sort(key=lambda r: (0 if r[2] else 1, -(r[1] if r[1] is not None else -1)))
-    return [(sig, js_round(s * 100) if ok else None) for sig, s, ok in rows]
+        prior = 1 if theme else 3
+        s = (num + prior * 0.5) / (den + prior) if k else None
+        cov = k / a if a else 0
+        grp = 2 if k < (1 if theme else 2) else (1 if cov < COV_MIN else 0)
+        rows.append({"sig": p["sigle"], "nom": p["nom"], "id": p["id"], "s": s, "k": k, "cov": cov, "grp": grp})
+    sc = lambda x, y: (x > y) - (x < y)
+
+    def cmp(x, y):
+        if x["grp"] != y["grp"]:
+            return x["grp"] - y["grp"]
+        if x["grp"] == 2:
+            return sc(x["sig"], y["sig"])
+        d = y["s"] - x["s"]
+        return sc(x["sig"], y["sig"]) if abs(d) < EQ else (1 if d > 0 else -1)
+    return sorted(rows, key=functools.cmp_to_key(cmp)), a
+
+
+def expected_ranking(D, answers, double, prios):
+    rows, _ = model_rows(D, answers, double, prios)
+    return [(r["sig"], js_round(r["s"] * 100) if r["grp"] < 2 else None) for r in rows]
+
+
+def lead_group(rows):
+    ok = [r for r in rows if r["grp"] == 0]
+    return [r for r in ok if ok[0]["s"] - r["s"] < TIE] if ok else []
 
 
 def answer_all(page, plan, stop_after_prio=False):
     """Répond à tout le questionnaire. plan(qi) -> (valeur ou None pour passer, double?)."""
     answers, double = {}, {}
+    page.evaluate("TAP_GUARD = 0")  # Playwright clique plus vite qu'un double tapotement : protection testée à part
     while True:
         view = page.evaluate("state.view")
         if view == "checkpoint":
@@ -168,7 +234,9 @@ def answer_all(page, plan, stop_after_prio=False):
         qi, i = page.evaluate("[state.order[state.i], state.i]")
         v, dbl = plan(qi)
         if dbl:
-            page.check("#qDouble")
+            c_ok = page.get_attribute(f'.star[data-dbl="{qi}"]', "aria-pressed") == "false"
+            page.click(".star")
+            assert c_ok and page.get_attribute(".star", "aria-pressed") == "true", "★ toggle"
             double[qi] = True
         if v is None:
             page.click('[data-val="skip"]')
@@ -205,18 +273,38 @@ def check_results_page(page, c, D, lang, L, answers, double, prios, where):
     has_tr = page.locator("#pan3 .method li.transl").count() == 1
     c(has_tr == (lang != D["lang"]), f"{where}: translation note shown iff UI language ≠ base ({lang} vs {D['lang']})")
     c(page.locator("#pan3 .src-list li").count() >= min(5, len(D["src"])), f"{where}: sources listed")
-    # Clavier : flèches dans la liste d'onglets (sens visuel inversé en RTL non requis : comportement d'origine conservé)
+    # Clavier : flèches dans la liste d'onglets, dans le sens visuel (inversé de droite à gauche), Début et Fin ; tabindex mobile
+    rtl = page.evaluate("document.documentElement.dir") == "rtl"
+    nxt, prv = ("ArrowLeft", "ArrowRight") if rtl else ("ArrowRight", "ArrowLeft")
     page.click("#tab0")
     page.focus("#tab0")
-    page.keyboard.press("ArrowRight")
-    c(page.get_attribute("#tab1", "aria-selected") == "true", f"{where}: ArrowRight selects next tab")
-    page.keyboard.press("ArrowLeft")
-    page.keyboard.press("ArrowLeft")
-    c(page.get_attribute("#tab3", "aria-selected") == "true", f"{where}: ArrowLeft wraps")
+    c(page.evaluate("[...document.querySelectorAll('[role=tab]')].map(b => b.tabIndex).join()") == "0,-1,-1,-1", f"{where}: roving tabindex")
+    page.keyboard.press(nxt)
+    c(page.get_attribute("#tab1", "aria-selected") == "true", f"{where}: {nxt} selects next tab")
+    c(page.evaluate("document.activeElement.id") == "tab1", f"{where}: focus follows the selected tab")
+    page.keyboard.press(prv)
+    page.keyboard.press(prv)
+    c(page.get_attribute("#tab3", "aria-selected") == "true", f"{where}: {prv} wraps")
+    page.keyboard.press("Home")
+    c(page.get_attribute("#tab0", "aria-selected") == "true", f"{where}: Home")
+    page.keyboard.press("End")
+    c(page.get_attribute("#tab3", "aria-selected") == "true" and page.evaluate("location.hash").endswith("/results/method"), f"{where}: End (tab in the address)")
     page.click("#tab0")
-    # Couverture partielle (au moins un parti peu documenté dans le pilote)
+    # Partis peu documentés sur ces réponses : à part, sans rang, jamais dans le titre
+    rows, _ = model_rows(D, answers, double, prios)
+    thin = [r["sig"] for r in rows if r["grp"] == 1]
+    got_thin = page.evaluate("[...document.querySelectorAll('#pan0 .rank li.thin .badge')].map(b => b.textContent)")
+    c(got_thin == thin, f"{where}: thin group {got_thin} != expected {thin}")
+    c((page.locator("#pan0 h2.rank-h").count() == 1) == bool(thin), f"{where}: thin-group heading iff thin parties")
+    if thin:
+        c(page.inner_text("#pan0 h2.rank-h").strip() == L["thinTitle"], f"{where}: thin-group heading text")
+        c(all(x.strip() == "" for x in page.locator("#pan0 .rank li.thin .pos").all_inner_texts()), f"{where}: thin parties have no rank")
+    title = page.inner_text(".res-head h1")
+    for r in rows:
+        if r["grp"] > 0:
+            c(r["sig"] not in title, f"{where}: unranked party {r['sig']} not in the headline “{title}”")
     if D["id"] == "ng":
-        c(page.locator(f'#pan0 .chip.warn:text-is("{L["partial"]}")').count() >= 1, f"{where}: partial-coverage chip")
+        c(thin or page.locator(f'#pan0 .chip.warn:text-is("{L["partial"]}")').count() >= 1, f"{where}: thinly documented parties flagged")
     # Fiche parti
     page.locator("#pan0 [data-fiche]").first.click()
     page.wait_for_selector("#fiche[open]")
@@ -228,7 +316,7 @@ def check_results_page(page, c, D, lang, L, answers, double, prios, where):
 
 
 def run_nigeria(browser, base, lang, width, c, switch_to=None, screenshot=None):
-    S = Session(browser, width=width, motion="no-preference" if lang == "en" else "reduce")
+    S = Session(browser, width=width, height=844 if width < 400 else 900, motion="no-preference" if lang == "en" else "reduce")
     page = S.page
     page.goto(base + "/index.html")
     page.wait_for_selector("#mapWrap svg")
@@ -349,12 +437,14 @@ def fixture_info(cc):
     return S, M, I
 
 
-def info_i18n(I, lang, drop_why=False):
+def info_i18n(I, lang, drop_why=False, note=None):
     L = {"strip": f"[{lang}] {I['strip']}", "stripDate": f"[{lang}] {I['stripDate']}",
          "facts": [[f"[{lang}] {a}", b] for a, b in I["facts"]], "system": [[f"[{lang}] {a}", f"[{lang}] {b}"] for a, b in I["system"]],
          "actors": [[f"[{lang}] {a[0]}", f"[{lang}] {a[1]}"] for a in I["actors"]], "why": f"[{lang}] {I['why']}"}
     if drop_why:
         del L["why"]
+    if note is not None:
+        L["note"] = note
     return L
 
 
@@ -377,7 +467,9 @@ def make_fixtures(tmp):
     # km : page d'information sur un État insulaire (Comores), ar complet, fr incomplet
     S, M, I = fixture_info("km")
     write_js(os.path.join(fx, "editions", "km.js"), SRC_KM=S, META_KM=M, INFO_KM=I)
-    write_js(os.path.join(fx, "i18n", "km.js"), I18N_KM={"ar": info_i18n(I, "ar"), "fr": info_i18n(I, "fr", drop_why=True)})
+    # note : META.note traduite (ar) ; fr serait écartée de toute façon (why manquant)
+    write_js(os.path.join(fx, "i18n", "km.js"), I18N_KM={"ar": info_i18n(I, "ar", note="[ar] Fixture caveat about the date."),
+                                                         "fr": info_i18n(I, "fr", drop_why=True)})
     # bi : questionnaire invalide (2 partis) ; td : fichier qui ne se charge pas
     S, M, E = fixture_ed("bi", n_parties=2)
     write_js(os.path.join(fx, "editions", "bi.js"), SRC_BI=S, META_BI=M, ED_BI=E)
@@ -485,15 +577,17 @@ def map_400(c):
     no_overflow(page, c, "language dialog")
     page.click("#langCancel")
     # Pays sans données : comportement d'origine, puis « Essayer avec le Nigeria »
+    # Un pays sans édition (le premier par nom anglais : les éditions s'ajoutent au fil du temps)
+    nid, nname = page.evaluate("(() => { const id = Object.keys(AFRICA).filter(id => !catFor(id)).sort((a, b) => AFRICA[a].en.localeCompare(AFRICA[b].en))[0]; return [id, AFRICA[id].en]; })()")
     page.click("#listBox summary")
-    page.fill("#csearch", "Angola")
-    c(page.locator("#clist .cbtn").count() == 1, "country search")
-    page.click('#clist [data-place="024"]')
+    page.fill("#csearch", nname)
+    c(page.locator(f'#clist .cbtn[data-place="{nid}"]').count() == 1, f"country search ({nname})")
+    page.click(f'#clist [data-place="{nid}"]')
     page.wait_for_selector("#langDlg[open]")
     c(page.locator("#langBody .lang-btn[disabled]").count() == 0, "no-data country: every language enabled")
     page.click('#langBody [data-pick="pt"]')
     wait_view(page, "info")
-    c("Angola" in page.inner_text(".strip"), "no-data info screen")
+    c(page.evaluate(f"cname('{nid}')") in page.inner_text(".strip"), "no-data info screen")
     no_overflow(page, c, "no-data screen")
     page.click('[data-go="nigeria"]')
     page.wait_for_selector(".theme-grid")
@@ -510,7 +604,7 @@ def make_ng_test(lang, width, switch_to, screenshot):
 
 
 for _lang, _w, _sw, _shot in [("en", 1280, "fr", "ng-en-results.png"), ("fr", 400, "pt", None), ("pt", 1024, "sw", None),
-                              ("sw", 400, "ar", None), ("ar", 400, "en", "ng-ar-results-400.png")]:
+                              ("sw", 400, "ar", None), ("ar", 390, "en", "ng-ar-results-390.png")]:
     test(make_ng_test(_lang, _w, _sw, _shot))
 
 
@@ -521,6 +615,7 @@ def france(c):
     page = S.page
     page.goto(CTX["base"] + "/index.html")
     page.wait_for_selector("#mapWrap svg")
+    shot(page, "map-desktop.png")
     page.click('#langs [data-lang="en"]')
     page.click('[data-go="france"]')
     page.wait_for_selector(".theme-grid")
@@ -540,7 +635,9 @@ def france(c):
     c(page.locator("#pan0 .rank li").count() == 9, "9 parties ranked")
     c(page.locator('#pan0 .chip.grey:text-is("Primaire en cours")').count() == 2, "primary chips")
     shot(page, "fr-results.png")
-    page.click('[data-go="home"]')
+    page.click('#app [data-go="home"]')
+    c(page.is_visible("#confirmBox") and page.evaluate("state.view") == "results", "change country asks first")
+    page.click('#confirmBox [data-go="home!"]')
     wait_view(page, "map")
     S.close(c)
 
@@ -587,11 +684,12 @@ def info_page(c):
     c(pos["up"], "Comoros coloured from META (election by end 2027)")
     page.click('.isl[data-place="174"]')
     page.wait_for_selector("#langDlg[open]")
-    Lfr = strings(page, "fr")  # interface encore en français
+    c(page.evaluate("state.ui") == "en", "interface starts in the browser language (en-GB → en)")
+    Lui = strings(page, "en")  # langue de l'interface pendant le choix
     enabled = page.evaluate("[...document.querySelectorAll('#langBody .lang-btn')].filter(b => !b.disabled).map(b => b.dataset.pick).sort()")
     c(enabled == ["ar", "en"], f"Comoros: ar + en enabled ({enabled})")
-    c(page.locator(f'#langBody .lang-btn[disabled] .lnote:text-is("{Lfr["langNoInfo"]}")').count() == 3, "disabled languages carry a note")
-    c(Lfr["legInfo"] in page.inner_text("#langBody"), "dialog says information page")
+    c(page.locator(f'#langBody .lang-btn[disabled] .lnote:text-is("{Lui["langNoInfo"]}")').count() == 3, "disabled languages carry a note")
+    c(Lui["legInfo"] in page.inner_text("#langBody"), "dialog says information page")
     page.click('#langBody [data-pick="ar"]')
     page.wait_for_selector(".why-box")
     L = strings(page, "ar")
@@ -601,12 +699,15 @@ def info_page(c):
     c(L["infoWhy"] in page.inner_text(".why-box h2") and "[ar] Fixture reason" in page.inner_text(".why-box p"), "why box")
     c(page.locator(".info-src .src-list li").count() == 2, "sources list")
     c(page.locator(f'.info-src .caveat:text-is("{L["mTransl"]}")').count() == 1, "translation note on a translated page")
-    c("Fixture caveat" in page.inner_text("#app"), "META note shown")
+    note = page.locator(".caveat span[dir='auto']")
+    c(note.count() == 1 and note.inner_text().strip() == "[ar] Fixture caveat about the date." and note.get_attribute("lang") == "ar",
+      "META note translated (i18n note), isolated with dir=auto")
     c(sorted(b.strip() for b in page.locator("#langs button:not([disabled])").all_inner_texts()) == ["AR", "EN"], "header offers ar + en only")
     no_overflow(page, c, "info page 400px")
     shot(page, "info-km-ar-400.png", full=True)
     page.click('#langs [data-lang="en"]')
     c(page.locator(".info-src .caveat").count() == 0 and "Fixture reason why" in page.inner_text(".why-box p"), "base language: no translation note")
+    c(page.inner_text(".caveat span[dir='auto']").strip() == "Fixture caveat about the date.", "META note in the base language")
     page.click('[data-go="nigeria"]')
     page.wait_for_selector(".theme-grid")
     c(page.evaluate("state.country") == "ng", "Try it with Nigeria from an information page")
@@ -633,7 +734,7 @@ def leader_edition(c):
     page.click('[data-prio="health"]')
     page.click('[data-go="startq"]')
     wait_view(page, "question")
-    c(page.inner_text(".slip h2").startswith("[fr] "), "translated question")
+    c(page.inner_text(".slip h1").startswith("[fr] "), "translated question (the statement is the page's h1)")
     answers, double = answer_all(page, lambda qi: ([2, 1, 0, -1, -2][(qi * 3) % 5], qi == 21))
     answers = {k: v for k, v in answers.items() if v is not None}
     check_results_page(page, c, D, "fr", L, answers, double, ["health"], "cg-fr")
@@ -675,9 +776,9 @@ def offline(c):
     page.wait_for_selector(".theme-grid")
     c(page.evaluate("[state.country, state.ui]") == ["ng", "sw"], "retry loads the edition")
     page.close()
-    # Chargement lent : écran de chargement, retour à la carte, puis la réponse arrive sans détourner l'utilisateur
-    page = S.ctx.new_page()
-    page.on("pageerror", lambda e: S.errors.append(str(e)))
+    # Chargement lent : écran de chargement, retour à la carte, pays rouvert pendant le chargement (un seul
+    # téléchargement), puis la réponse arrive sans détourner l'utilisateur
+    page = S.new_page()
     held = []
     page.route("**/data/ng.json", lambda r: held.append(r))
     page.goto(CTX["base"] + "/index.html")
@@ -687,6 +788,12 @@ def offline(c):
     c("Nigeria" in page.inner_text(".load-box"), "loading screen names the country")
     page.click('#app [data-go="home"]')
     wait_view(page, "map")
+    open_country(page, "566", "en")  # langue déjà choisie dans l'onglet : pas de choix de langue
+    page.wait_for_selector('.load-box[role="status"]')
+    page.wait_for_timeout(150)
+    c(len(held) == 1, f"country reopened while loading: one download ({len(held)})")
+    page.click('#app [data-go="home"]')
+    wait_view(page, "map")
     held[0].continue_()
     page.wait_for_function("() => !!DATA.ng")
     page.wait_for_timeout(200)
@@ -694,6 +801,22 @@ def offline(c):
     open_country(page, "566", "en")
     page.wait_for_selector(".theme-grid")
     c(page.evaluate("state.country") == "ng", "cached edition opens at once")
+    page.close()
+    # Délai dépassé (réduit ici) : écran d'erreur avec « Réessayer » ; pendant le chargement, l'en-tête ne propose
+    # que les langues du pays (catalogue)
+    cat = CTX["catalog"]
+    cc = "ke" if "ke" in cat else next(k for k, e in sorted(cat.items()) if e["a3"] and e["kind"] == "ed" and 1 < len(e["langs"]) < 5)
+    page = S.new_page()
+    page.route(f"**/data/{cc}.json", lambda r: None)  # ne répond jamais
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    page.evaluate("LOAD_TIMEOUT = 1500")
+    open_country(page, cat[cc]["a3"], cat[cc]["langs"][-1])
+    page.wait_for_selector(".load-box")
+    offered = sorted(b.strip().lower() for b in page.locator("#langs button:not([disabled])").all_inner_texts())
+    c(offered == sorted(cat[cc]["langs"]), f"{cc} loading: header offers {offered}")
+    page.wait_for_selector('[data-go="retry"]', timeout=6000)
+    c(page.evaluate("state.view") == "loaderror" and page.evaluate("document.activeElement.dataset.go") == "retry", "timeout → error screen, focus on retry")
     S.close(c, allow_console=True)
 
 
@@ -710,6 +833,7 @@ def all_editions(c):
         D = json.load(open(os.path.join(ROOT, "data", cc + ".json"), encoding="utf8"))
         for lang in e["langs"]:
             w = f"{cc}-{lang}"
+            fresh_tab(page)
             page.goto(CTX["base"] + "/index.html")
             page.wait_for_selector("#mapWrap svg")
             page.click("#listBox summary")
@@ -744,11 +868,461 @@ def all_editions(c):
             wait_view(page, "results")
             c(page.locator("#pan0 .rank li").count() == len(E["parties"]), f"{w}: ranking")
             c((page.locator("#pan3 .method li.transl").count() == 1) == (lang != D["lang"]), f"{w}: translation note")
+    fresh_tab(page)
     page.goto(CTX["base"] + "/artifact.html")
     page.wait_for_selector("#mapWrap svg")
     open_country(page, "566", "fr")
     page.wait_for_selector(".theme-grid")
     c(page.evaluate("state.country") == "ng", "artifact.html loads editions too")
+    S.close(c)
+
+
+# ------------------------------------------------------------------ navigation, mémoire, accessibilité, lecture des résultats
+def ng_start(page, lang="en", prio=0):
+    """Nigeria, départ, un sujet prioritaire, première question (protection contre le double tapotement désactivée)."""
+    D = json.load(open(os.path.join(ROOT, "data", "ng.json"), encoding="utf8"))
+    open_country(page, "566", lang)
+    page.wait_for_selector(".theme-grid")
+    th = D["ed"]["themes"][prio]["id"]
+    page.click(f'[data-prio="{th}"]')
+    page.click('[data-go="startq"]')
+    wait_view(page, "question")
+    page.evaluate("TAP_GUARD = 0")
+    return D, th
+
+
+def answer_one(page, v):
+    i = page.evaluate("state.i")
+    page.click(f'.answers .ans[data-val="{v}"]')
+    page.wait_for_function("i => state.view !== 'question' || state.i !== i", arg=i, timeout=5000)
+
+
+@test
+def deep_links(c):
+    """Adresses : #ke (forme courte) → choix de langue du Kenya ; #/ke/sw, #cv-pt directs ; adresses inconnues ou sans
+    session dégradées ; langue de départ (navigateur), langue retenue d'un chargement à l'autre ; stockage indisponible."""
+    cat, base = CTX["catalog"], CTX["base"]
+    S = Session(CTX["browser"], width=390, height=844)
+    page = S.page
+    if "ke" in cat:
+        page.goto(base + "/index.html#ke")
+        page.wait_for_selector("#langDlg[open]")
+        c(page.evaluate("location.hash") == "#/ke", "#ke normalised to #/ke")
+        c(page.text_content("#langBody .eyebrow").strip() == page.evaluate(f"cname('{cat['ke']['a3']}')"), "#ke: language choice for Kenya")
+        page.click('#langBody [data-pick="sw"]')
+        page.wait_for_selector(".theme-grid")
+        c(page.evaluate("[state.country, state.ui, document.documentElement.lang, location.hash]") == ["ke", "sw", "sw", "#/ke/sw"], "#ke → Kenya in Swahili")
+    S.close(c)
+    S = Session(CTX["browser"], width=390, height=844)
+    page = S.page
+    if "ke" in cat:
+        page.goto(base + "/index.html#/ke/sw")
+        page.wait_for_function("() => state.country === 'ke' && state.view === 'start'")
+        c(page.evaluate("[state.country, state.ui, document.getElementById('langDlg').open]") == ["ke", "sw", False], "#/ke/sw: Kenya in Swahili, no language dialog")
+        c(page.get_attribute('#langs [data-lang="sw"]', "aria-pressed") == "true", "#/ke/sw: header shows Swahili")
+        c(page.evaluate("document.title").endswith(" · " + BRAND), "#/ke/sw: document title")
+    if "cv" in cat and "pt" in cat["cv"]["langs"]:
+        page.goto(base + "/index.html#cv-pt")  # même document : changement d'ancre seulement (hashchange)
+        page.wait_for_function("() => state.country === 'cv' && state.view === 'start'")
+        c(page.evaluate("[state.country, state.ui, location.hash]") == ["cv", "pt", "#/cv/pt"], "#cv-pt → Cabo Verde in Portuguese")
+    page.goto(base + "/index.html#/zz/en/q/3")
+    wait_view(page, "map")
+    c(page.evaluate("[state.view, location.hash]") == ["map", "#/"], "unknown country → map")
+    page.goto(base + "/index.html#/ng/en/q/5")
+    page.wait_for_function("() => state.country === 'ng' && state.view === 'start'")
+    c(page.evaluate("[state.view, location.hash]") == ["start", "#/ng/en"], "question without a questionnaire in progress → start screen")
+    nid, n2 = page.evaluate("(() => { const id = Object.keys(AFRICA).filter(id => !catFor(id)).sort()[0]; return [id, AFRICA[id].a2.toLowerCase()]; })()")
+    page.goto(base + f"/index.html#/{n2}/pt")
+    page.wait_for_function(f"() => state.view === 'info' && state.place === '{nid}'")
+    c(page.evaluate("[state.ui, location.hash]") == ["pt", f"#/{n2}/pt"], f"country without edition (#/{n2}/pt) → its page")
+    shot(page, f"deeplink-{n2}-pt-390.png")
+    S.close(c)
+    # Langue de départ : celle du navigateur si l'interface la connaît, sinon l'anglais ; puis celle choisie
+    for loc, want in [("sw-KE", "sw"), ("ar-EG", "ar"), ("pt-CV", "pt"), ("de-DE", "en")]:
+        S = Session(CTX["browser"], width=800, locale=loc)
+        S.page.goto(base + "/index.html")
+        S.page.wait_for_selector("#mapWrap svg")
+        c(S.page.evaluate("[state.ui, document.documentElement.lang, document.documentElement.dir]") == [want, want, "rtl" if want == "ar" else "ltr"], f"browser {loc} → interface {want}")
+        if loc == "sw-KE":
+            S.page.click('#langs [data-lang="fr"]')
+            S.page.reload()
+            S.page.wait_for_selector("#mapWrap svg")
+            c(S.page.evaluate("state.ui") == "fr", "language kept after reload")
+            p2 = S.new_page()
+            p2.goto(base + "/index.html")
+            p2.wait_for_selector("#mapWrap svg")
+            c(p2.evaluate("[state.ui, document.documentElement.lang]") == ["fr", "fr"], "language kept in a new tab (localStorage etv.ui)")
+            c("Tes réponses restent sur ton appareil" in p2.inner_text("#footer"), "privacy footer")
+            p2.close()
+        S.close(c)
+    # Stockage indisponible (navigation privée stricte, iframe en bac à sable) : l'application marche quand même
+    S = Session(CTX["browser"], width=390, height=844, init="""for (const k of ['localStorage', 'sessionStorage'])
+        Object.defineProperty(window, k, { configurable: true, get() { throw new DOMException('denied', 'SecurityError'); } });""")
+    page = S.page
+    page.goto(base + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    ng_start(page)
+    answer_one(page, 2)
+    c(page.evaluate("[state.view, state.i, Object.keys(state.answers).length]") == ["question", 1, 1], "works without storage")
+    S.close(c)
+
+
+@test
+def history_nav(c):
+    """Retour (Android) : depuis une question → départ avec « Reprendre » ; depuis les résultats → questionnaire.
+    Rechargement en cours de questionnaire (même onglet) : réponses, « compte double », question. Focus, titre, annonces."""
+    S = Session(CTX["browser"], width=390, height=844)
+    page = S.page
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    L = strings(page, "en")
+    open_country(page, "566", "en")
+    page.wait_for_selector(".theme-grid")
+    c(page.evaluate("location.hash") == "#/ng/en", "start: #/ng/en")
+    c(focused_heading(page) == L["themesTitle"], f"focus on the start heading ({focused_heading(page)})")
+    c(page.evaluate("document.title") == L["themesTitle"].rstrip(".:") + " · " + BRAND, "start: document title")
+    D = json.load(open(os.path.join(ROOT, "data", "ng.json"), encoding="utf8"))
+    th = D["ed"]["themes"][0]["id"]
+    nprio = sum(1 for q in D["ed"]["questions"] if q["theme"] == th)
+    page.click(f'[data-prio="{th}"]')
+    c(live_text(page) == page.evaluate("T.en.chosen(1)"), "priority count announced")
+    c(page.evaluate("document.getElementById('live').closest('#app')") is None, "live region outside #app")
+    page.click('[data-go="startq"]')
+    wait_view(page, "question")
+    page.evaluate("TAP_GUARD = 0")
+    q0 = page.evaluate("ed().questions[state.order[0]].text")
+    c(page.evaluate("location.hash") == "#/ng/en/q/1", "question 1 in the address")
+    c(page.locator("h1").count() == 1 and page.inner_text(".slip h1").strip() == q0, "the statement is the page's h1")
+    c(focused_heading(page) == q0, "focus on the statement")
+    c(page.evaluate("document.title").endswith(" · " + BRAND), "question: document title")
+    n_q = len(D["ed"]["questions"])
+    c(live_text(page) == page.evaluate(f"T.en.qOf(1, {n_q})"), "question number announced")
+    h_len = page.evaluate("history.length")
+    for v in (2, 1, -1):
+        answer_one(page, v)
+    c(page.evaluate("location.hash") == "#/ng/en/q/4" and focused_heading(page) == page.evaluate("ed().questions[state.order[3]].text"), "auto-advance: q/4, focus on the new statement")
+    c(page.evaluate("history.length") == h_len, "questions replace one history entry")
+    c(live_text(page) == page.evaluate(f"T.en.qOf(4, {n_q})"), "new question announced")
+    qi3 = page.evaluate("state.order[3]")
+    page.click(".star")
+    shot(page, "ng-question-390.png")
+    # Retour depuis une question : l'écran d'avant (le départ), réponses gardées, « Reprendre »
+    page.go_back()
+    wait_view(page, "start")
+    c(page.evaluate("[location.hash, Object.keys(state.answers).length]") == ["#/ng/en", 3], "Back from a question → start screen, answers kept")
+    c(page.is_visible('.resume [data-go="resume"]'), "resume offered")
+    page.click('.resume [data-go="resume"]')
+    wait_view(page, "question")
+    c(page.evaluate("[state.i, location.hash]") == [3, "#/ng/en/q/4"], "resume → question 4")
+    # Rechargement (onglet mis en veille par le téléphone) : tout revient
+    page.reload()
+    wait_view(page, "question")
+    page.evaluate("TAP_GUARD = 0")
+    c(page.evaluate("[state.i, Object.keys(state.answers).length, state.double[state.order[state.i]] === true, state.priorities.length]") == [3, 3, True, 1],
+      "reload restores question, answers, counts-double, priorities")
+    c(page.get_attribute(".star", "aria-pressed") == "true" and page.get_attribute(".star", "data-dbl") == str(qi3), "reload: ★ still on")
+    c(page.evaluate("document.documentElement.lang") == "en", "reload keeps the language")
+    for _ in range(nprio - 3):
+        answer_one(page, 0)
+    wait_view(page, "checkpoint")
+    c(page.evaluate("location.hash") == "#/ng/en/checkpoint", "checkpoint in the address")
+    page.click('[data-go="results"]')
+    wait_view(page, "results")
+    c(page.evaluate("location.hash") == "#/ng/en/results", "results in the address")
+    c(live_text(page) == L["resReady"], "results announced")
+    c(focused_heading(page) == page.inner_text(".res-head h1").strip(), "focus on the results headline")
+    # Retour depuis les résultats : le questionnaire ; Suivant : les résultats
+    page.go_back()
+    wait_view(page, "checkpoint")
+    page.go_forward()
+    wait_view(page, "results")
+    page.click("#tab3")
+    c(page.evaluate("location.hash") == "#/ng/en/results/method", "tab in the address")
+    page.reload()
+    wait_view(page, "results")
+    c(page.get_attribute("#tab3", "aria-selected") == "true" and page.is_visible("#pan3"), "reload keeps the tab")
+    page.go_back()
+    wait_view(page, "checkpoint")
+    page.go_back()
+    wait_view(page, "start")
+    page.go_back()
+    wait_view(page, "map")
+    c(page.url.split("#")[0].endswith("/index.html"), "Back never leaves the app")
+    c(page.evaluate("Object.keys(state.answers).length") == nprio, "answers survive a visit to the map")
+    shot(page, "map-390.png")
+    S.close(c)
+
+
+@test
+def edit_and_confirm(c):
+    """Corriger depuis les résultats ramène aux résultats ; « Recommencer » et « Changer de pays » demandent confirmation dans la page."""
+    S = Session(CTX["browser"], width=1100)
+    page = S.page
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    L = strings(page, "en")
+    D, th = ng_start(page)
+    nprio = sum(1 for q in D["ed"]["questions"] if q["theme"] == th)
+    for k in range(nprio):
+        answer_one(page, [2, 1, 0, -1, -2][k % 5])
+    wait_view(page, "checkpoint")
+    page.click('[data-go="results"]')
+    wait_view(page, "results")
+    # Une question, depuis l'onglet « par question »
+    page.click("#tab2")
+    page.locator("#pan2 .qa").nth(2).locator("[data-goto]").click()
+    wait_view(page, "question")
+    qi = page.evaluate("state.order[2]")
+    c(page.evaluate("[state.i, location.hash]") == [2, "#/ng/en/q/3"], "edit one question from the By-question tab")
+    page.go_back()
+    wait_view(page, "results")
+    c(page.get_attribute("#tab2", "aria-selected") == "true", "Back from the edited question → results, same tab")
+    page.locator("#pan2 .qa").nth(2).locator("[data-goto]").click()
+    wait_view(page, "question")
+    page.evaluate("TAP_GUARD = 0")
+    page.click('.answers .ans[data-val="-2"]')
+    wait_view(page, "results")
+    c(page.evaluate(f"state.answers[{qi}]") == -2, "edited answer saved")
+    c(page.evaluate("location.hash") == "#/ng/en/results/questions", "back to results (same tab) after editing")
+    page.go_back()
+    wait_view(page, "checkpoint")
+    page.go_forward()
+    wait_view(page, "results")
+    # « Modifier mes réponses » : on repasse sur les questions vues, puis retour aux résultats
+    page.click('[data-go="edit"]')
+    wait_view(page, "question")
+    page.evaluate("TAP_GUARD = 0")
+    c(page.evaluate("state.i") == 0, "Change my answers → first question")
+    for k in range(nprio):
+        answer_one(page, 1)
+    wait_view(page, "results")
+    c(page.evaluate(f"Object.values(state.answers).filter(v => v === 1).length") == nprio, "Change my answers → back to results after the last answered question")
+    # Un sujet pas encore répondu, depuis « par sujet »
+    page.click("#tab1")
+    page.locator("#pan1 [data-until]").first.click()
+    wait_view(page, "question")
+    page.evaluate("TAP_GUARD = 0")
+    th2 = page.evaluate("ed().questions[state.order[state.i]].theme")
+    n2 = sum(1 for q in D["ed"]["questions"] if q["theme"] == th2)
+    for k in range(n2):
+        c(page.evaluate("state.view") == "question", f"answering issue {th2} ({k + 1}/{n2})")
+        answer_one(page, -1)
+    wait_view(page, "results")
+    c(page.evaluate(f"ed().questions.filter((q, i) => q.theme === '{th2}' && state.answers[i] === -1).length") == n2, "Answer this issue → back to results")
+    # Recommencer : confirmation dans la page (pas de confirm()), Annuler, puis Effacer
+    n_ans = page.evaluate("Object.keys(state.answers).length")
+    page.click('#app [data-go="restart"]')
+    c(page.is_visible("#confirmBox") and page.evaluate("state.view") == "results", "restart asks first (in the page)")
+    c(page.inner_text("#confirmMsg").strip() == page.evaluate(f"T.en.confirmLose({n_ans})"), "confirmation says how many answers")
+    c(page.evaluate("document.activeElement.id") == "confirmMsg", "focus on the confirmation")
+    page.click('#confirmBox [data-go="noconfirm"]')
+    c(page.locator("#confirmBox").count() == 0 and page.evaluate("document.activeElement.dataset.go") == "restart", "cancel → focus back on the button")
+    c(page.evaluate("Object.keys(state.answers).length") == n_ans, "cancel keeps the answers")
+    page.click('#app [data-go="restart"]')
+    page.click('#confirmBox [data-go="restart!"]')
+    wait_view(page, "start")
+    c(page.evaluate("[Object.keys(state.answers).length, state.priorities.length]") == [0, 0], "confirmed restart erases")
+    # Changer de pays depuis une question (logo), avec des réponses
+    page.click(f'[data-prio="{th}"]')
+    page.click('[data-go="startq"]')
+    wait_view(page, "question")
+    page.evaluate("TAP_GUARD = 0")
+    answer_one(page, 2)
+    page.click("#brand")
+    c(page.is_visible("#confirmBox") and page.evaluate("state.view") == "question", "change country from a question asks first")
+    c(page.inner_text('#confirmBox [data-go="home!"]').strip() == L["confirmHome"], "confirm button label")
+    page.click('#confirmBox [data-go="home!"]')
+    wait_view(page, "map")
+    c(page.evaluate("[Object.keys(state.answers).length, state.ac]") == [0, None], "confirmed change of country erases")
+    S.close(c)
+
+
+@test
+def star_and_guard(c):
+    """★ « Compte double pour moi » : au-dessus des réponses, lié à la question affichée, sans avance automatique ;
+    tapotement trop rapide après l'affichage ignoré (pas le clavier)."""
+    S = Session(CTX["browser"], width=390, height=844)
+    page = S.page
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    L = strings(page, "en")
+    ng_start(page)
+    c(page.inner_text(".star").replace("★", "").strip() == L["double"] and "★" in page.inner_text(".star"), "★ label")
+    above = page.evaluate("document.querySelector('.star').getBoundingClientRect().bottom <= document.querySelector('.answers').getBoundingClientRect().top")
+    c(above, "★ above the answers")
+    q0 = page.evaluate("state.order[0]")
+    c(page.get_attribute(".star", "data-dbl") == str(q0) and page.get_attribute(".star", "aria-pressed") == "false", "★ bound to the displayed question")
+    page.click(".star")
+    page.wait_for_timeout(500)
+    c(page.evaluate("[state.view, state.i, state.double[state.order[0]] === true]") == ["question", 0, True], "★ does not advance")
+    page.click(".star")
+    c(page.evaluate("Object.keys(state.double).length") == 0 and page.get_attribute(".star", "aria-pressed") == "false", "★ toggles off")
+    page.click(".star")
+    answer_one(page, 1)
+    q1 = page.evaluate("state.order[1]")
+    c(page.get_attribute(".star", "aria-pressed") == "false" and page.get_attribute(".star", "data-dbl") == str(q1), "next question: ★ off")
+    # Réponse puis ★ pendant l'avance automatique : le ★ touché est celui de la question affichée
+    page.click('.answers .ans[data-val="2"]')
+    page.evaluate(f"document.querySelector('.star[data-dbl=\"{q1}\"]') && document.querySelector('.star').click()")
+    page.wait_for_function("() => state.i === 2")
+    c(page.evaluate(f"Object.keys(state.double).map(Number).sort((a, b) => a - b).join()") == ",".join(str(x) for x in sorted([q0, q1])), "★ never lands on the next question")
+    # Double tapotement : un tapotement juste après l'affichage est ignoré ; le clavier ne l'est pas
+    page.evaluate("TAP_GUARD = 350; qShownAt = now()")
+    page.click('.answers .ans[data-val="-1"]')
+    q2 = page.evaluate("state.order[2]")
+    c(page.evaluate(f"state.answers[{q2}] === undefined && state.i === 2"), "tap right after the question appears is ignored")
+    page.wait_for_timeout(400)
+    page.click('.answers .ans[data-val="-1"]')
+    page.wait_for_function("() => state.i === 3")
+    c(page.evaluate(f"state.answers[{q2}]") == -1, "tap after 350 ms counts")
+    page.evaluate("qShownAt = now()")
+    page.focus('.answers .ans[data-val="0"]')
+    page.keyboard.press("Enter")
+    page.wait_for_function("() => state.i === 4")
+    c(page.evaluate("state.answers[state.order[3]]") == 0, "keyboard answers are not throttled")
+    no_overflow(page, c, "question 390")
+    S.close(c)
+
+
+def set_answers(page, answers, prios=()):
+    page.evaluate("""([ans, prios]) => { state.priorities = prios; buildOrder(); state.answers = ans; state.double = {};
+        state.i = 0; state.tab = 0; state.ret = null; go('results'); }""", [{str(k): v for k, v in answers.items()}, list(prios)])
+    wait_view(page, "results")
+
+
+def expected_title(page, lang, D, answers):
+    """Titre attendu d'après les règles de lecture (premier aperçu < 8 réponses, aucun parti proche < 50 %, égalité < 3 points)."""
+    rows, a = model_rows(D, answers, {}, [])
+    ok = [r for r in rows if r["grp"] == 0]
+    thin = [r for r in rows if r["grp"] == 1]
+    tr = lambda f, *args: page.evaluate("([l, f, a]) => typeof T[l][f] === 'function' ? T[l][f](...a) : T[l][f]", [lang, f, list(args)])
+    if not ok:
+        return tr("resThin" if thin else "resNone"), "thin" if thin else "none"
+    lead = lead_group(rows)
+    if len(lead) > 1:
+        who = page.evaluate("([l, xs]) => new Intl.ListFormat(LANGS.find(x => x.code === l).locale, { style: 'long', type: 'conjunction' }).format(xs)",
+                            [lang, [FSI + r["sig"] + PDI for r in lead]])
+    else:
+        who = FSI + f'{lead[0]["nom"]} ({lead[0]["sig"]})' + PDI
+    pct = f'{js_round(ok[0]["s"] * 100)}{" %" if lang == "fr" else "%"}'
+    if a < EARLY:
+        return tr("resEarly", a, who, len(lead)), "early"
+    if ok[0]["s"] < 0.5:
+        return tr("resFar", who, pct, len(lead)), "far"
+    if len(lead) > 1:
+        return tr("resTie", who, pct), "tie"
+    return tr("resClosest", who), "closest"
+
+
+def find_answers(D, want, seed=7, tries=60000):
+    """Cherche (au hasard, graine fixe) un jeu de réponses du Nigeria qui produit le cas voulu."""
+    R = random.Random(seed)
+    n = len(D["ed"]["questions"])
+    for _ in range(tries):
+        m = R.randint(3, EARLY - 1) if want == "early" else R.randint(EARLY, n)
+        ans = {q: R.choice([-2, -1, 0, 1, 2]) for q in R.sample(range(n), m)}
+        rows, a = model_rows(D, ans, {}, [])
+        ok = [r for r in rows if r["grp"] == 0]
+        if not ok:
+            continue
+        lead = lead_group(rows)
+        if want == "early" and a < EARLY:
+            return ans
+        if want == "tie" and ok[0]["s"] >= 0.5 and len(lead) > 1:
+            return ans
+        if want == "far" and ok[0]["s"] < 0.5:
+            return ans
+        if want == "closest" and ok[0]["s"] >= 0.5 and len(lead) == 1:
+            return ans
+        if want == "equal":  # deux partis à score égal (< 0,005) dont l'ordre de l'édition n'est pas l'ordre alphabétique
+            ids = [p["sigle"] for p in D["ed"]["parties"]]
+            for x, y in zip(ok, ok[1:]):
+                if abs(x["s"] - y["s"]) < EQ and ids.index(x["sig"]) > ids.index(y["sig"]):
+                    return ans
+    raise AssertionError(f"no Nigeria answer set found for case “{want}”")
+
+
+@test
+def headlines(c):
+    """Lecture des résultats (Nigeria, réponses construites) : premier aperçu, égalité « 1= », aucun parti proche,
+    scores égaux par ordre alphabétique, partis peu documentés à part, réponses identiques, cartes par sujet, RTL."""
+    S = Session(CTX["browser"], width=390, height=844)
+    page = S.page
+    page.goto(CTX["base"] + "/index.html#/ng/en")
+    page.wait_for_selector(".theme-grid")
+    D = json.load(open(os.path.join(ROOT, "data", "ng.json"), encoding="utf8"))
+    L = strings(page, "en")
+
+    def check(case, ans, lang="en"):
+        set_answers(page, ans)
+        title, kind = expected_title(page, lang, D, ans)
+        got = page.inner_text(".res-head h1").strip()
+        c(case is None or kind == case, f"{case}: model gives {kind}")
+        case = case or kind
+        c(got == title, f"{case}: headline “{got}” != “{title}”")
+        got_rank = [tuple(r) for r in displayed_ranking(page)]
+        exp_rank = expected_ranking(D, ans, {}, [])
+        c(got_rank == exp_rank, f"{case}: ranking {got_rank} != {exp_rank}")
+        rows, a = model_rows(D, ans, {}, [])
+        lead = lead_group(rows)
+        pos = page.evaluate("[...document.querySelectorAll('#pan0 ol.rank li')].map(li => li.querySelector('.pos').firstChild.textContent)")
+        want_pos = ["1=" if (len(lead) > 1 and k < len(lead)) else str(k + 1) for k in range(len(pos))]
+        c(pos == want_pos, f"{case}: positions {pos} != {want_pos}")
+        c(page.evaluate("document.title").startswith(got.rstrip(".:").replace(FSI, "").replace(PDI, "")[:60]), f"{case}: document title follows the headline")
+        return got
+
+    early = find_answers(D, "early")
+    check("early", early)
+    c(page.is_visible('.res-head .early [data-go="continue"]'), "early: invitation to keep answering")
+    c(page.inner_text(".res-head .early p").strip() == page.evaluate(f"T.en.earlyText({EARLY})"), "early: invitation text")
+    page.click('.res-head [data-go="continue"]')
+    wait_view(page, "question")
+    c(page.evaluate("state.answers[state.order[state.i]] === undefined"), "continue → first open question")
+    page.go_back()
+    wait_view(page, "results")
+    check("tie", find_answers(D, "tie"))
+    shot(page, "ng-tie-390.png", full=True)
+    check("far", find_answers(D, "far"))
+    check("closest", find_answers(D, "closest"))
+    check(None, find_answers(D, "equal", seed=11))  # ordre alphabétique à score égal (classement attendu)
+    # Toutes les réponses « tout à fait d'accord » : APM (9 questions documentées sur 38, toutes positives) ne gagne plus
+    allyes = {i: 2 for i in range(len(D["ed"]["questions"]))}
+    set_answers(page, allyes)
+    rows, a = model_rows(D, allyes, {}, [])
+    title = page.inner_text(".res-head h1")
+    c("APM" not in title and "Allied Peoples Movement" not in title, f"all agree: APM not in the headline “{title}”")
+    c(page.inner_text(".res-head .notice").strip() == L["straight"], "straight-lining notice")
+    thin = [r["sig"] for r in rows if r["grp"] == 1]
+    c("APM" in thin and page.evaluate("[...document.querySelectorAll('#pan0 li.thin .badge')].map(b => b.textContent)") == thin, f"thin group {thin}")
+    c(page.inner_text("#pan0 h2.rank-h").strip() == L["thinTitle"], "thin-group heading")
+    # Cartes par sujet : même règle d'égalité, partis peu documentés sur le sujet signalés
+    want_thin = sum(1 for th in D["ed"]["themes"] for r in model_rows(D, allyes, {}, [], theme=th["id"])[0] if r["grp"] == 1)
+    c(page.locator("#pan1 .mini-row.thin").count() == want_thin, f"issue cards: {want_thin} thinly documented rows flagged")
+    c(page.locator(f'#pan1 .mini-row.thin .chip.warn:text-is("{L["partial"]}")').count() == want_thin, "issue cards: partial chips")
+    for k, th in enumerate(D["ed"]["themes"]):
+        trows = model_rows(D, allyes, {}, [], theme=th["id"])[0]
+        tok = [r for r in trows if r["grp"] == 0]
+        tlead = [r for r in tok if tok[0]["s"] - r["s"] < TIE] if tok else []
+        card = page.evaluate(f"[...document.querySelectorAll('#pan1 .theme-card')].find(a => a.querySelector('h3').textContent === ed().themes[{k}].name).querySelector('.verdict-line').textContent")
+        if len(tlead) > 1:
+            c(all(r["nom"] in card for r in tlead) and "tied" in card, f"issue {th['id']}: tie listed ({card[:80]})")
+        elif tlead:
+            c(f'{tlead[0]["nom"]} ({tlead[0]["sig"]})' in card, f"issue {th['id']}: closest {tlead[0]['sig']} ({card[:80]})")
+    # Méthode : les règles de lecture
+    c(page.locator("#pan3 .rules li").count() == len(page.evaluate("T.en.mRules")), "method: reading rules")
+    # Arabe : « Nom (SIGLE) » isolé en entier dans le titre
+    far = find_answers(D, "far")
+    page.click('#langs [data-lang="ar"]')
+    set_answers(page, far)
+    title, kind = expected_title(page, "ar", D, far)
+    got = page.evaluate("document.querySelector('.res-head h1').textContent")
+    c(got == title, f"ar far headline “{got}” != “{title}”")
+    rows, _ = model_rows(D, far, {}, [])
+    lead = lead_group(rows)
+    if len(lead) == 1:
+        c(FSI + f'{lead[0]["nom"]} ({lead[0]["sig"]})' + PDI in got, "ar: whole “Name (SIG)” isolated")
+    shot(page, "ng-ar-far-390.png", full=True)
+    no_overflow(page, c, "ar results 390")
     S.close(c)
 
 

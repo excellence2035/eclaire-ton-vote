@@ -21,7 +21,7 @@ const ROOT = path.resolve(__dirname, "..");
 const SRC = path.join(ROOT, "src");
 const VALIDATOR = path.join(SRC, "tools", "validate-edition.js");
 const EXEMPT = new Set(["fr"]);
-const UI_FILES = ["ui/t-fr-en.js", "ui/t-pt-sw-ar.js", "ui/t-party.js", "ui/t-party-pt-sw-ar.js", "ui/t-multi.js"];
+const UI_FILES = ["ui/t-fr-en.js", "ui/t-pt-sw-ar.js", "ui/t-party.js", "ui/t-party-pt-sw-ar.js", "ui/t-multi.js", "ui/t-v2.js"];
 const DESCRIPTION = "Réponds à des questions précises par ministère et découvre quels partis pensent comme toi. Carte des élections dans les 54 pays d’Afrique, questionnaires par pays, en 5 langues.";
 const FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%235A2DB8'/%3E%3Cpath d='M8 17l6 6L27 7' fill='none' stroke='%23F2B42C' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E";
 const RESET = "<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>";
@@ -168,6 +168,9 @@ for (const [cc, { file, i18n }] of [...sources.entries()].sort((a, b) => a[0].lo
         else if (EXEMPT.has(cc)) errs = edParity(E, all[lang]);
         else { const v = validate([file, i18n, lang]); errs = v.ok ? [] : v.errors.map(l => l.replace(/^ERROR\s+/, "")); }
         if (errs.length) { warn(`${cc}: translation “${lang}” incomplete, dropped (${errs.slice(0, 4).join("; ")}${errs.length > 4 ? ` … ${errs.length} problems` : ""})`); continue; }
+        // Note facultative (META.note traduite) : une chaîne non vide, sinon elle est ignorée ; la langue reste.
+        if ("note" in all[lang] && !isStr(all[lang].note)) { warn(`${cc}: i18n.${lang}.note must be a non-empty string, ignored`); delete all[lang].note; }
+        if (M.note && !isStr(all[lang].note)) console.log(`note  ${cc}: META.note not translated in “${lang}” (shown in ${base.lang})`);
         langs.push(lang); tr[lang] = all[lang];
       }
     } else if (all !== null) warn(`${cc}: I18N_${CC} missing in ${path.relative(ROOT, i18n)}`);

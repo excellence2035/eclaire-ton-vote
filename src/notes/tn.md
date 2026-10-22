@@ -1,8 +1,10 @@
 # Tunisia (tn) — research notes
 
-**Status: INCOMPLETE (11 Oct 2026, ~14:15 Paris).** Research stopped early on both tools. First, the shared WebSearch budget for this turn ran out ("limit: 200 WebSearch calls per turn, shared by every agent"). Then WebFetch returned "session limit · resets 4:40pm (Europe/Paris)". About 20 searches and 22 fetches were done before that.
-`src/editions/tn.js` is a **draft that does not validate yet**: it has too few questions, Ennahda and the PDL have too few documented commitments, and Afek Tounes and a left-wing party are still missing.
-Everything under "Verified" below comes from a page I opened. URLs under "Seen in results, NOT opened" must be opened before anyone cites them.
+**STATUS (18 Oct 2026): DONE, validator OK, but coverage is THIN.** `src/editions/tn.js` is an `ED_TN` with 4 forces, 8 themes and 27 questions, and it validates. Coverage: 25 July camp 20/27, Echaab 16/27, UGTT 7/27, Ennahdha 4/27. 13 questions code only one force. The "What is missing" list at the end says what a follow-up should do.
+On 18 Oct, WebFetch was refused: the permission request was not answered in time, so later requests were not sent. Per the brief, research stopped after 1 search and 3 refused fetches. The 18 Oct edition is built **only** from (a) pages opened by the 11–12 Oct researchers (below and in the prior dump) and (b) the sources a 16 Oct researcher put in `SRC_TN`. Their content is described in the 18 Oct section at the end.
+
+(Earlier status, 11 Oct 2026: research stopped early because the shared WebSearch cap and then the WebFetch session limit were reached, after about 20 searches and 22 fetches.)
+Everything under "Verified" below comes from a page that was opened. URLs under "Seen in results, NOT opened" must be opened before anyone cites them.
 
 ---
 
@@ -172,3 +174,73 @@ Themes are tied to the Zenzri government; the ministry names still need checking
 - **agri/water**
   - Water rationing and desalination
   - State land for community companies
+
+---
+
+## 18 Oct 2026 run — what was built and on what
+
+### Decision: ED_TN (rule 5)
+- **Forces compared (4):**
+  - `tn_25j`: President Saïed's camp, coded only from his and his government's record and statements.
+  - `tn_echaab`: Echaab, now in opposition, coded from its statements.
+  - `tn_nahdha`: Ennahdha, which boycotted in 2022–23 and whose leaders are in prison, coded from its statements.
+  - `tn_ugtt`: the UGTT, a union that fields no candidates.
+  - At least 3 forces can be coded, so rule 5 requires an ED. `status` and the system row "Not a competitive vote in the usual sense" say plainly that the vote is not competitive, who boycotted and how coding was done.
+- **PDL not compared.** No policy statement for 2025–26 was found; we only have sentences, the congress title (3–4 Oct 2026) and a 2022 headline. It is listed in `others`.
+- **META** keeps the 16 Oct choice: `{ legislative, 2027-11, range, d2 2028-03 }`, src `ayachi`. This could not be re-checked on 18 Oct (the fetch was refused).
+
+### Sources added to SRC by the 16 Oct researcher (not in the notes above)
+These are in `SRC_TN`, and the researcher who added them evidently opened them: their 16 Oct system text quotes details that are not in the titles. Their content is NOT recorded anywhere except as follows. A fact-checker should reopen them first.
+- **ayachi** (Webdo, 13 Oct 2026). The title says municipal elections are possible before end 2026, otherwise by March 2027. The 16 Oct text says ISIE board member Belgacem Ayachi said the legislative vote would be in Nov 2027, "not an officially adopted calendar". This is used for META, the facts and a system row.
+- **hrw_sep26** (HRW, 4 Sep 2026). From the 16 Oct text:
+  - 37 people sentenced to 4–66 years in the "conspiracy" case in Apr 2025.
+  - At least 20 associations suspended by court order between Jul 2025 and Apr 2026.
+  - Used in a system row and in Q "Suspending associations" (`tn_25j` +1).
+- **boycott22** (Le360/AFP, 20 Sep 2022). The 16 Oct text says Ennahdha within the NSF, the Workers' Party and Al Joumhouri boycotted. It is used for the Ennahdha tag, a commit and the boycott cell. **Check that this page actually names Ennahdha/NSF.**
+- **ugtt_selmi** (La Presse, 28 Mar 2026). From the title, Selmi "tend la main au gouvernement" (holds out a hand to the government). The 16 Oct text says the Mar 2026 congress elected him secretary general.
+- **Used at headline level only** (cells say no more than the title):
+  - **nahdha_jan26**: Ennahdha denounces political decline and calls for an inclusive national dialogue.
+  - **public_assets**: Saïed rules out any sale of public assets.
+  - **d54_bill**: the Decree 54 amendment still hits a "wall" in Parliament, according to MP Mohamed Ali.
+  - **grads**: the State is accelerating the recruitment of unemployed graduates.
+  - **returns**: a target of 10,000 voluntary repatriations of migrants in 2026.
+  - **labour25**: fixed-term contracts (CDD) and labour subcontracting banned in May 2025.
+  - **norm_bill**: Saïed opposed the anti-normalisation law in Nov 2023.
+  - **ugtt_imf**: the UGTT lambasted the IMF loan negotiations in May 2023.
+  - **imf_diktats**: Saïed rejected IMF "diktats" in Apr 2023.
+- **Removed from SRC as unused** (content unknown; reopen before using):
+  - pdl_congress (L'Économiste Maghrébin, 13 Aug 2026): https://www.leconomistemaghrebin.com/2026/08/13/pdl-annonce-tenue-congres-national-3-et-4-octobre-2026/
+  - pdl_prog (Webdo, 14 Nov 2022, "Moussi : Kais Saied a copié le programme économique du PDL"): https://www.webdo.tn/fr/actualite/national/moussi-saied-a-copie-le-programme-economique-du-pdl/198884/
+  - ugtt_prio (La Presse via AllAfrica, 1 Apr 2026, "UGTT - Les priorités du nouveau bureau exécutif"): https://fr.allafrica.com/stories/202604010594.html
+  - lf2026 (Le Courrier de l'Atlas, 16 Oct 2025, "Loi de finances 2026 : promesses sociales, angles morts économiques"): https://www.lecourrierdelatlas.com/loi-de-finances-2026-promesses-sociales-angles-morts-economiques/
+  - fsn_2022 (Al Jazeera Net, 30 Oct 2022, the Salvation Front announces "political mobilisation"): https://www.ajnet.me/news/2022/10/30/%d8%aa%d9%88%d9%86%d8%b3-%d8%ac%d8%a8%d9%87%d8%a9-%d8%a7%d9%84%d8%ae%d9%84%d8%a7%d8%b5-%d8%aa%d8%b9%d9%84%d9%86-%d8%a7%d9%84%d8%aa%d8%b9%d8%a8%d8%a6%d8%a9
+- **Blocked on 18 Oct** (the fetch was refused, not because the page failed): ayachi, hrw_sep26, nahdha_jan26.
+- **Dropped from the 16 Oct text because they were not verified on an opened page:**
+  - "161 seats".
+  - The name of the head of government (Sarra Zaâfrani Zenzri, appointed Mar 2025; still in office in Oct 2026? not checked).
+
+### Context facts used from general knowledge (flag for fact-check)
+- Decree-law 54 was issued by the President in 2022 (Q "Repeal Decree 54" ctx).
+- Saïed has been President since 2019 (candNote).
+- Ministry names in `themes[].min` are not verified on an opened page.
+
+### Seen in search results on 18 Oct, NOT opened
+- PLF 2026 expert panel (Business News, 20 Oct 2025): https://businessnews.com.tn/2025/10/20/le-plf-2026-sous-la-loupe-des-experts-entre-incoherence-dependance-a-la-bct-et-risques-dinflation/1368249/
+- PLF 2026, BCT loan of 11,000 MD (Managers, 16 Oct 2025): https://managers.tn/2025/10/16/plf2026-la-bct-est-autorisee-a-accorder-un-pret-de-11000-millions-de-dinars-a-letat/
+- The Afek Tounes search returned no page about Afek itself.
+
+### What is missing (priority order for a follow-up)
+1. **Reopen ayachi** to confirm the date (Nov 2027?) and whether municipal elections are held separately.
+2. **Ennahdha** needs more cells (only 4 now). Reopen nahdha_jan26 for its full content. Find 2025–26 statements on the economy, the IMF, the 2027 vote (boycott or not) and Decree 54.
+3. **The UGTT** needs more cells (7 now). Reopen ugtt_prio (privatisation, subsidies, wages) and ugtt_selmi.
+4. **PDL**: congress outcome of 3–4 Oct 2026, its programme and its stance on 2027. It could become a 5th force.
+5. **Afek Tounes** (liberal, likely pro-reform/IMF) and the **Workers' Party**: none researched yet.
+6. **Government record still unsourced**:
+   - Fuel and bread subsidies 2025–26
+   - Price controls
+   - Community companies
+   - Gabès phosphate
+   - EU migration MoU
+   - Energy and renewables plan
+   - Draft finance law 2027 (Oct 2026)
+7. **Single-coded questions to strengthen** (13): Central Bank lending, wealth tax, monopolies, spending for wages, party lists, campaign funding, recall, Constitutional Court, voluntary returns, foreign backing, price interventions, gas/renewables, sale of public companies.

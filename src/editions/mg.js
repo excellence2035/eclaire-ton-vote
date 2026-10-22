@@ -247,14 +247,6 @@ const ED_MG = {
       nd: { mg_tim: "No TIM statement found on military candidates.", mg_hvm: "No HVM statement found.", mg_genz: "No Gen Z statement found." } },
 
     /* ---------- Justice, corruption & freedoms ---------- */
-    { theme: "integrity", short: "Try Rajoelina at home",
-      text: "Former President Andry Rajoelina should be tried in Madagascar.",
-      ctx: "Rajoelina left on a French military aircraft in October 2025 and lives mostly in exile. The new authorities accuse him of plundering public resources; the Court of Accounts documented diversions of public money to his inner circle, but he has not been prosecuted so far. His allies call the cases against former regime figures political revenge.",
-      cells: {
-        mg_ref: { p: 2, k: "stated", s: "arabnews", n: "Randrianirina (December 2025): “Our wish is to try him in Madagascar,” accusing him of impoverishing the nation." },
-        mg_genz: { p: 1, k: "stated", s: "ifri", n: "Analysts describe convictions of former regime officials as the movement’s main demand (November 2025); this edition found no Gen Z statement on Rajoelina’s own trial." },
-        mg_irmar: { p: -1, k: "stated", s: "immunity", n: "IRMAR’s parliamentary leader called the prosecution of a former Rajoelina minister a “chasse aux sorcières” and “vengeance politique” (January 2026); no statement found on Rajoelina’s own case." }
-      } },
     { theme: "integrity", short: "Prosecute ex-regime officials",
       text: "Former ministers and MPs of the old regime who are under investigation should lose their immunity and face the courts.",
       ctx: "In January 2026, at the request of the judicial authorities, the National Assembly’s bureau lifted the immunity of MP Marie-Michelle Sahondrarimalala, a former education minister under Rajoelina, so she could be investigated; she is banned from leaving the country. Rajoelina’s close associate Mamy Ravatomanga has been detained in Mauritius since October 2025 in a financial-crimes case; his wife calls it a “political elimination”.",
