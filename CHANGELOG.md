@@ -4,7 +4,7 @@ Ce qui change sur la plateforme, du plus récent au plus ancien. Les positions d
 
 ## 22 octobre 2026
 
-- Nouveaux pays : Lesotho (questionnaire, 5 partis), Tunisie (questionnaire, 4 forces — couverture encore mince, à approfondir), Angola (fiche d’information : élections prévues en août 2027, date exacte non fixée).
+- Nouveaux pays : Lesotho (questionnaire, 5 partis), Tunisie (questionnaire, 4 forces — couverture encore mince, à approfondir), Angola (fiche d’information : élections prévues en août 2027, date exacte non fixée) ; la fiche est traduite en portugais et en français.
 - Navigation : l’adresse change à chaque écran (`#/ke/sw`), le bouton Retour du téléphone fonctionne, un rechargement reprend là où tu en étais, les liens directs vers un pays ou une langue marchent.
 - Langue de l’interface : détectée depuis le navigateur au premier passage, puis mémorisée.
 - Questions : bouton ★ « compte double » placé au-dessus des réponses ; confirmation dans la page (et non plus une fenêtre du navigateur) avant d’effacer les réponses.
