@@ -141,7 +141,7 @@ def open_country(page, a3, lang, from_list=False):
             page.click("#listBox summary")
         page.click(f'#clist [data-place="{a3}"]')
     else:
-        page.click(f'#mapWrap [data-place="{a3}"]')
+        page.click(f'#mapWrap .mk[data-place="{a3}"]')
     page.wait_for_function("() => document.getElementById('langDlg').open || state.view !== 'map'")
     if page.evaluate("document.getElementById('langDlg').open"):
         page.click(f'#langBody [data-pick="{lang}"]')
@@ -326,7 +326,7 @@ def run_nigeria(browser, base, lang, width, c, switch_to=None, screenshot=None):
     page.wait_for_selector(".theme-grid")
     c(page.evaluate("document.documentElement.lang") == lang, f"ng-{lang}: html lang")
     c(page.evaluate("document.documentElement.dir") == ("rtl" if lang == "ar" else "ltr"), f"ng-{lang}: dir")
-    c(page.locator("#langs button:not([disabled])").count() == 5, f"ng-{lang}: 5 languages offered")
+    c(page.locator("#langs button:not([aria-disabled=true])").count() == 5, f"ng-{lang}: 5 languages offered")
     # Couleur du badge (thème clair) injectée depuis l'édition
     apc = next(p for p in D["ed"]["parties"] if p["id"] == "apc")
     page.click(".about details:nth-of-type(2) summary")
@@ -482,6 +482,77 @@ def make_fixtures(tmp):
 CTX = {}
 
 
+def late_syntax(code):
+    """Cherche dans un script la syntaxe plus récente qu'ES2019 (« ?? », « ?. », « ||= », « &&= », séparateurs de chiffres,
+    BigInt, champs privés). Les chaînes, commentaires, expressions régulières et textes de gabarits sont ignorés."""
+    hits, n, i, line, depth, prev, tpl = [], len(code), 0, 1, 0, "", []
+    regex_after = "(,=:[!&|?{};+-*%<>~^"
+    kw = re.compile(r"(?:^|[^\w$])(?:return|typeof|case|in|of|else|do|void|delete|throw|new)$")
+    while i < n:
+        ch, nx = code[i], code[i + 1] if i + 1 < n else ""
+        if ch == "\n":
+            line += 1; i += 1; continue
+        if ch == "/" and nx == "/":
+            while i < n and code[i] != "\n": i += 1
+            continue
+        if ch == "/" and nx == "*":
+            i += 2
+            while i < n and not (code[i] == "*" and code[i + 1:i + 2] == "/"):
+                if code[i] == "\n": line += 1
+                i += 1
+            i += 2; continue
+        if ch in "\"'":
+            i += 1
+            while i < n and code[i] != ch:
+                if code[i] == "\\": i += 1
+                i += 1
+            i += 1; prev = "a"; continue
+        if ch == "`" or (ch == "}" and tpl and tpl[-1] == depth - 1):
+            if ch == "}":
+                tpl.pop(); depth -= 1
+            i += 1
+            while i < n:
+                if code[i] == "\\": i += 2; continue
+                if code[i] == "\n": line += 1
+                if code[i] == "`": i += 1; prev = "a"; break
+                if code[i] == "$" and code[i + 1:i + 2] == "{":
+                    tpl.append(depth); depth += 1; i += 2; prev = "{"; break
+                i += 1
+            continue
+        if ch == "/" and (prev == "" or prev in regex_after or kw.search(code[max(0, i - 8):i].rstrip())):
+            i += 1; cls = False
+            while i < n and (cls or code[i] != "/") and code[i] != "\n":
+                if code[i] == "\\": i += 1
+                elif code[i] == "[": cls = True
+                elif code[i] == "]": cls = False
+                i += 1
+            i += 1
+            while i < n and code[i].isalpha(): i += 1
+            prev = "a"; continue
+        three = code[i:i + 3]
+        if ch == "?" and nx == "?": hits.append(f"line {line}: ??")
+        elif ch == "?" and nx == "." and not code[i + 2:i + 3].isdigit(): hits.append(f"line {line}: ?.")
+        elif three in ("||=", "&&=") : hits.append(f"line {line}: {three}")
+        elif ch == "#" and re.match(r"#[A-Za-z_]", code[i:i + 2]) and prev != "a": hits.append(f"line {line}: #private")
+        elif ch.isdigit() and not (prev == "a" and re.match(r"\w", code[i - 1:i])):
+            m = re.match(r"\d[\d_]*n?\b|0[xX][\da-fA-F_]+n?", code[i:])
+            if m and ("_" in m.group(0) or m.group(0).endswith("n")): hits.append(f"line {line}: number {m.group(0)}")
+        if ch == "{": depth += 1
+        elif ch == "}": depth -= 1
+        if not ch.isspace(): prev = "a" if re.match(r"[A-Za-z0-9_$)\]]", ch) else ch
+        i += 1
+    return hits
+
+
+def find_acorn():
+    for cand in ("acorn", "/opt/npm-tools/node_modules/acorn", "/opt/node-tools/node_modules/acorn"):
+        r = subprocess.run(["node", "-e", f"console.log(require.resolve({json.dumps(cand)}))"], capture_output=True, text=True)
+        if r.returncode == 0:
+            return cand
+    return None
+
+
+
 @test
 def build_outputs(c):
     """Le site du dépôt : page complète, page d'artefact, données non intégrées."""
@@ -497,7 +568,7 @@ def build_outputs(c):
     c("[hidden]{display:none!important}" in art, "artifact keeps the reset")
     for marker in ("const SRC_NG", "const ED_NG", "Allied Peoples Movement", "I18N_NG", "Rassemblement national"):
         c(marker not in idx, f"edition data not inlined ({marker})")
-    c(len(idx.encode()) < 300_000, f"index.html small ({len(idx.encode())} bytes)")
+    c(len(idx.encode()) < 350_000, f"index.html small ({len(idx.encode())} bytes)")
     for v in ("--c-apc", "--c-lepen"):
         c(v not in idx, f"old colour token {v} removed")
     cat = json.loads(re.search(r"const CATALOG = (\{.*?\});\n", idx).group(1))
@@ -509,6 +580,40 @@ def build_outputs(c):
         c(e["evSrc"] and e["evSrc"]["u"].startswith("http"), f"catalog {cc}: date source")
         D = json.load(open(os.path.join(ROOT, "data", cc + ".json"), encoding="utf8"))
         c(D["kind"] == e["kind"] and D["id"] == cc and D["langs"] == e["langs"] and set(D["i18n"]) == set(e["langs"][1:]), f"data/{cc}.json matches catalog")
+    # JavaScript livré : rien de plus récent qu'ES2019 (anciens navigateurs de téléphone), vérifié deux fois
+    for name, html in (("index.html", idx), ("artifact.html", art)):
+        code = "\n".join(re.findall(r"<script>(.*?)</script>", html, re.S))
+        c(len(code) > 100_000, f"{name}: script found ({len(code)} characters)")
+        c(not late_syntax(code), f"{name}: no syntax newer than ES2019 {late_syntax(code)[:3]}")
+    # le détecteur lui-même : il voit « ?? » et « ?. », pas ceux des chaînes, commentaires, expressions régulières ou gabarits
+    c(len(late_syntax("const a = b ?? c; const d = e?.f; g ||= 1;")) == 3, "scanner sees ??, ?. and ||=")
+    c(not late_syntax("const a = '?? ?.'; // x ?? y\nconst r = /a??b/; const t = `${a ? .5 : 1} ?? ${b}`; const u = a ? .5 : 1;"), "scanner ignores strings, comments, regexes, templates and `a ? .5`")
+    acorn = find_acorn()
+    if acorn:
+        code = "\n".join(re.findall(r"<script>(.*?)</script>", idx, re.S))
+        r = subprocess.run(["node", "-e", f"const a=require({json.dumps(acorn)});a.parse(require('fs').readFileSync(0,'utf8'),{{ecmaVersion:2019,sourceType:'script'}});console.log('ok')"],
+                           input=code, capture_output=True, text=True)
+        c(r.returncode == 0 and "ok" in r.stdout, f"index.html parses as ES2019 (acorn): {r.stderr.strip()[:200]}")
+        NOTES.append("bundle parses as ES2019 with acorn")
+    else:
+        NOTES.append("acorn not found: ES2019 parse check skipped (the built-in scanner ran)")
+    c("color-mix" not in idx, "no color-mix() left in the page")
+    # sans JavaScript : une phrase et la liste des pays qui ont un questionnaire ou une fiche, générée par le build
+    m = re.search(r'<main id="app"><noscript>(.*?)</noscript></main>', idx, re.S)
+    c(bool(m), "<noscript> block inside <main id=app>")
+    ns = m.group(1) if m else ""
+    c("JavaScript" in ns and ns.count("<li>") == len(cat), f"noscript lists the {len(cat)} countries with a questionnaire or an information page ({ns.count('<li>')})")
+    for name in ("Nigeria", "Kenya", "Angola", "The Gambia"):
+        c(name in ns, f"noscript names {name}")
+    c(all(f'lang="{l}"' in ns for l in LANGS), "noscript sentence in the five languages")
+    c("<noscript>" in art and "JavaScript" in art, "artifact.html has the noscript block too")
+    # le build ne signale rien (calendrier cohérent avec les éditions, sources présentes, syntaxe) : --strict échoue au moindre avertissement
+    tmp2 = tempfile.mkdtemp(prefix="etv-strict-")
+    try:
+        r = subprocess.run(["node", os.path.join(ROOT, "tools", "build.js"), "--strict", "--out", tmp2], capture_output=True, text=True, timeout=180)
+        c(r.returncode == 0 and "WARN" not in r.stdout + r.stderr, f"build --strict passes without warnings: {(r.stdout + r.stderr)[-300:] if r.returncode else ''}")
+    finally:
+        shutil.rmtree(tmp2, ignore_errors=True)
     CTX["catalog"] = cat
 
 
@@ -521,6 +626,7 @@ def build_fixtures(c):
     site = os.path.join(tmp, "site")
     os.makedirs(site)
     before = sorted(os.listdir(os.path.join(ROOT, "src", "editions")))
+    repo_data = sorted(os.listdir(os.path.join(ROOT, "data")))
     r = subprocess.run(["node", os.path.join(ROOT, "tools", "build.js"), "--extra", fx, "--out", site], capture_output=True, text=True, timeout=180)
     out = r.stdout + r.stderr
     CTX["fixture_build_log"] = out
@@ -531,6 +637,8 @@ def build_fixtures(c):
     c(re.search(r"cg: translation “sw” incomplete, dropped .*candNotes", out), "cg: sw dropped (candNotes)")
     c(re.search(r"ok\s+km: information page, 3 actors, langs en,ar\b", out), "km built with en,ar")
     c(re.search(r"km: translation “fr” incomplete, dropped .*why", out), "km: fr dropped (why)")
+    c(re.search(r"cg: africa\.js election dates differ from META\.ev", out), "build warns when an AFRICA row and the edition's dates disagree")
+    c(re.search(r"km: africa\.js says up:false but META\.ev falls between", out), "build warns when AFRICA says no election but the edition has one")
     c(re.search(r"bi: validation failed, skipped", out), "bi skipped (validation)")
     c(re.search(r"td: cannot load", out), "td skipped (load error)")
     files = sorted(os.listdir(os.path.join(site, "data")))
@@ -538,7 +646,7 @@ def build_fixtures(c):
     c("bi.json" not in files and "td.json" not in files, "invalid editions not written")
     cg = json.load(open(os.path.join(site, "data", "cg.json"), encoding="utf8"))
     c(cg["a3"] == "178" and cg["langs"] == ["en", "fr"] and list(cg["i18n"]) == ["fr"], "cg.json langs and i18n")
-    c(not os.path.exists(os.path.join(ROOT, "data", "cg.json")), "repo data/ untouched")
+    c(sorted(os.listdir(os.path.join(ROOT, "data"))) == repo_data, "repo data/ untouched")
     CTX["site"] = site
 
 
@@ -557,7 +665,7 @@ def map_400(c):
                pins: document.querySelectorAll('#mapWrap .pin').length, marks: document.querySelectorAll('#mapWrap .pin-info').length,
                up: Object.keys(AFRICA).filter(isUp).length,
                cnt: [...document.querySelectorAll('.legend .cnt')].map(e => +e.textContent),
-               ngPin: [...document.querySelectorAll('#mapWrap .pin')].map(p => [+p.getAttribute('cx'), +p.getAttribute('cy')]),
+               ngPin: [...document.querySelectorAll('#mapWrap .mk')].filter(g => g.querySelector('.pin')).map(g => [+g.dataset.x, +g.dataset.y]),
                cent: MAP.cent['566'] }
     }""")
     n_ed = sum(1 for e in cat.values() if e["kind"] == "ed" and e["a3"])
@@ -573,7 +681,7 @@ def map_400(c):
     c(page.is_visible("#tip") and "✓" in page.inner_text("#tip"), "tooltip on focus shows questionnaire mark")
     page.keyboard.press("Enter")
     page.wait_for_selector("#langDlg[open]")
-    c(page.locator("#langBody .lang-btn:not([disabled])").count() == 5, "Nigeria: 5 languages enabled")
+    c(page.locator("#langBody .lang-btn:not([aria-disabled=true])").count() == 5, "Nigeria: 5 languages enabled")
     no_overflow(page, c, "language dialog")
     page.click("#langCancel")
     # Pays sans données : comportement d'origine, puis « Essayer avec le Nigeria »
@@ -584,7 +692,7 @@ def map_400(c):
     c(page.locator(f'#clist .cbtn[data-place="{nid}"]').count() == 1, f"country search ({nname})")
     page.click(f'#clist [data-place="{nid}"]')
     page.wait_for_selector("#langDlg[open]")
-    c(page.locator("#langBody .lang-btn[disabled]").count() == 0, "no-data country: every language enabled")
+    c(page.locator("#langBody .lang-btn[aria-disabled=true]").count() == 0, "no-data country: every language enabled")
     page.click('#langBody [data-pick="pt"]')
     wait_view(page, "info")
     c(page.evaluate(f"cname('{nid}')") in page.inner_text(".strip"), "no-data info screen")
@@ -622,7 +730,7 @@ def france(c):
     D = json.load(open(os.path.join(ROOT, "data", "fr.json"), encoding="utf8"))
     c(page.evaluate("[state.country, state.ui]") == ["fr", "fr"], "France opens in French")
     c(page.inner_text(".strip b").startswith("France · "), "strip uses the edition name")
-    c([b.strip() for b in page.locator("#langs button:not([disabled])").all_inner_texts()] == ["FR"], "only French enabled")
+    c([b.strip() for b in page.locator("#langs button:not([aria-disabled=true])").all_inner_texts()] == ["FR"], "only French enabled")
     lepen = next(p for p in D["ed"]["parties"] if p["id"] == "lepen")
     c(page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--c-fr-lepen').trim().toLowerCase()") == lepen["col"][0].lower(), "France colour token injected")
     th = D["ed"]["themes"][0]["id"]
@@ -677,18 +785,18 @@ def info_page(c):
     page = S.page
     page.goto(CTX["fbase"] + "/site/index.html")
     page.wait_for_selector("#mapWrap svg")
-    pos = page.evaluate("""() => { const r = document.querySelectorAll('#mapWrap .pin-info');
-        return { isl: MAP.isl['174'], marks: [...r].map(g => { const c = g.querySelector('.ring'); return [+c.getAttribute('cx'), +c.getAttribute('cy')] }),
+    pos = page.evaluate("""() => { const g = document.querySelector('#mapWrap .mk[data-place="174"]');
+        return { isl: MAP.isl['174'], at: g ? [+g.dataset.x, +g.dataset.y] : null, info: !!(g && g.querySelector('.pin-info')),
                  up: document.querySelector('.isl[data-place="174"]').classList.contains('up'), status: statusLine('174') } }""")
-    c(pos["isl"] in pos["marks"], "info marker on the Comoros island coordinates")
+    c(pos["info"] and pos["isl"] == pos["at"], "info marker anchored on the Comoros island coordinates")
     c(pos["up"], "Comoros coloured from META (election by end 2027)")
-    page.click('.isl[data-place="174"]')
+    page.click('#mapWrap .mk[data-place="174"]')
     page.wait_for_selector("#langDlg[open]")
     c(page.evaluate("state.ui") == "en", "interface starts in the browser language (en-GB → en)")
     Lui = strings(page, "en")  # langue de l'interface pendant le choix
-    enabled = page.evaluate("[...document.querySelectorAll('#langBody .lang-btn')].filter(b => !b.disabled).map(b => b.dataset.pick).sort()")
+    enabled = page.evaluate("[...document.querySelectorAll('#langBody .lang-btn')].filter(b => b.getAttribute('aria-disabled') !== 'true').map(b => b.dataset.pick).sort()")
     c(enabled == ["ar", "en"], f"Comoros: ar + en enabled ({enabled})")
-    c(page.locator(f'#langBody .lang-btn[disabled] .lnote:text-is("{Lui["langNoInfo"]}")').count() == 3, "disabled languages carry a note")
+    c(page.locator(f'#langBody .lang-btn[aria-disabled=true] .lnote:text-is("{Lui["langNoInfo"]}")').count() == 3, "disabled languages carry a note")
     c(Lui["legInfo"] in page.inner_text("#langBody"), "dialog says information page")
     page.click('#langBody [data-pick="ar"]')
     page.wait_for_selector(".why-box")
@@ -702,7 +810,7 @@ def info_page(c):
     note = page.locator(".caveat span[dir='auto']")
     c(note.count() == 1 and note.inner_text().strip() == "[ar] Fixture caveat about the date." and note.get_attribute("lang") == "ar",
       "META note translated (i18n note), isolated with dir=auto")
-    c(sorted(b.strip() for b in page.locator("#langs button:not([disabled])").all_inner_texts()) == ["AR", "EN"], "header offers ar + en only")
+    c(sorted(b.strip() for b in page.locator("#langs button:not([aria-disabled=true])").all_inner_texts()) == ["AR", "EN"], "header offers ar + en only")
     no_overflow(page, c, "info page 400px")
     shot(page, "info-km-ar-400.png", full=True)
     page.click('#langs [data-lang="en"]')
@@ -747,7 +855,7 @@ def leader_edition(c):
     page.click("#ficheClose")
     page.click('#langs [data-lang="en"]')
     c(page.locator("#pan3 .method li.transl").count() == 0, "base language: no translation note")
-    c(page.locator('#langs button[data-lang="pt"][disabled]').count() == 1, "dropped language disabled in header")
+    c(page.locator('#langs button[data-lang="pt"][aria-disabled=true]').count() == 1, "dropped language disabled in header")
     S.close(c)
 
 
@@ -813,7 +921,7 @@ def offline(c):
     page.evaluate("LOAD_TIMEOUT = 1500")
     open_country(page, cat[cc]["a3"], cat[cc]["langs"][-1])
     page.wait_for_selector(".load-box")
-    offered = sorted(b.strip().lower() for b in page.locator("#langs button:not([disabled])").all_inner_texts())
+    offered = sorted(b.strip().lower() for b in page.locator("#langs button:not([aria-disabled=true])").all_inner_texts())
     c(offered == sorted(cat[cc]["langs"]), f"{cc} loading: header offers {offered}")
     page.wait_for_selector('[data-go="retry"]', timeout=6000)
     c(page.evaluate("state.view") == "loaderror" and page.evaluate("document.activeElement.dataset.go") == "retry", "timeout → error screen, focus on retry")
@@ -839,7 +947,7 @@ def all_editions(c):
             page.click("#listBox summary")
             page.click(f'#clist [data-place="{e["a3"]}"]')
             page.wait_for_selector("#langDlg[open]")
-            enabled = page.evaluate("[...document.querySelectorAll('#langBody .lang-btn')].filter(b => !b.disabled).map(b => b.dataset.pick).sort()")
+            enabled = page.evaluate("[...document.querySelectorAll('#langBody .lang-btn')].filter(b => b.getAttribute('aria-disabled') !== 'true').map(b => b.dataset.pick).sort()")
             c(enabled == sorted(e["langs"]), f"{w}: dialog offers {enabled}")
             page.click(f'#langBody [data-pick="{lang}"]')
             if e["kind"] == "info":
@@ -1303,7 +1411,7 @@ def headlines(c):
         trows = model_rows(D, allyes, {}, [], theme=th["id"])[0]
         tok = [r for r in trows if r["grp"] == 0]
         tlead = [r for r in tok if tok[0]["s"] - r["s"] < TIE] if tok else []
-        card = page.evaluate(f"[...document.querySelectorAll('#pan1 .theme-card')].find(a => a.querySelector('h3').textContent === ed().themes[{k}].name).querySelector('.verdict-line').textContent")
+        card = page.evaluate(f"[...document.querySelectorAll('#pan1 .theme-card')].find(a => a.querySelector('h2').textContent === ed().themes[{k}].name).querySelector('.verdict-line').textContent")
         if len(tlead) > 1:
             c(all(r["nom"] in card for r in tlead) and "tied" in card, f"issue {th['id']}: tie listed ({card[:80]})")
         elif tlead:
@@ -1324,6 +1432,549 @@ def headlines(c):
     shot(page, "ng-ar-far-390.png", full=True)
     no_overflow(page, c, "ar results 390")
     S.close(c)
+
+
+# ------------------------------------------------------------------ cibles tactiles, clavier, petit téléphone, 320 px, couleurs
+NOTES = []   # mesures du pire cas, imprimées à la fin (pas des vérifications)
+
+
+def lab_of(hexcol):
+    """CIE76 : couleur #rrggbb → (L, a, b), calculé ici indépendamment de l'application."""
+    h = hexcol.lstrip("#")
+    lin = lambda v: (v / 255 / 12.92) if v / 255 <= 0.04045 else ((v / 255 + 0.055) / 1.055) ** 2.4
+    r, g, b = (lin(int(h[i:i + 2], 16)) for i in (0, 2, 4))
+    f = lambda t: t ** (1 / 3) if t > 0.008856 else 7.787 * t + 16 / 116
+    x, y, z = f((0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047), f(0.2126 * r + 0.7152 * g + 0.0722 * b), f((0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883)
+    return (116 * y - 16, 500 * (x - y), 200 * (y - z))
+
+
+def lum_of(hexcol):
+    h = hexcol.lstrip("#")
+    lin = lambda v: (v / 255 / 12.92) if v / 255 <= 0.03928 else ((v / 255 + 0.055) / 1.055) ** 2.4
+    r, g, b = (lin(int(h[i:i + 2], 16)) for i in (0, 2, 4))
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def contrast_of(a, b):
+    x, y = lum_of(a), lum_of(b)
+    return (max(x, y) + 0.05) / (min(x, y) + 0.05)
+
+
+@test
+def map_targets(c):
+    """Chaque repère de la carte est une vraie cible : zone tactile de 24 px au moins, le point au centre du repère
+    retombe sur son propre pays (Gambie / Guinée-Bissau / Sénégal / Cap-Vert écartés, avec un trait), à 320, 390 et 1280 px."""
+    for w, h in ((320, 700), (390, 844), (1280, 900)):
+        S = Session(CTX["browser"], width=w, height=h)
+        page = S.page
+        page.goto(CTX["base"] + "/index.html")
+        page.wait_for_selector("#mapWrap .mk")
+        page.wait_for_timeout(200)   # ResizeObserver : mise en place des repères
+        no_overflow(page, c, f"map {w}")
+        n_ids = page.evaluate("markerIds().length")
+        res = page.evaluate("""() => {
+          const out = [];
+          for (const g of document.querySelectorAll('#mapWrap .mk')) {
+            g.scrollIntoView({ block: 'center', inline: 'center' });
+            const hit = g.querySelector('.mk-hit').getBoundingClientRect();
+            const cx = hit.left + hit.width / 2, cy = hit.top + hit.height / 2;
+            const el = document.elementFromPoint(cx, cy);
+            const own = el && el.closest('[data-place]');
+            out.push({ id: g.dataset.place, d: hit.width, got: own ? own.dataset.place : null, onHit: !!(el && el.closest('.mk') && el.closest('.mk') === g), ax: g.getBoundingClientRect().left + scrollX, ay: g.getBoundingClientRect().top + scrollY });
+          }
+          return out;
+        }""")
+        c(len(res) == n_ids and n_ids >= 20, f"{w}: every marker drawn ({len(res)})")
+        bad = [r["id"] for r in res if r["got"] != r["id"]]
+        c(not bad, f"{w}: the centre of each marker resolves to its own country, not {bad[:5]}")
+        c(all(r["onHit"] for r in res), f"{w}: the point at the centre belongs to the marker itself")
+        small = [(r["id"], round(r["d"], 1)) for r in res if r["d"] < 23.9]
+        c(not small, f"{w}: hit circle >= 24 px: {small[:4]}")
+        NOTES.append(f"map {w}px: smallest hit circle {min(r['d'] for r in res):.1f} px over {len(res)} markers")
+        # deux repères ne se recouvrent jamais (leurs cercles de 24 px restent disjoints)
+        pts = page.evaluate("[...document.querySelectorAll('#mapWrap .mk-hit')].map(e => { const r = e.getBoundingClientRect(); return [r.left + scrollX + r.width / 2, r.top + scrollY + r.height / 2, r.width]; })")
+        tooclose = [(i, j) for i in range(len(pts)) for j in range(i + 1, len(pts)) if math.hypot(pts[i][0] - pts[j][0], pts[i][1] - pts[j][1]) < 0.97 * (pts[i][2] + pts[j][2]) / 2]
+        c(not tooclose, f"{w}: no two hit circles overlap ({len(tooclose)})")
+        if w == 320:
+            c(page.locator("#mapWrap .leads .lead").count() >= 1, "320: displaced markers are tied to their country by a leader line")
+        # un vrai toucher au centre du repère de la Gambie (et de ses voisins) ouvre ce pays
+        for a2 in ("gm", "gw", "sn", "cv"):
+            a3 = page.evaluate(f"Object.keys(AFRICA).find(id => AFRICA[id].a2 === '{a2.upper()}')")
+            if not page.evaluate(f"!!document.querySelector('#mapWrap .mk[data-place=\"{a3}\"]')"):
+                continue
+            page.evaluate(f"document.querySelector('#mapWrap .mk[data-place=\"{a3}\"]').scrollIntoView({{ block: 'center', inline: 'center' }})")
+            box = page.locator(f'#mapWrap .mk[data-place="{a3}"] .mk-hit').bounding_box()
+            page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+            page.wait_for_function("() => document.getElementById('langDlg').open")
+            c(page.evaluate("state.pending") == a3 and page.evaluate("location.hash") == f"#/{a2}", f"{w}: a tap on {a2.upper()} opens {a2.upper()}")
+            page.click("#langCancel")
+            page.wait_for_function("() => !document.getElementById('langDlg').open")
+        S.close(c)
+
+
+@test
+def map_keyboard(c):
+    """Clavier sur la carte : le premier arrêt est le lien « Aller à la liste des pays » (visible au focus) ; dans la carte,
+    seuls les pays avec une élection ou un contenu sont dans l'ordre de tabulation, classés par nom ; la légende montre le ✓."""
+    S = Session(CTX["browser"], width=390, height=844)
+    page = S.page
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap .mk")
+    page.keyboard.press("Tab")
+    c(page.evaluate("document.activeElement.id") == "skip", "first Tab stop is the skip link")
+    box = page.locator("#skip").bounding_box()
+    c(box and box["y"] >= 0 and box["y"] + box["height"] <= 844 and box["x"] >= 0, "skip link visible on focus")
+    c(page.inner_text("#skip").strip() == page.evaluate("T.en.skipList") == "Skip to the list of countries", "skip link text")
+    page.keyboard.press("Enter")
+    c(page.evaluate("document.getElementById('listBox').open") and page.evaluate("document.activeElement.id") == "csearch", "skip link opens the list and focuses its search")
+    # ordre de tabulation dans le SVG
+    info = page.evaluate("""() => {
+      const els = [...document.querySelectorAll('#mapWrap svg [data-place]')].filter(e => !e.classList.contains('mk') && !e.closest('.mk'));
+      const tab0 = els.filter(e => e.getAttribute('tabindex') === '0').map(e => e.dataset.place);
+      const rest = els.filter(e => e.getAttribute('tabindex') !== '0');
+      return { tab0, restBad: rest.filter(e => e.getAttribute('tabindex') !== '-1').length,
+               want: Object.keys(AFRICA).filter(id => isUp(id) || catFor(id)).length,
+               names: tab0.map(cname), sorted: tab0.map(cname).slice().sort((a, b) => a.localeCompare(b, locale())),
+               mkTab: [...document.querySelectorAll('#mapWrap .mk')].filter(g => g.hasAttribute('tabindex') || g.getAttribute('aria-hidden') !== 'true').length };
+    }""")
+    c(len(info["tab0"]) == info["want"] and info["want"] >= 10, f"only countries with an election or content are tab stops ({len(info['tab0'])})")
+    c(info["restBad"] == 0, "every other country has tabindex -1")
+    c(info["names"] == info["sorted"], "tab order follows the localised names")
+    c(info["mkTab"] == 0, "markers are not tab stops (hidden from assistive technology)")
+    # vraie tabulation : depuis le lien d'évitement jusqu'à la carte, puis dans l'ordre
+    page.evaluate("document.getElementById('skip').focus()")
+    seen = []
+    for _ in range(60):
+        page.keyboard.press("Tab")
+        got = page.evaluate("(() => { const e = document.activeElement; return e && e.closest('#mapWrap') && e.dataset ? e.dataset.place : null; })()")
+        if got:
+            seen.append(got)
+            if len(seen) == 4:
+                break
+    c(seen == info["tab0"][:4], f"Tab walks the map in name order: {seen}")
+    c(page.locator("#mapWrap .fring .fr-ink").count() == 1 and page.locator("#mapWrap .fring .fr-halo").count() == 1, "two-tone focus ring on the focused country")
+    c(page.is_visible("#tip"), "tooltip follows keyboard focus")
+    c(heading_ok(heading_levels(page)), f"heading order on the map screen {heading_levels(page)}")
+    # légende : l'anneau « questionnaire disponible » porte son ✓
+    c(page.locator(".legend .pin-key .pin").count() == 1 and page.locator(".legend .pin-key .pin-check").count() == 1, "legend ring shows the check mark")
+    S.close(c)
+
+
+def q_metrics_js():
+    return """() => {
+      const out = [];
+      for (let k = 0; k < state.order.length; k++) {
+        state.i = k; viewQuestion();
+        const a = [...document.querySelectorAll('.ans')], top = document.querySelector('.q-top').getBoundingClientRect().top;
+        out.push({ k, bottom: a[a.length - 1].getBoundingClientRect().bottom, visible: a.filter(x => x.getBoundingClientRect().bottom <= innerHeight && x.getBoundingClientRect().top >= 0).length,
+                   need: a[a.length - 1].getBoundingClientRect().bottom - top, sw: document.documentElement.scrollWidth, vh: innerHeight });
+      }
+      return out;
+    }"""
+
+
+@test
+def question_screen(c):
+    """Écran de question d'une main : 360 × 640, les cinq réponses visibles pour toutes les questions du Nigeria et du Kenya
+    (en et sw) ; progression en barre fine + « 12 / 38 » + liste des questions ; libellé du milieu explicite."""
+    worst = {}
+    for cc in ("ng", "ke"):
+        for lang in ("en", "sw"):
+            S = Session(CTX["browser"], width=360, height=640)
+            page = S.page
+            page.goto(CTX["base"] + f"/index.html#/{cc}/{lang}")
+            page.wait_for_selector(".theme-grid")
+            page.click(".theme-grid [data-prio]")
+            page.click('[data-go="startq"]')
+            wait_view(page, "question")
+            res = page.evaluate(q_metrics_js())
+            n = page.evaluate("state.order.length")
+            c(len(res) == n, f"{cc}-{lang}: measured all {n} questions")
+            c(all(r["visible"] == 5 for r in res), f"{cc}-{lang}: five answers visible on every question (min {min(r['visible'] for r in res)})")
+            c(all(r["bottom"] <= r["vh"] for r in res), f"{cc}-{lang}: last answer ends inside the viewport (max {max(r['bottom'] for r in res):.0f} of 640)")
+            c(all(r["sw"] <= 360 for r in res), f"{cc}-{lang}: no horizontal overflow on any question")
+            w = max(res, key=lambda r: r["need"])
+            worst[f"{cc}-{lang}"] = (w["need"], w["k"] + 1)
+            S.close(c)
+    NOTES.append("question screen 360x640: worst header-to-last-answer height " + ", ".join(f"{k} {v[0]:.0f}px (q{v[1]})" for k, v in sorted(worst.items())) + " of 640; all 5 answers visible in every case")
+    # la mécanique de l'écran, en anglais sur Nigeria
+    S = Session(CTX["browser"], width=360, height=640)
+    page = S.page
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    open_country(page, "566", "en")
+    page.wait_for_selector(".theme-grid")
+    # bouton Commencer désactivé : la raison est écrite
+    c(page.locator('[data-go="startq"]').is_disabled(), "Start disabled before any issue is chosen")
+    c(page.inner_text("#goHint").strip() == page.evaluate("T.en.startHint") == "Choose at least one issue", "disabled Start explains why")
+    page.click(".theme-grid [data-prio]")
+    c(page.inner_text("#goHint").strip() != "Choose at least one issue" and page.locator('[data-go="startq"]').is_enabled(), "hint gone once an issue is chosen")
+    page.click('[data-go="startq"]')
+    wait_view(page, "question")
+    page.evaluate("TAP_GUARD = 0")
+    n = page.evaluate("state.order.length")
+    c(page.is_hidden("#steps"), "step pills hidden on question screens")
+    c(page.inner_text(".q-count").strip() == f"1 / {n}", f"global count “1 / {n}”")
+    pb = page.evaluate("(() => { const b = document.querySelector('.qbar'); return [b.getAttribute('role'), b.getAttribute('aria-valuenow'), b.getAttribute('aria-valuemax'), b.querySelectorAll('.tick').length]; })()")
+    c(pb == ["progressbar", "1", str(n), 1], f"progress bar semantics {pb}")
+    c(page.locator(".q-meta .chip").count() == 1, "block chip stays")
+    c(page.locator(".slip details .q-min").count() == 1 and page.locator(".q-min").count() == 1, "ministries live inside Background")
+    c(page.locator(".answers .ans").count() == 5 and not page.locator("details[open]").count(), "five answers, Background closed")
+    mid = page.inner_text('.ans[data-val="0"]').strip()
+    c(mid == "Neither agree nor disagree", f"middle answer label “{mid}”")
+    for lang, want in (("fr", "Ni d’accord ni pas d’accord"), ("pt", "Nem concordo nem discordo"), ("sw", "Sikubali wala sikatai"), ("ar", "لا أوافق ولا أعارض")):
+        got = page.evaluate(f"T.{lang}.ans[0]")
+        c(got.replace("'", "’") == want, f"{lang}: middle label “{got}”")
+    short = page.evaluate("T.en.ansShort")
+    c(short["0"] != "Neutral" and all(short[k] for k in short), f"By-question labels stay meaningful {short}")
+    c(page.evaluate("getComputedStyle(document.documentElement).scrollPaddingBottom") == "120px", "html scroll-padding-bottom")
+    # liste des questions : lignes de 44 px, état écrit
+    answer_one(page, 2)
+    page.click('[data-val="skip"]')
+    page.wait_for_function("() => state.i === 2")
+    page.click(".qlist-btn")
+    page.wait_for_selector("#qDlg[open]")
+    rows = page.evaluate("[...document.querySelectorAll('#qDlg .qrow')].map(r => [r.getBoundingClientRect().height, r.className, r.getAttribute('aria-current')])")
+    c(len(rows) == n and min(r[0] for r in rows) >= 44, f"jump list: {len(rows)} rows, min height {min(r[0] for r in rows):.0f}")
+    c("done" in rows[0][1] and "skip" in rows[1][1] and "cur" in rows[2][1] and rows[2][2] == "step", "jump list: answered / skipped / current states")
+    c("Answered" in page.inner_text("#qDlg .qrow.done") or "✓" in page.inner_text("#qDlg .qrow.done"), "jump list: state written out")
+    page.keyboard.press("Tab")
+    page.keyboard.press("Shift+Tab")
+    cur = page.evaluate("(() => { const e = document.activeElement; const s = getComputedStyle(e); return [e.classList.contains('cur'), s.outlineStyle, s.outlineWidth, s.borderTopColor]; })()")
+    c(cur[0] and cur[1] != "none" and cur[2] == "3px", f"the current row keeps its focus ring on top of its own indicator {cur}")
+    page.click('#qDlg [data-qjump="6"]')
+    page.wait_for_function("() => state.i === 6 && !document.getElementById('qDlg').open")
+    c(page.inner_text(".q-count").strip() == f"7 / {n}", "jump list jumps (7 / n)")
+    S.close(c)
+    # petit écran en hauteur : après une réponse, la carte de la question reste en haut de l'écran
+    S = Session(CTX["browser"], width=360, height=480)
+    page = S.page
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    ng_start(page, "en")
+    page.click('.answers .ans[data-val="1"]')
+    page.wait_for_function("() => state.i === 1")
+    top = page.evaluate("document.querySelector('.q-top').getBoundingClientRect().top")
+    c(-1 <= top <= 120, f"after auto-advance the question card stays in view (top {top:.0f})")
+    S.close(c)
+    # animation d'entrée : seulement quand l'écran change vraiment, et jamais avec « réduire les animations »
+    S = Session(CTX["browser"], width=390, height=844, motion="no-preference")
+    page = S.page
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    ng_start(page, "en")
+    c(page.evaluate("document.querySelector('#app > section').classList.contains('enter')"), "entrance animation on a real screen change")
+    c(page.evaluate("getComputedStyle(document.querySelector('#app > section')).animationName") != "none", "animation runs with no-preference")
+    page.click('.answers .ans[data-val="1"]')
+    page.wait_for_function("() => state.i === 1")
+    c(not page.evaluate("document.querySelector('#app > section').classList.contains('enter')"), "no entrance animation from one question to the next")
+    S.close(c)
+    S = Session(CTX["browser"], width=390, height=844, motion="reduce")
+    page = S.page
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    ng_start(page, "en")
+    c(page.evaluate("getComputedStyle(document.querySelector('#app > section')).animationName") == "none", "no animation with prefers-reduced-motion")
+    S.close(c)
+
+
+def heading_levels(page, root="#app"):
+    return page.evaluate("r => [...document.querySelectorAll(r + ' h1, ' + r + ' h2, ' + r + ' h3, ' + r + ' h4')].filter(h => h.offsetParent !== null).map(h => +h.tagName[1])", root)
+
+
+def heading_ok(levels):
+    """Un seul h1 en tête, et jamais de saut de niveau vers le bas (h1 → h3)."""
+    return bool(levels) and levels[0] == 1 and levels.count(1) == 1 and all(b <= a + 1 for a, b in zip(levels, levels[1:]))
+
+
+@test
+def layout_320(c):
+    """Pas de défilement horizontal à 320 px (carte, départ, question, les quatre onglets des résultats) pour le Nigeria,
+    le Kenya et le Cameroun, en anglais et en arabe ; onglets de résultats tous visibles à 390 px ; l'échelle « Par question »
+    tient sans défilement."""
+    cat = CTX["catalog"]
+    for cc in ("ng", "ke", "cm"):
+        langs = [l for l in ("en", "ar") if l in cat[cc]["langs"]]
+        for lang in langs:
+            for width in (320, 390):
+                S = Session(CTX["browser"], width=width, height=700)
+                page = S.page
+                w = f"{cc}-{lang}-{width}"
+                page.goto(CTX["base"] + "/index.html")
+                page.wait_for_selector("#mapWrap svg")
+                page.click(f'#langs [data-lang="{lang}"]')
+                page.wait_for_function("l => state.ui === l", arg=lang)
+                no_overflow(page, c, f"{w} map")
+                open_country(page, cat[cc]["a3"], lang)
+                page.wait_for_selector(".theme-grid")
+                no_overflow(page, c, f"{w} start")
+                if width == 390:
+                    c(heading_ok(heading_levels(page)), f"{w}: heading order on the start screen {heading_levels(page)}")
+                page.click(".theme-grid [data-prio]")
+                page.click('[data-go="startq"]')
+                wait_view(page, "question")
+                page.evaluate("TAP_GUARD = 0")
+                # la question la plus longue, détail ouvert
+                longest = page.evaluate("state.order.map((qi, k) => [k, ed().questions[qi].text.length + ed().questions[qi].ctx.length]).sort((a, b) => b[1] - a[1])[0][0]")
+                page.evaluate(f"() => {{ state.i = {longest}; viewQuestion(); }}")
+                page.click(".slip summary")
+                no_overflow(page, c, f"{w} question")
+                if width == 390:
+                    c(heading_ok(heading_levels(page)), f"{w}: heading order on the question screen {heading_levels(page)}")
+                page.evaluate("() => { ed().questions.forEach((q, i) => { state.answers[i] = (i % 5) - 2; }); go('results'); }")
+                wait_view(page, "results")
+                if width == 390:
+                    tabs = page.evaluate("[...document.querySelectorAll('.tabs .tab')].map(t => { const r = t.getBoundingClientRect(); return [r.left, r.right, r.width, r.height]; })")
+                    c(len(tabs) == 4 and all(t[0] >= -0.5 and t[1] <= 390.5 and t[2] > 30 and t[3] > 20 for t in tabs), f"{w}: all four result tabs inside the viewport {[round(t[1]) for t in tabs]}")
+                for k in range(4):
+                    page.click(f'.tab[data-tab="{k}"]')
+                    page.wait_for_function("k => state.tab === k", arg=k)
+                    no_overflow(page, c, f"{w} results tab {k}")
+                    if width == 390:
+                        c(heading_ok(heading_levels(page)), f"{w}: heading order on results tab {k} {heading_levels(page)}")
+                        c(page.evaluate("[...document.querySelectorAll('.tab')].filter(t => t.tabIndex === 0).length") == 1, f"{w}: tabs keep a roving tabindex")
+                    if k == 3:
+                        fm = page.evaluate("[...document.querySelectorAll('.formula')].map(e => e.getAttribute('tabindex'))")
+                        c(fm and all(x == "0" for x in fm), f"{w}: scrollable formulas are keyboard-focusable ({len(fm)})")
+                    if k == 2:
+                        sc = page.evaluate("""[...document.querySelectorAll('.scale')].map(s => [s.scrollWidth, s.clientWidth, getComputedStyle(s).gridTemplateColumns.split(' ').length])""")
+                        c(sc and all(a <= b + 1 and n == 5 for a, b, n in sc), f"{w}: By-question scale has five columns and no scroll ({len(sc)} scales)")
+                S.close(c)
+
+
+@test
+def theme_wording(c):
+    """Cartes « Par sujet » : « tu as passé » quand toutes les questions du sujet ont été passées, « pas encore répondu » sinon."""
+    S = Session(CTX["browser"], width=390, height=844)
+    page = S.page
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    ng_start(page, "en")
+    page.evaluate("""() => {
+      const th = ed().themes.map(t => t.id);
+      ed().questions.forEach((q, i) => { state.answers[i] = q.theme === th[0] ? null : q.theme === th[1] ? undefined : (i % 5) - 2; });
+      go('results');
+    }""")
+    wait_view(page, "results")
+    page.click('.tab[data-tab="1"]')
+    notes = page.evaluate("[...document.querySelectorAll('#pan1 .skipped-note')].map(e => e.textContent.trim())")
+    L = page.evaluate("[T.en.themeSkipped, T.en.themeNotAnswered]")
+    c(L[0] in notes and L[1] in notes and L[0] != L[1], f"skipped vs not answered wording per theme {notes} / {L}")
+    S.close(c)
+
+
+@test
+def search_aliases(c):
+    """Recherche de pays : sans accents ni majuscules, avec les noms usuels (Ivory Coast, Cape Verde, Swaziland, Congo-Brazzaville,
+    RDC…), dans les noms des cinq langues ; message quand rien ne correspond."""
+    S = Session(CTX["browser"], width=1100, height=900)
+    page = S.page
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    page.click("#listBox summary")
+    a3 = lambda a2: page.evaluate(f"Object.keys(AFRICA).find(id => AFRICA[id].a2 === '{a2}')")
+
+    def found(term):
+        page.fill("#csearch", term)
+        return set(page.evaluate("[...document.querySelectorAll('#clist [data-place]')].map(e => e.dataset.place)"))
+
+    ci, cv, sz, cg, cd, gw, gn, sn = (a3(x) for x in ("CI", "CV", "SZ", "CG", "CD", "GW", "GN", "SN"))
+    for term, want, notwant in (
+        ("Ivory Coast", ci, None), ("cote d'ivoire", ci, None), ("Côte d’Ivoire", ci, None), ("COTE", ci, None), ("cote divoire", ci, None),
+        ("Cape Verde", cv, None), ("cabo verde", cv, None), ("Swaziland", sz, None), ("Eswatini", sz, None),
+        ("Congo-Brazzaville", cg, cd), ("congo brazzaville", cg, cd), ("Congo-Kinshasa", cd, cg), ("RDC", cd, cg), ("DRC", cd, cg),
+        ("Guinée-Bissau", gw, gn), ("guinee bissau", gw, gn), ("Guinea Bissau", gw, gn), ("Sénégal", sn, None), ("SENEGAL", sn, None), ("senegal", sn, None),
+    ):
+        got = found(term)
+        c(want in got, f"search “{term}” finds {AFRICA_NAME(page, want)}")
+        c(notwant is None or notwant not in got, f"search “{term}” leaves out {AFRICA_NAME(page, notwant) if notwant else ''}")
+    c(found("zzzzqx") == set() and page.inner_text("#clist").strip() == page.evaluate("T.en.noCountry"), "no match: a message, not an empty list")
+    c(len(found("")) >= 50, "empty search lists every country")
+    # chaque langue : le nom localisé, en majuscules, retrouve le pays
+    for lang in LANGS:
+        page.click(f'#langs [data-lang="{lang}"]')
+        page.wait_for_function("l => state.ui === l", arg=lang)
+        if not page.evaluate("document.getElementById('listBox').open"):
+            page.click("#listBox summary")
+        for cc_id in (ci, sn, cv):
+            name = page.evaluate(f"cname('{cc_id}')")
+            c(cc_id in found(name) and cc_id in found(name.upper()), f"{lang}: “{name}” found, also in capitals")
+    S.close(c)
+
+
+def AFRICA_NAME(page, id):
+    return page.evaluate(f"AFRICA['{id}'].en") if id else ""
+
+
+@test
+def copy_and_states(c):
+    """Textes et états : accroche, bandeau « N pays à explorer » calculé, pages d'information (action principale = retour à la
+    carte), pied de page, boutons de langue désactivés mais focalisables avec explication, sections ouvertes conservées au
+    changement de langue, dates de sources lisibles."""
+    cat = CTX["catalog"]
+    S = Session(CTX["browser"], width=390, height=844)
+    page = S.page
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    n_cat = page.evaluate("Object.values(CATALOG).filter(c => c.a3 && AFRICA[c.a3]).length")
+    kicker = page.text_content(".kicker").strip()   # sans la mise en capitales de la feuille de style
+    c(kicker == f"Elections in Africa · {n_cat} countries to explore", f"hero kicker computed: “{kicker}”")
+    c("54" not in kicker, "hero kicker does not promise 54 countries")
+    tag = page.inner_text(".tagline").strip()
+    c("We don’t tell you who to vote for" in tag and "No voting advice" not in tag, f"tagline “{tag}”")
+    c(page.inner_text(".legend li:nth-child(2)").startswith("No national election before end of 2027"), "legend: no election before end of 2027")
+    c(page.evaluate("T.en.footer1") not in page.inner_text("footer"), "no coded-positions sentence in the footer on the map")
+    for lang in LANGS:
+        c("2027" in page.evaluate(f"T.{lang}.legNone"), f"{lang}: legend wording mentions end of 2027")
+    # boutons de langue désactivés : aria-disabled, focalisables, explication visible
+    open_country(page, cat["ke"]["a3"], "en")
+    page.wait_for_selector(".theme-grid")
+    strip = page.locator(".strip a, .strip button")
+    if strip.count():
+        strip.first.focus()
+        st = page.evaluate("(() => { const s = getComputedStyle(document.activeElement); return [s.outlineStyle, s.outlineColor]; })()")
+        c(st[0] != "none" and st[1] == "rgb(255, 255, 255)", f"focus ring on the violet strip is the on-accent colour {st}")
+    dis = page.locator('#langs button[aria-disabled="true"]')
+    c(dis.count() >= 1 and page.locator("#langs button[disabled]").count() == 0, f"unavailable languages are aria-disabled, not disabled ({dis.count()})")
+    dis.first.focus()
+    c(page.evaluate("document.activeElement.getAttribute('aria-disabled')") == "true", "a disabled language button can be focused")
+    c(page.is_visible("#langTip") and page.inner_text("#langTip").strip() == "Not translated yet", "visible explanation on focus")
+    before = page.evaluate("state.ui")
+    dis.first.click(force=True)
+    c(page.evaluate("state.ui") == before, "clicking a disabled language does nothing")
+    page.keyboard.press("Escape")
+    c(page.is_hidden("#langTip"), "Escape closes the explanation")
+    # changement de langue : une section ouverte reste ouverte
+    page.evaluate("document.querySelector('.party-list details, details') && (document.querySelector('details').open = true)")
+    n_open = page.evaluate("document.querySelectorAll('#app details[open]').length")
+    other = [l for l in cat["ke"]["langs"] if l != "en"][0]
+    page.click(f'#langs [data-lang="{other}"]')
+    page.wait_for_function("l => state.ui === l", arg=other)
+    c(n_open >= 1 and page.evaluate("document.querySelectorAll('#app details[open]').length") == n_open, f"open sections stay open when the language changes ({n_open})")
+    # pas de date ISO brute dans les sources
+    c(not re.search(r"\b20\d\d-\d\d(-\d\d)?\b", page.inner_text("#app")), "source dates are formatted, not raw ISO")
+    S.close(c)
+    # page d'information : l'action principale ramène à la carte ; la démo Nigeria est un lien secondaire
+    S = Session(CTX["browser"], width=390, height=844)
+    page = S.page
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    nid = page.evaluate("Object.keys(AFRICA).filter(id => !catFor(id)).sort()[0]")
+    open_country(page, nid, "en", from_list=True)
+    wait_view(page, "info")
+    prim = page.locator(".btn-primary")
+    c(prim.count() == 1 and prim.inner_text().strip() == page.evaluate("T.en.backMap"), f"info page: primary action is “{prim.inner_text().strip()}”")
+    c(page.locator('[data-go="nigeria"]').evaluate("e => e.classList.contains('link') && !e.classList.contains('btn-primary')"), "info page: Nigeria demo is a secondary link")
+    c(page.inner_text("#app").count("No national election") <= 1, "info page: no repeated “no national election” lines")
+    c(not re.search(r"\b20\d\d-\d\d(-\d\d)?\b", page.inner_text("#app")), "info page: no raw ISO dates")
+    c(page.evaluate("T.en.footer1") not in page.inner_text("footer"), "info page: no coded-positions sentence in the footer")
+    S.close(c)
+    # pied de page : la phrase sur les positions codées seulement là où l'on voit des positions de partis
+    S = Session(CTX["browser"], width=390, height=844)
+    page = S.page
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    ng_start(page, "en")
+    c(page.evaluate("T.en.footer1") in page.inner_text("footer"), "footer sentence on the questionnaire (party positions shown)")
+    S.close(c)
+
+
+@test
+def party_colours(c):
+    """Dans chaque édition, deux partis ne se ressemblent jamais (ΔE ≥ 20, thèmes clair et sombre) et le sigle reste lisible
+    (4,5:1). Calculé ici de façon indépendante de l'application."""
+    S = Session(CTX["browser"], width=1100)
+    page = S.page
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    worst_de, worst_ct, kept = 999, 999, 0
+    for cc, e in sorted(CTX["catalog"].items()):
+        if e["kind"] != "ed":
+            continue
+        D = json.load(open(os.path.join(ROOT, "data", cc + ".json"), encoding="utf8"))
+        ps = D["ed"]["parties"]
+        maps = page.evaluate("ps => partyColours(ps)", ps)
+        for k, (name, text) in enumerate((("light", "#FFFFFF"), ("dark", "#110F19"))):
+            cols = [maps[k][p["id"]] for p in ps]
+            ct = min(contrast_of(x, text) for x in cols)
+            de = min([math.dist(lab_of(a), lab_of(b)) for i, a in enumerate(cols) for b in cols[i + 1:]] or [999])
+            c(ct >= 4.5, f"{cc} {name}: badge text contrast {ct:.2f} >= 4.5")
+            c(de >= 20, f"{cc} {name}: smallest colour distance ΔE {de:.1f} >= 20")
+            worst_de, worst_ct = min(worst_de, de), min(worst_ct, ct)
+            kept += sum(1 for p, x in zip(ps, cols) if x.lower() == (p["col"][k] if len(p["col"]) > k else p["col"][0]).lower())
+    NOTES.append(f"party colours: min ΔE {worst_de:.1f}, min badge text contrast {worst_ct:.2f} over every edition, light and dark")
+    S.close(c)
+    # les couleurs ajustées sont bien celles de la page (thème sombre)
+    S = Session(CTX["browser"], width=1100, scheme="dark")
+    page = S.page
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    open_country(page, "566", "en")
+    page.wait_for_selector(".party-list .badge", state="attached")
+    D = json.load(open(os.path.join(ROOT, "data", "ng.json"), encoding="utf8"))
+    want = page.evaluate("ps => partyColours(ps)[1]", D["ed"]["parties"])
+    got = page.evaluate("getComputedStyle(document.querySelector('.party-list .badge')).backgroundColor")
+    c(got == rgb(want[D["ed"]["parties"][0]["id"]]), f"dark badge uses the fitted colour {got}")
+    S.close(c)
+
+
+@test
+def contrast_tokens(c):
+    """Contrastes des couleurs de la feuille de style (les deux thèmes) : texte 4,5:1, éléments d'interface 3:1."""
+    css = open(os.path.join(ROOT, "src", "shell.html"), encoding="utf8").read()
+
+    def tokens(block):
+        return {m.group(1): m.group(2).strip() for m in re.finditer(r"--([a-z0-9-]+):\s*([^;]+);", block)}
+
+    light = tokens(css[css.index(":root {"):css.index("@media (prefers-color-scheme: dark)")])
+    dark = dict(light)
+    dark.update(tokens(css[css.index(':root[data-theme="dark"]'):css.index("html { scroll-padding")]))
+
+    def parse(v):
+        v = v.strip()
+        m = re.match(r"#([0-9a-fA-F]{6})$", v)
+        if m:
+            return [int(m.group(1)[i:i + 2], 16) for i in (0, 2, 4)], 1.0
+        m = re.match(r"rgba\(([^)]+)\)", v)
+        p = [float(x) for x in m.group(1).split(",")]
+        return p[:3], p[3]
+
+    def col(T, k, over=None):
+        rgbv, a = parse(T[k])
+        if a < 1:
+            b = col(T, over) if over else [255, 255, 255]
+            return [round(x * a + y * (1 - a)) for x, y in zip(rgbv, b)]
+        return rgbv
+
+    def lum(rgbv):
+        f = lambda x: x / 255 / 12.92 if x / 255 <= 0.03928 else ((x / 255 + 0.055) / 1.055) ** 2.4
+        return 0.2126 * f(rgbv[0]) + 0.7152 * f(rgbv[1]) + 0.0722 * f(rgbv[2])
+
+    def ratio(a, b):
+        x, y = lum(a), lum(b)
+        return (max(x, y) + 0.05) / (min(x, y) + 0.05)
+
+    text = [("ink", "paper"), ("ink", "sheet"), ("muted", "paper"), ("muted", "sheet"), ("muted", "sheet-2"), ("accent-ink", "paper"), ("accent-ink", "sheet"),
+            ("accent-ink", "accent-soft"), ("on-accent", "accent"), ("on-accent", "accent-ink"), ("paper", "ink"), ("ink", "lamp-soft"), ("on-lamp", "lamp"),
+            ("warn", "warn-soft"), ("warn", "lamp-soft"), ("check", "check-soft"), ("muted", "accent-soft")]
+    ui = [("ctl", "sheet"), ("ctl", "paper"), ("ctl", "sheet-2"), ("ctl", "accent-soft"), ("accent", "paper"), ("accent", "sheet"), ("on-accent", "accent"),
+          ("accent", "sheet-2"), ("accent", "accent-soft"), ("warn", "lamp-soft"), ("up", "sheet"), ("up", "land-bg"), ("none", "sheet"), ("none", "land-bg"),
+          ("up-edge", "map-stroke"), ("up-edge", "sheet"), ("muted", "disputed"), ("muted", "sheet"), ("ink", "sheet"), ("sheet", "up"), ("sheet", "none"), ("ink", "land-bg")]
+    mins = {}
+    for name, T in (("light", light), ("dark", dark)):
+        for pairs, need, kind in ((text, 4.5, "text"), (ui, 3.0, "non-text")):
+            for f, b in pairs:
+                r = ratio(col(T, f), col(T, b))
+                c(r >= need, f"{name} {f} on {b}: {r:.2f} >= {need}")
+                mins[(name, kind)] = min(mins.get((name, kind), 99), r)
+        # hachures du rouge : rayure claire (ou sombre) contre le fond rouge
+        hat, a = parse(T["none-hatch"])
+        base = col(T, "none")
+        stripe = [round(x * a + y * (1 - a)) for x, y in zip(hat, base)]
+        r = ratio(stripe, base)
+        c(r >= 3.0, f"{name}: hatch stripe vs red {r:.2f} >= 3")
+        mins[(name, "non-text")] = min(mins[(name, "non-text")], r)
+    NOTES.append("contrast minimums: " + ", ".join(f"{k[0]} {k[1]} {v:.2f}" for k, v in sorted(mins.items())))
 
 
 # ------------------------------------------------------------------ exécution
@@ -1366,6 +2017,8 @@ def main():
     for name, ok, n, msg, dt in RESULTS:
         print(f"{'PASS' if ok else 'FAIL'}  {name:<24} {n:>4} checks  {dt:5.1f}s{'  ' + msg if msg else ''}")
     failed = [r for r in RESULTS if not r[1]]
+    for line in NOTES:
+        print("  · " + line)
     print(f"\n{len(RESULTS)} tests, {len(RESULTS) - len(failed)} passed, {len(failed)} failed · "
           f"{sum(r[2] for r in RESULTS)} checks · {time.time() - t0:.1f}s · screenshots in {ARGS.shots}")
     sys.exit(1 if failed else 0)

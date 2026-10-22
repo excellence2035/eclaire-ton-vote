@@ -12,7 +12,13 @@ Ce qui change sur la plateforme, du plus récent au plus ancien. Les positions d
 - Accessibilité : titres et focus déplacés à chaque écran, annonces pour les lecteurs d’écran, flèches/Début/Fin dans les onglets (inversées en arabe).
 - Cap-Vert : relecture des positions codées contre les sources (7 cellules corrigées : carburants, logement, financement des communes, santé gratuite, électricité, crédit agricole, salaire minimum) ; présidentielle du 15 novembre 2026 confirmée, six candidats, second tour le 29 novembre si besoin.
 - Madagascar : une question visant une personne retirée (la plateforme compare des partis, pas des individus) ; 29 questions.
-- Tests automatiques : 19 tests, 930 vérifications.
+- Carte : chaque pastille (✓, ⓘ, îles) est une vraie cible tactile d’au moins 24 px ; les pastilles proches en Afrique de l’Ouest (Gambie, Guinée-Bissau, Sénégal, Cap-Vert) sont écartées et reliées à leur pays ; lien d’accès rapide « Aller à la liste des pays » au clavier ; recherche sans accents, avec les noms usuels (Côte d’Ivoire, Cape Verde, Eswatini, RDC…).
+- Écran de question pensé pour le pouce : barre de progression fine, « 12 / 38 » et bouton « Questions » pour sauter à une question ; les cinq réponses restent visibles sans défiler sur un téléphone de 360×640 ; réponse du milieu « Ni d’accord ni pas d’accord ».
+- Lisibilité : contrastes renforcés (bordures, progression, focus), couleurs de partis toujours bien distinctes, pas de débordement horizontal à 320 px, onglets de résultats en grille 2×2.
+- Textes : accroche « On ne te dit pas pour qui voter », nombre de pays à explorer calculé, pages sans élection avec « Retour à la carte » comme action principale, notes longues déplacées dans le profil du parti.
+- Congo-Brazzaville : questionnaire de 27 questions, 5 partis (PCT, Alliance, Les Souverainistes, UPADS, ARD) ; date des législatives non officielle (juillet 2027 au plus tard), traduit en français.
+- Tunisie : approfondie (UGTT 14 questions codées sur 26, Ennahdha 10), traduite en arabe et en français.
+- Tests automatiques : 28 tests, 1532 vérifications.
 
 ## 18–19 octobre 2026 (nuit)
 

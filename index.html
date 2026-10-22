@@ -25,6 +25,7 @@
   --muted: #5D5873;
   --line: #E1DCEC;
   --line-strong: #BDB5D2;
+  --ctl: #857C9E;   /* bordure des commandes (cases, boutons, champs) : au moins 3:1 sur le papier et sur la feuille */
   --accent: #5A2DB8;
   --accent-ink: #4A2399;
   --accent-soft: #EFE9FC;
@@ -36,7 +37,7 @@
   --check: #57526A; --check-soft: #ECE9F3;
   --shadow: 0 1px 2px rgba(24, 20, 42, .06), 0 8px 24px rgba(24, 20, 42, .07);
   --on-party: #FFFFFF;
-  --up: #2E8B4F; --up-hover: #23703F; --none: #C4453A; --none-hover: #A3372E; --none-hatch: rgba(255,255,255,.28);
+  --up: #2E8B4F; --up-hover: #23703F; --up-edge: #1A5A33; --up-ring: rgba(46, 139, 79, .25); --none: #C4453A; --none-2: #EFCBC8; --none-hover: #A3372E; --none-hatch: rgba(255,255,255,.72);
   --disputed: #C9C3D3; --land-bg: #E2DEEA; --map-stroke: #FFFFFF;
   --f-display: "Bricolage Grotesque", "Readex Pro", "Segoe UI", system-ui, sans-serif;
   --f-body: "Readex Pro", "Segoe UI", system-ui, -apple-system, sans-serif;
@@ -44,28 +45,29 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --paper: #110F19; --sheet: #1B1826; --sheet-2: #242034; --ink: #EEEAF7; --muted: #A9A3BE; --line: #2E2941; --line-strong: #4B4462;
+    --paper: #110F19; --sheet: #1B1826; --sheet-2: #242034; --ink: #EEEAF7; --muted: #A9A3BE; --line: #2E2941; --line-strong: #4B4462; --ctl: #8A82A5;
     --accent: #B79FF6; --accent-ink: #CDBBFA; --accent-soft: #2A2243; --on-accent: #150E2B;
     --lamp: #F5C04E; --lamp-soft: #3A2E12; --on-lamp: #1E1600;
     --warn: #E8B867; --warn-soft: #33270F; --check: #B5B0C6; --check-soft: #26232F;
     --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .28);
     --on-party: #110F19;
-    --up: #4DB872; --up-hover: #6BCB8C; --none: #D9665C; --none-hover: #E8867D; --none-hatch: rgba(0,0,0,.22);
+    --up: #4DB872; --up-hover: #6BCB8C; --up-edge: #A8E6BD; --up-ring: rgba(77, 184, 114, .3); --none: #D9665C; --none-2: #572925; --none-hover: #E8867D; --none-hatch: rgba(0,0,0,.6);
     --disputed: #4A4559; --land-bg: #262236; --map-stroke: #1B1826;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --paper: #110F19; --sheet: #1B1826; --sheet-2: #242034; --ink: #EEEAF7; --muted: #A9A3BE; --line: #2E2941; --line-strong: #4B4462;
+  --paper: #110F19; --sheet: #1B1826; --sheet-2: #242034; --ink: #EEEAF7; --muted: #A9A3BE; --line: #2E2941; --line-strong: #4B4462; --ctl: #8A82A5;
   --accent: #B79FF6; --accent-ink: #CDBBFA; --accent-soft: #2A2243; --on-accent: #150E2B;
   --lamp: #F5C04E; --lamp-soft: #3A2E12; --on-lamp: #1E1600;
   --warn: #E8B867; --warn-soft: #33270F; --check: #B5B0C6; --check-soft: #26232F;
   --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .28);
   --on-party: #110F19;
-  --up: #4DB872; --up-hover: #6BCB8C; --none: #D9665C; --none-hover: #E8867D; --none-hatch: rgba(0,0,0,.22);
+  --up: #4DB872; --up-hover: #6BCB8C; --up-edge: #A8E6BD; --up-ring: rgba(77, 184, 114, .3); --none: #D9665C; --none-2: #572925; --none-hover: #E8867D; --none-hatch: rgba(0,0,0,.6);
   --disputed: #4A4559; --land-bg: #262236; --map-stroke: #1B1826;
   color-scheme: dark;
 }
+html { scroll-padding-bottom: 120px; }   /* la barre « Commencer » collante ne cache jamais une case prise au clavier */
 
 * { box-sizing: border-box; }
 body { background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.6; font-weight: 400; -webkit-font-smoothing: antialiased; }
@@ -75,6 +77,9 @@ p { margin: 0; }
 a { color: var(--accent-ink); text-underline-offset: 3px; text-decoration-thickness: 1px; }
 button { font: inherit; color: inherit; }
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.strip :focus-visible { outline-color: var(--on-accent); }   /* sur le bandeau violet : un cadre violet serait invisible */
+.skip { position: absolute; inset-inline-start: 8px; top: -80px; z-index: 20; background: var(--accent); color: var(--on-accent); font-weight: 600; padding: 10px 16px; border-radius: var(--r-s); text-decoration: none; box-shadow: var(--shadow); }
+.skip:focus { top: 8px; outline: 3px solid var(--ink); outline-offset: 2px; }
 .mono { font-variant-numeric: tabular-nums; }
 .muted { color: var(--muted); }
 .eyebrow { font-size: .74rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
@@ -94,11 +99,12 @@ h1[tabindex="-1"]:focus, [data-focus-target]:focus { outline: none; }
 .langs button { background: none; border: 0; padding: 4px 10px; border-radius: 999px; font-size: .74rem; font-weight: 600; letter-spacing: .04em; cursor: pointer; color: var(--muted); }
 .langs button:hover { color: var(--ink); }
 .langs button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
-.langs button:disabled { opacity: .45; cursor: not-allowed; }
+.langs button[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
+.lang-tip { position: fixed; z-index: 30; max-width: min(260px, calc(100vw - 16px)); }
 .proto-tag { font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink); background: var(--lamp-soft); padding: 4px 10px; border-radius: 999px; }
 
 /* Case de bulletin (coche) */
-.box { display: inline-grid; place-items: center; width: 24px; height: 24px; border: 2px solid var(--line-strong); border-radius: 7px; position: relative; flex: none; background: var(--sheet); }
+.box { display: inline-grid; place-items: center; width: 24px; height: 24px; border: 2px solid var(--ctl); border-radius: 7px; position: relative; flex: none; background: var(--sheet); }
 .box svg { position: absolute; width: 130%; height: 130%; left: 0; top: -34%; overflow: visible; visibility: hidden; }
 .box svg path { fill: none; stroke: var(--lamp); stroke-width: 3.8; stroke-linecap: round; stroke-linejoin: round; }
 
@@ -115,7 +121,7 @@ h1[tabindex="-1"]:focus, [data-focus-target]:focus { outline: none; }
 .btn-primary { background: var(--accent); color: var(--on-accent); }
 .btn-primary:hover { background: var(--accent-ink); }
 .btn-primary:active { transform: translateY(1px); }
-.btn-ghost { background: var(--sheet); border-color: var(--line-strong); color: var(--ink); }
+.btn-ghost { background: var(--sheet); border-color: var(--ctl); color: var(--ink); }
 .btn-ghost:hover { border-color: var(--ink); }
 .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -140,7 +146,7 @@ details > summary { cursor: pointer; color: var(--accent-ink); font-weight: 600;
   .map-card { padding: 22px 18px 12px; }
 }
 .kicker { display: inline-flex; align-items: center; gap: 8px; width: fit-content; font-size: .78rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--accent-ink); background: var(--accent-soft); padding: 5px 12px 5px 8px; border-radius: 999px; }
-.kicker::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--up); box-shadow: 0 0 0 3px color-mix(in srgb, var(--up) 25%, transparent); }
+.kicker::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--up); box-shadow: 0 0 0 3px var(--up-ring); }
 .map-title { font-family: var(--f-display); font-weight: 800; font-size: clamp(2.1rem, 7vw, 3.6rem); line-height: .98; letter-spacing: -.03em; font-stretch: 85%; }
 .map-title em { font-style: normal; background: linear-gradient(transparent 62%, var(--lamp-soft) 62%); }
 .legend { display: grid; gap: 0; list-style: none; margin: 0; padding: 0; background: var(--sheet); border: 1px solid var(--line); border-radius: var(--r); }
@@ -149,26 +155,36 @@ details > summary { cursor: pointer; color: var(--accent-ink); font-weight: 600;
 .legend .cnt { font-family: var(--f-display); font-weight: 700; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
 .sw { width: 18px; height: 18px; border-radius: 5px; flex: none; }
 .sw.up { background: var(--up); }
-.sw.none { background: repeating-linear-gradient(135deg, var(--none) 0 4px, color-mix(in srgb, var(--none) 75%, white) 4px 6px); }
-.sw.disp { background: var(--disputed); }
-.sw.ready { background: var(--sheet); border: 3px solid var(--ink); border-radius: 50%; }
+.sw.none { background: var(--none); background: repeating-linear-gradient(135deg, var(--none) 0 4px, var(--none-2) 4px 7px); }
+.sw.disp { background: var(--disputed); border: 1.5px dashed var(--muted); }
+.sw.ready svg { display: block; width: 18px; height: 18px; overflow: visible; }
 .sw.info svg { display: block; width: 18px; height: 18px; overflow: visible; }
 .map-wrap { position: relative; }
 .map-wrap svg { display: block; width: 100%; height: auto; max-width: 720px; margin: 0 auto; }
 .map-wrap .ctry { stroke: var(--map-stroke); stroke-width: .9; cursor: pointer; transition: fill .15s; outline: none; }
-.map-wrap .ctry.up { fill: var(--up); }
+.map-wrap .ctry.up { fill: var(--up); stroke: var(--up-edge); stroke-width: 1.2; }   /* vert : aplat et contour foncé ; rouge : hachures et contour blanc (pas seulement la teinte) */
 .map-wrap .ctry.none { fill: url(#hatch); }
 .map-wrap .ctry.up:hover, .map-wrap .ctry.up.hl { fill: var(--up-hover); }
 .map-wrap .ctry.none:hover, .map-wrap .ctry.none.hl { fill: var(--none-hover); }
-.map-wrap .ctry:focus-visible { stroke: var(--ink); stroke-width: 2.5; }
-.map-wrap .disp { fill: var(--disputed); stroke: var(--map-stroke); stroke-width: .9; stroke-dasharray: 3 2; }
+.map-wrap .fring { pointer-events: none; }   /* cadre de focus à deux tons (clair puis foncé) : lisible sur le vert, le rouge, la terre et la mer */
+.map-wrap .fring * { fill: none; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.map-wrap .fr-halo { stroke: var(--sheet); stroke-width: 7; }
+.map-wrap .fr-ink { stroke: var(--ink); stroke-width: 3; }
+.map-wrap .disp { fill: var(--disputed); stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 2; }   /* contour en pointillés : le Sahara occidental se distingue aussi par sa forme */
 .map-wrap .nb { fill: var(--land-bg); }
 .map-wrap .isl { stroke: var(--map-stroke); stroke-width: 1.5; cursor: pointer; }
 .map-wrap .isl.up { fill: var(--up); }
 .map-wrap .isl.none { fill: var(--none); }
-.map-wrap .isl-hit { fill: transparent; cursor: pointer; }
-.map-wrap .pin { fill: var(--sheet); stroke: var(--ink); stroke-width: 2.5; pointer-events: none; }
-.map-wrap .pin-check { fill: none; stroke: var(--accent); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.map-wrap .mk { cursor: pointer; }
+.map-wrap .mk-hit { fill: transparent; pointer-events: all; }   /* zone tactile invisible, d'au moins 24 px à l'écran */
+.map-wrap .mk-focus, .map-wrap .mk-halo { fill: none; stroke: var(--ink); stroke-width: 3; display: none; }
+.map-wrap .mk-halo { stroke: var(--sheet); stroke-width: 7; }
+.map-wrap .mk.kf .mk-focus, .map-wrap .mk.kf .mk-halo { display: block; }
+.map-wrap .leads { pointer-events: none; }
+.map-wrap .lead { stroke: var(--ink); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.map-wrap .lead-dot { fill: var(--ink); stroke: var(--sheet); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.pin { fill: var(--sheet); stroke: var(--ink); stroke-width: 2.5; }
+.pin-check { fill: none; stroke: var(--accent); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
 .pin-info { pointer-events: none; }
 .pin-info .ring { fill: var(--sheet); stroke: var(--ink); stroke-width: 2; }
 .pin-info .stem { fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linecap: round; }
@@ -180,18 +196,18 @@ details > summary { cursor: pointer; color: var(--accent-ink); font-weight: 600;
 .clist-wrap { display: block; background: var(--sheet); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; }
 .clist-wrap[open] > summary { margin-bottom: 12px; }
 #clist { margin-top: 6px; }
-.clist-wrap input { width: 100%; font: inherit; padding: 10px 14px; border: 1.5px solid var(--line-strong); border-radius: 999px; background: var(--paper); color: var(--ink); }
+.clist-wrap input { width: 100%; font: inherit; padding: 10px 14px; border: 1.5px solid var(--ctl); border-radius: 999px; background: var(--paper); color: var(--ink); }
 .clist-group { display: grid; gap: 6px; }
-.clist-group h3 { font-family: var(--f-body); font-size: .74rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-top: 8px; }
+.clist-group h2 { font-family: var(--f-body); font-size: .74rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-top: 8px; }
 .clist2 { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; }
-.cbtn { width: 100%; display: flex; gap: 10px; align-items: flex-start; padding: 9px 11px; border: 1px solid var(--line); border-radius: var(--r-s); background: var(--paper); cursor: pointer; text-align: start; }
-.cbtn:hover { border-color: var(--line-strong); }
+.cbtn { width: 100%; display: flex; gap: 10px; align-items: flex-start; padding: 9px 11px; border: 1px solid var(--ctl); border-radius: var(--r-s); background: var(--paper); cursor: pointer; text-align: start; }
+.cbtn:hover { border-color: var(--ink); }
 .cbtn .dot { width: 11px; height: 11px; border-radius: 50%; margin-top: 6px; flex: none; }
 .cbtn .dot.up { background: var(--up); }
 .cbtn .dot.none { background: var(--none); }
 .cbtn .cn2 { font-weight: 600; display: block; }
 .cbtn .cs2 { font-size: .8rem; color: var(--muted); display: block; }
-.outside { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; padding: 12px 14px; border: 1.5px dashed var(--line-strong); border-radius: var(--r); }
+.outside { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; padding: 12px 14px; border: 1.5px dashed var(--ctl); border-radius: var(--r); }
 
 /* ============ Bandeau élection ============ */
 .strip { display: flex; justify-content: space-between; align-items: center; gap: 10px 16px; flex-wrap: wrap; padding: 16px 18px; background: var(--accent); color: var(--on-accent); border-radius: var(--r); }
@@ -236,8 +252,8 @@ details > summary { cursor: pointer; color: var(--accent-ink); font-weight: 600;
 .theme-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 @media (max-width: 600px) { .theme-grid { grid-template-columns: 1fr; } }
 @media (min-width: 720px) { .theme-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-.theme-opt { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto 1fr; gap: 3px 12px; padding: 14px 16px; border: 1.5px solid var(--line); border-radius: var(--r); background: var(--sheet); cursor: pointer; text-align: start; align-items: start; transition: border-color .15s, background-color .15s; }
-.theme-opt:hover { border-color: var(--line-strong); }
+.theme-opt { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto 1fr; gap: 3px 12px; padding: 14px 16px; border: 1.5px solid var(--ctl); border-radius: var(--r); background: var(--sheet); cursor: pointer; text-align: start; align-items: start; transition: border-color .15s, background-color .15s; }
+.theme-opt:hover { border-color: var(--ink); }
 .theme-opt .box { margin-top: 2px; grid-row: span 3; }
 .theme-opt .tn { font-family: var(--f-display); font-weight: 700; font-size: 1.06rem; line-height: 1.25; }
 .theme-opt .tm { font-size: .82rem; color: var(--muted); }
@@ -249,23 +265,31 @@ details > summary { cursor: pointer; color: var(--accent-ink); font-weight: 600;
 .rank-badge { display: inline-block; font-family: var(--f-body); font-size: .7rem; font-weight: 600; color: var(--on-lamp); background: var(--lamp); padding: 1px 8px; border-radius: 999px; vertical-align: 2px; margin-inline-start: 4px; }
 .sticky-go { position: sticky; bottom: 0; padding-block: 14px calc(14px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to top, var(--paper) 72%, transparent); display: flex; gap: 10px 16px; align-items: center; flex-wrap: wrap; }
 
-/* ============ Questionnaire ============ */
-.progress { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
-.progress button { width: 14px; height: 14px; border: 2px solid var(--line-strong); border-radius: 4px; background: var(--sheet); padding: 0; cursor: pointer; }
-.progress button.theme-start { margin-inline-start: 8px; }
-.progress button:first-child { margin-inline-start: 0; }
-.progress button.prio { border-color: var(--accent); }
-.progress button.done { background: var(--accent); border-color: var(--accent); }
-.progress button.skipped { background: linear-gradient(135deg, transparent 42%, var(--line-strong) 42%, var(--line-strong) 58%, transparent 58%), var(--sheet); }
-.progress button.current { outline: 2px solid var(--lamp); outline-offset: 2px; }
-.q-meta { display: flex; justify-content: space-between; gap: 6px 12px; flex-wrap: wrap; align-items: center; }
-.q-theme { font-family: var(--f-display); font-weight: 700; font-size: 1.05rem; color: var(--ink); margin-inline-end: 6px; }
-.q-min { font-size: .84rem; color: var(--muted); margin-top: -14px; }
-.slip { background: var(--sheet); border: 1px solid var(--line); border-radius: var(--r-l); padding: 26px 24px 20px; display: grid; gap: 16px; box-shadow: var(--shadow); }
-.slip h1 { font-weight: 600; font-size: clamp(1.25rem, 4.2vw, 1.62rem); line-height: 1.3; letter-spacing: -.01em; }
-.slip details p { margin-top: 10px; color: var(--muted); max-width: 66ch; }
-.answers { border: 0; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
-.ans { display: grid; justify-items: center; align-content: start; gap: 10px; padding: 16px 8px 14px; border: 1.5px solid var(--line); border-radius: var(--r); background: var(--sheet); cursor: pointer; text-align: center; font-size: .92rem; font-weight: 500; line-height: 1.25; transition: border-color .15s, background-color .15s, transform .12s; }
+/* ============ Questionnaire ============
+   Écran pensé pour une main sur un petit téléphone (360 × 640) : une ligne de progression, l'énoncé, ★ et « Contexte » sur une ligne,
+   puis les cinq réponses, toutes visibles sans défiler dans la grande majorité des cas. */
+body.qv #protoTag { display: none; }
+body.qv .topbar { padding-block: 2px 4px; }
+.screen.q-screen { gap: 10px; padding-top: 6px; }
+.q-top { display: flex; align-items: center; gap: 10px; }
+.q-count { font-size: .9rem; font-weight: 600; white-space: nowrap; min-width: 4.2ch; }
+.qbar { position: relative; flex: 1; height: 10px; border: 1.5px solid var(--ctl); border-radius: 999px; background: var(--sheet-2); overflow: hidden; }   /* piste et remplissage : au moins 3:1 chacun */
+.qbar > span { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
+.qbar .tick { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--paper); }
+.qlist-btn { background: var(--sheet); border: 1.5px solid var(--ctl); border-radius: 999px; padding: 4px 14px; min-height: 34px; font-weight: 600; font-size: .88rem; cursor: pointer; color: var(--ink); }
+.qlist-btn:hover { border-color: var(--ink); }
+.q-meta { display: flex; gap: 4px 8px; flex-wrap: wrap; align-items: center; }
+.q-theme { font-family: var(--f-display); font-weight: 700; font-size: 1rem; color: var(--ink); }
+.slip { background: var(--sheet); border: 1px solid var(--line); border-radius: var(--r-l); padding: 22px 22px 16px; display: grid; gap: 14px; box-shadow: var(--shadow); }
+.slip h1 { font-weight: 600; font-size: clamp(1.1rem, 4.2vw, 1.55rem); line-height: 1.3; letter-spacing: -.01em; overflow-wrap: anywhere; }
+.slip-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+.slip-row details { flex: 0 1 auto; }
+.slip-row details[open] { flex-basis: 100%; }
+.slip-row summary { min-height: 32px; display: flex; align-items: center; }
+.slip details p { margin-top: 8px; color: var(--muted); max-width: 66ch; }
+.slip details .q-min { font-size: .86rem; font-weight: 600; }
+.answers { border: 0; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; min-width: 0; }
+.ans { display: grid; justify-items: center; align-content: start; gap: 10px; padding: 16px 8px 14px; border: 1.5px solid var(--ctl); border-radius: var(--r); background: var(--sheet); cursor: pointer; text-align: center; font-size: .92rem; font-weight: 500; line-height: 1.25; transition: border-color .15s, background-color .15s, transform .12s; overflow-wrap: anywhere; }
 .ans:hover { border-color: var(--accent); }
 .ans:active { transform: translateY(1px); }
 .ans[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--on-accent); font-weight: 600; }
@@ -273,16 +297,34 @@ details > summary { cursor: pointer; color: var(--accent-ink); font-weight: 600;
 .ans[aria-pressed="true"] .box svg { visibility: visible; }
 .ans[aria-pressed="true"] .box svg path { stroke: var(--lamp); }
 @media (max-width: 640px) {
-  .answers { grid-template-columns: 1fr; gap: 6px; }
-  .ans { grid-template-columns: auto 1fr; justify-items: start; align-items: center; text-align: start; padding: 13px 16px; font-size: 1rem; }
+  .answers { grid-template-columns: 1fr; gap: 5px; }
+  .ans { grid-template-columns: auto 1fr; justify-items: start; align-items: center; gap: 12px; text-align: start; padding: 8px 14px; min-height: 46px; font-size: 1rem; }
+  .slip { padding: 14px 16px 10px; gap: 10px; border-radius: var(--r); }
+  .slip h1 { font-size: clamp(1.02rem, 4.4vw, 1.3rem); line-height: 1.28; }
 }
-/* « Compte double » : bouton à bascule au-dessus des réponses, lié à la question affichée */
-.star { display: inline-flex; align-items: center; gap: 8px; width: fit-content; min-height: 40px; padding: 6px 14px 6px 10px; border: 1.5px solid var(--line-strong); border-radius: 999px; background: var(--sheet); color: var(--ink); cursor: pointer; font-size: .92rem; font-weight: 600; line-height: 1.25; text-align: start; }
+/* « Compte double » : bouton à bascule à côté de l'énoncé, lié à la question affichée */
+.star { display: inline-flex; align-items: center; gap: 8px; width: fit-content; min-height: 36px; padding: 4px 14px 4px 10px; border: 1.5px solid var(--ctl); border-radius: 999px; background: var(--sheet); color: var(--ink); cursor: pointer; font-size: .9rem; font-weight: 600; line-height: 1.2; text-align: start; }
 .star .st { font-size: 1.15rem; line-height: 1; color: var(--muted); }
 .star:hover { border-color: var(--ink); }
 .star[aria-pressed="true"] { background: var(--lamp-soft); border-color: var(--warn); }
 .star[aria-pressed="true"] .st { color: var(--warn); }
-.q-nav { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 16px; }
+.q-nav { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 12px; }
+/* Liste des questions (fenêtre) : lignes de 44 px au moins, état écrit en toutes lettres */
+#qDlg { width: min(520px, calc(100% - 16px)); }
+.qdlg-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.qdlg-head h2 { font-size: 1.3rem; font-weight: 750; }
+.qgrp { font-family: var(--f-body); font-size: .74rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-top: 6px; }
+.qlist { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.qrow { width: 100%; display: grid; grid-template-columns: 2.2rem minmax(0, 1fr) auto; grid-template-areas: "n t d" "n s s"; align-items: center; gap: 0 10px; min-height: 48px; padding: 6px 12px; background: var(--sheet); border: 1.5px solid var(--ctl); border-radius: var(--r-s); cursor: pointer; text-align: start; }
+.qrow .qn { grid-area: n; font-weight: 700; color: var(--muted); text-align: center; }
+.qrow .qt { grid-area: t; font-weight: 600; font-size: .95rem; line-height: 1.25; overflow-wrap: anywhere; }
+.qrow .qd { grid-area: d; color: var(--warn); }
+.qrow .qs { grid-area: s; font-size: .8rem; color: var(--muted); }
+.qrow.done { border-inline-start: 5px solid var(--accent); }
+.qrow.skip { border-style: dashed; }
+.qrow.cur { background: var(--accent-soft); border-color: var(--accent); }
+.qrow.cur .qn { color: var(--accent-ink); }
+.qrow:hover { border-color: var(--ink); }
 
 /* ============ Résultats ============ */
 .res-head { display: grid; gap: 10px; }
@@ -292,12 +334,23 @@ details > summary { cursor: pointer; color: var(--accent-ink); font-weight: 600;
 .tab:hover { color: var(--ink); }
 .tab[aria-selected="true"] { color: var(--paper); background: var(--ink); font-weight: 600; }
 @media (max-width: 480px) { .tab { padding: 8px 10px; font-size: .9rem; } }
+/* Téléphones : les quatre onglets visibles à la fois (2 × 2), jamais coupés ni défilants */
+@media (max-width: 520px) {
+  .tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; border-radius: var(--r); }
+  .tab { white-space: normal; text-align: center; min-height: 40px; overflow-wrap: anywhere; }
+}
 .panel { display: grid; gap: 18px; }
 .rank { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .rank li { display: grid; grid-template-columns: 26px 44px minmax(0, 1fr); gap: 14px; align-items: center; padding: 14px 16px; background: var(--sheet); border: 1px solid var(--line); border-radius: var(--r); }
 .rank li.top { border: 2px solid var(--lamp); box-shadow: var(--shadow); }
-.rank li.out { opacity: .62; background: transparent; }
-.rank li.thin { border-style: dashed; border-color: var(--line-strong); }
+.rank li.out { background: transparent; }
+.rank li.out .badge { filter: grayscale(.85); }   /* seuls le badge (couleur désaturée, luminance gardée : sigle lisible) et la barre s'estompent */
+.rank li.out .bar { opacity: .5; }
+.rank li.thin { border-style: dashed; border-color: var(--ctl); }
+@media (max-width: 400px) {
+  .rank li { grid-template-columns: 22px 38px minmax(0, 1fr); gap: 10px; padding: 12px; }
+  .rank li .badge { width: 38px; height: 38px; font-size: .64rem; }
+}
 .rank-h { font-size: 1.05rem; font-weight: 700; margin-top: 4px; }
 .rank-hp { font-size: .9rem; color: var(--muted); max-width: 66ch; margin-top: -10px; }
 .res-head .notice { font-size: .95rem; color: var(--ink); background: var(--lamp-soft); border-radius: var(--r-s); padding: 10px 14px; }
@@ -310,32 +363,35 @@ details > summary { cursor: pointer; color: var(--accent-ink); font-weight: 600;
 .rank .pos { font-family: var(--f-display); color: var(--muted); font-weight: 700; text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .rank-main { display: grid; gap: 7px; min-width: 0; }
 .rank-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
-.rank-head b { font-family: var(--f-display); font-weight: 700; font-size: 1.12rem; line-height: 1.2; }
+.rank-head { min-width: 0; }
+.rank-head b { font-family: var(--f-display); font-weight: 700; font-size: 1.12rem; line-height: 1.2; min-width: 0; overflow-wrap: anywhere; }
 .pct { direction: ltr; unicode-bidi: isolate; font-family: var(--f-display); font-variant-numeric: tabular-nums; font-weight: 750; font-size: 1.3rem; white-space: nowrap; letter-spacing: -.01em; }
 .pu { font-family: var(--f-body); font-size: .7em; font-weight: 500; }
 .bar { height: 10px; background: var(--check-soft); border-radius: 999px; overflow: hidden; }
 .bar span { display: block; height: 100%; background: var(--pc, var(--accent)); border-radius: 999px; }
-.rank-sub { color: var(--muted); font-size: .88rem; display: flex; gap: 4px 12px; flex-wrap: wrap; align-items: center; }
+.rank-sub { color: var(--muted); font-size: .88rem; display: flex; gap: 4px 12px; flex-wrap: wrap; align-items: center; min-width: 0; overflow-wrap: anywhere; }
+.rank-sub .link { padding-block: 5px; }
 .theme-cards { display: grid; gap: 12px; }
 .theme-card { background: var(--sheet); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; display: grid; gap: 12px; }
 .theme-card.prio-on { border-color: var(--accent); }
 .tc-head { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: center; }
-.tc-head h3 { font-size: 1.12rem; font-weight: 700; }
+.tc-head h2 { font-size: 1.12rem; font-weight: 700; }
 .verdict-line { max-width: 66ch; }
 .mini { display: grid; gap: 8px; }
 .mini-row { display: grid; grid-template-columns: 30px minmax(0, 13rem) minmax(0, 1fr) 3.8rem; gap: 10px; align-items: center; font-size: .9rem; }
-.mini-row .name { line-height: 1.25; }
+.mini-row .name { line-height: 1.25; overflow-wrap: anywhere; }
 .mini-row .pct { font-size: .98rem; text-align: end; }
 .mini-row.nd { color: var(--muted); }
 @media (max-width: 480px) { .mini-row { grid-template-columns: 30px minmax(0, 1fr) 3.4rem; } .mini-row .bar, .mini-row .ndt { grid-column: 2 / 4; grid-row: 2; } }
 .qa { background: var(--sheet); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; display: grid; gap: 12px; }
 .qa-meta { display: flex; gap: 6px 12px; flex-wrap: wrap; align-items: center; font-size: .82rem; color: var(--muted); }
 .qa-text { font-weight: 600; font-size: 1.03rem; max-width: 66ch; }
-.scale-wrap { overflow-x: auto; }
-.scale { display: grid; grid-template-columns: repeat(5, minmax(58px, 1fr)); border-top: 2px solid var(--line-strong); min-width: 310px; }
+.scale { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 2px solid var(--ctl); }
 .scale-col { display: grid; justify-items: center; align-content: start; gap: 6px; padding-top: 8px; position: relative; }
-.scale-col::before { content: ""; position: absolute; top: -7px; width: 2px; height: 10px; background: var(--line-strong); }
-.scale-col .lbl { font-size: .72rem; color: var(--muted); text-align: center; line-height: 1.2; min-height: 2.4em; }
+.scale-col::before { content: ""; position: absolute; top: -7px; width: 2px; height: 10px; background: var(--ctl); }
+.scale-col { min-width: 0; }
+.scale-col .lbl { font-size: .72rem; color: var(--muted); text-align: center; line-height: 1.2; min-height: 2.4em; max-width: 100%; overflow-wrap: anywhere; hyphens: auto; }
+@media (max-width: 400px) { .scale-col .lbl { font-size: .66rem; } }
 .scale-col .stack { display: flex; flex-direction: column; gap: 4px; align-items: center; }
 .you { font-size: .72rem; font-weight: 700; background: var(--lamp); color: var(--on-lamp); padding: 2px 8px; border-radius: 999px; }
 .nd-line { font-size: .85rem; color: var(--muted); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
@@ -346,7 +402,7 @@ details > summary { cursor: pointer; color: var(--accent-ink); font-weight: 600;
 .kind { font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
 .skipped-note { font-size: .9rem; color: var(--muted); font-style: italic; }
 .method { display: grid; gap: 16px; max-width: 68ch; }
-.method h3 { font-size: 1.1rem; font-weight: 700; }
+.method h2 { font-size: 1.1rem; font-weight: 700; }
 .method ul { margin: 0; padding-inline-start: 20px; display: grid; gap: 6px; }
 .formula { font-variant-numeric: tabular-nums; background: var(--sheet); border: 1px solid var(--line); border-radius: var(--r-s); padding: 12px 14px; font-size: .88rem; overflow-x: auto; white-space: nowrap; }
 .tbl-wrap { overflow-x: auto; }
@@ -363,14 +419,14 @@ dialog::backdrop { background: rgba(14, 10, 28, .58); }
 .fiche-head { display: grid; grid-template-columns: 60px minmax(0, 1fr) auto; gap: 14px; align-items: start; }
 .fiche-head h2 { font-size: 1.5rem; font-weight: 750; letter-spacing: -.015em; line-height: 1.15; }
 .fiche-head p { color: var(--muted); }
-.close { width: 42px; height: 42px; border: 1px solid var(--line-strong); background: var(--sheet); border-radius: 50%; cursor: pointer; font-size: 1.25rem; line-height: 1; }
+.close { width: 44px; height: 44px; flex: none; border: 1.5px solid var(--ctl); background: var(--sheet); border-radius: 50%; cursor: pointer; font-size: 1.25rem; line-height: 1; }
 .fiche section { display: grid; gap: 10px; }
 .fiche h3 { font-family: var(--f-body); font-size: .74rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
 .commit { list-style: none; margin: 0; padding: 0; display: grid; border-top: 1px solid var(--line); }
 .commit li { padding: 10px 0; border-bottom: 1px solid var(--line); display: grid; gap: 2px; }
 .pos-table { list-style: none; margin: 0; padding: 0; display: grid; }
 .pos-table li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: .9rem; align-items: baseline; }
-.pos-table .pv { font-weight: 600; white-space: nowrap; }
+.pos-table .pv { font-weight: 600; text-align: end; max-width: 12rem; }
 .pos-table .pv.nd { color: var(--muted); font-weight: 400; font-style: italic; }
 .fiche-score { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 12px 16px; background: var(--sheet); border: 2px solid var(--lamp); border-radius: var(--r); }
 
@@ -381,11 +437,11 @@ dialog::backdrop { background: rgba(14, 10, 28, .58); }
 .lang-box .st { color: var(--muted); font-size: .92rem; }
 .lang-grid { display: grid; gap: 8px; }
 .lang-grid h3 { font-family: var(--f-body); font-size: .74rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-top: 4px; }
-.lang-btn { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; text-align: start; padding: 13px 18px; border: 1.5px solid var(--line); border-radius: var(--r); background: var(--sheet); cursor: pointer; font-size: 1.1rem; font-weight: 600; }
+.lang-btn { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; text-align: start; padding: 13px 18px; border: 1.5px solid var(--ctl); border-radius: var(--r); background: var(--sheet); cursor: pointer; font-size: 1.1rem; font-weight: 600; }
 .lang-btn:hover, .lang-btn.cur { border-color: var(--accent); background: var(--accent-soft); }
 .lang-btn .lc { font-size: .74rem; color: var(--muted); font-weight: 600; letter-spacing: .06em; }
-.lang-btn:disabled { cursor: not-allowed; border-style: dashed; background: transparent; color: var(--muted); }
-.lang-btn:disabled:hover { border-color: var(--line); background: transparent; }
+.lang-btn[aria-disabled="true"] { cursor: not-allowed; border-style: dashed; background: transparent; color: var(--muted); }
+.lang-btn[aria-disabled="true"]:hover { border-color: var(--ctl); background: transparent; }
 .lang-btn .lnote { display: block; font-size: .78rem; font-weight: 400; }
 
 /* ============ Pays sans questionnaire ============ */
@@ -412,15 +468,16 @@ dialog::backdrop { background: rgba(14, 10, 28, .58); }
 footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; display: grid; gap: 6px; max-width: 760px; margin-inline: auto; }
 
 @media (prefers-reduced-motion: no-preference) {
-  .screen { animation: rise .3s ease-out; }
+  .screen.enter { animation: fade .22s ease-out; }   /* fondu seulement quand l'écran change (pas d'une question à la suivante) */
   .bar span { transition: width .6s cubic-bezier(.2,.7,.2,1); }
   .spinner { animation: spin .9s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes rise { from { transform: translateY(6px); } to { transform: none; } }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 }
 </style>
 </head>
 <body>
+<a class="skip" id="skip" href="#listBox" hidden></a>
 <div class="wrap">
   <header>
     <div class="topbar">
@@ -435,13 +492,24 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
     </div>
     <ol class="steps" id="steps" hidden></ol>
   </header>
-  <main id="app"></main>
+  <main id="app"><noscript><section class="screen">
+<h1 class="big-title">Éclaire ton vote</h1>
+<p lang="fr">Ce site a besoin de JavaScript pour afficher la carte et les questionnaires. Active-le dans ton navigateur, puis recharge la page.</p>
+<p lang="en">This site needs JavaScript to show the map and the questionnaires. Turn it on in your browser, then reload the page.</p>
+<p lang="pt">Este site precisa de JavaScript para mostrar o mapa e os questionários. Ativa-o no teu navegador e recarrega a página.</p>
+<p lang="sw">Tovuti hii inahitaji JavaScript ili kuonyesha ramani na maswali. Iwashe kwenye kivinjari chako, kisha pakia ukurasa upya.</p>
+<p lang="ar" dir="rtl">يحتاج هذا الموقع إلى جافاسكريبت لعرض الخريطة والاستبيانات. فعّله في متصفحك ثم أعد تحميل الصفحة.</p>
+<h2>Questionnaires · Questionnaires</h2><ul><li>Burundi · Burundi</li><li>Cabo Verde · Cap-Vert</li><li>Cameroon · Cameroun</li><li>France (prototype)</li><li>Kenya · Kenya</li><li>Lesotho · Lesotho</li><li>Madagascar · Madagascar</li><li>Nigeria · Nigeria</li><li>Republic of the Congo · Congo</li><li>Somalia · Somalie</li><li>The Gambia · Gambie</li><li>Tunisia · Tunisie</li></ul>
+<h2>Information pages · Fiches d’information</h2><ul><li>Angola · Angola</li><li>Equatorial Guinea · Guinée équatoriale</li><li>Guinea-Bissau · Guinée-Bissau</li><li>Libya · Libye</li><li>South Sudan · Soudan du Sud</li></ul>
+</section></noscript></main>
   <footer id="footer"></footer>
 </div>
 <div id="live" class="sr" aria-live="polite" aria-atomic="true"></div>
 
 <dialog id="fiche" aria-labelledby="ficheTitle"><div class="fiche" id="ficheBody"></div></dialog>
 <dialog id="langDlg" aria-labelledby="langTitle"><div class="lang-box" id="langBody"></div></dialog>
+<dialog id="qDlg" aria-labelledby="qDlgTitle"><div class="lang-box" id="qBody"></div></dialog>
+<div id="langTip" class="tip lang-tip" role="tooltip" hidden></div>
 
 <script>
 const CHECK = '<svg viewBox="0 0 28 24"><path d="M5 13l6 6L26 1"/></svg>';
@@ -1524,24 +1592,115 @@ Object.assign(T.ar, {
   themeVerdict: (t, p, pct, k) => `إذا كانت «${t}» مهمة لك، فالأقرب هو <b>${p}</b> (${pct}، على ${arN(k, AR_Q_GEN)}).`
 });
 
-/* ================== Calendrier électoral africain (vérifié au 9 octobre 2026) ================== */
+/* ================== Version 2, suite : carte, écran de question d'une main, libellés, recherche ==================
+   Lien d'évitement, accroche et slogan, légende, liste des questions, réponses « ni d'accord ni pas d'accord »,
+   états des sujets, langues non traduites. */
+Object.assign(T.fr, {
+  skipList: "Aller à la liste des pays",
+  heroKicker: n => `Élections en Afrique · ${n} pays à explorer`,
+  tagline: "Anonyme · Sources publiques · On ne te dit pas pour qui voter",
+  legNone: "Pas d’élection nationale avant fin 2027",
+  noCountry: "Aucun pays ne correspond.",
+  qList: "Questions",
+  qJumpTitle: "Aller à une question",
+  qStateDone: "répondue",
+  qStateSkip: "passée",
+  qStateOpen: "pas encore répondue",
+  startHint: "Choisis au moins un sujet",
+  ans: { "2": "Tout à fait d’accord", "1": "Plutôt d’accord", "0": "Ni d’accord ni pas d’accord", "-1": "Plutôt pas d’accord", "-2": "Pas du tout d’accord" },
+  ansShort: { "2": "D’accord ++", "1": "D’accord", "0": "Ni l’un ni l’autre", "-1": "Pas d’accord", "-2": "Pas d’accord ++" },
+  themeSkipped: "Tu as passé les questions de ce sujet.",
+  langWhy: "Pas encore traduit"
+});
+Object.assign(T.en, {
+  skipList: "Skip to the list of countries",
+  heroKicker: n => `Elections in Africa · ${n} countries to explore`,
+  tagline: "Anonymous · Public sources · We don’t tell you who to vote for",
+  legNone: "No national election before end of 2027",
+  noCountry: "No country matches.",
+  qList: "Questions",
+  qJumpTitle: "Jump to a question",
+  qStateDone: "answered",
+  qStateSkip: "skipped",
+  qStateOpen: "not answered yet",
+  startHint: "Choose at least one issue",
+  ans: { "2": "Strongly agree", "1": "Agree", "0": "Neither agree nor disagree", "-1": "Disagree", "-2": "Strongly disagree" },
+  ansShort: { "2": "Strongly agree", "1": "Agree", "0": "Neither", "-1": "Disagree", "-2": "Strongly disagree" },
+  themeSkipped: "You skipped this issue’s questions.",
+  langWhy: "Not translated yet"
+});
+Object.assign(T.pt, {
+  skipList: "Ir para a lista de países",
+  heroKicker: n => `Eleições em África · ${n} países para explorar`,
+  tagline: "Anónimo · Fontes públicas · Não te dizemos em quem votar",
+  legNone: "Sem eleição nacional antes do fim de 2027",
+  noCountry: "Nenhum país corresponde.",
+  qList: "Perguntas",
+  qJumpTitle: "Ir para uma pergunta",
+  qStateDone: "respondida",
+  qStateSkip: "saltada",
+  qStateOpen: "ainda por responder",
+  startHint: "Escolhe pelo menos um tema",
+  ans: { "2": "Concordo totalmente", "1": "Concordo", "0": "Nem concordo nem discordo", "-1": "Discordo", "-2": "Discordo totalmente" },
+  ansShort: { "2": "Concordo muito", "1": "Concordo", "0": "Nem um nem outro", "-1": "Discordo", "-2": "Discordo muito" },
+  themeSkipped: "Saltaste as perguntas deste tema.",
+  langWhy: "Ainda não traduzido"
+});
+Object.assign(T.sw, {
+  skipList: "Nenda kwenye orodha ya nchi",
+  heroKicker: n => `Uchaguzi barani Afrika · nchi ${n} za kuchunguza`,
+  tagline: "Bila kujulikana · Vyanzo vya umma · Hatukuambii umpigie nani kura",
+  legNone: "Hakuna uchaguzi wa kitaifa kabla ya mwisho wa 2027",
+  noCountry: "Hakuna nchi inayolingana.",
+  qList: "Maswali",
+  qJumpTitle: "Nenda kwenye swali",
+  qStateDone: "imejibiwa",
+  qStateSkip: "imerukwa",
+  qStateOpen: "bado haijajibiwa",
+  startHint: "Chagua angalau suala moja",
+  ans: { "2": "Nakubali kabisa", "1": "Nakubali", "0": "Sikubali wala sikatai", "-1": "Sikubali", "-2": "Sikubali kabisa" },
+  ansShort: { "2": "Nakubali sana", "1": "Nakubali", "0": "Kati na kati", "-1": "Sikubali", "-2": "Sikubali kabisa" },
+  themeSkipped: "Umeruka maswali ya suala hili.",
+  langWhy: "Bado haijatafsiriwa"
+});
+Object.assign(T.ar, {
+  skipList: "انتقل إلى قائمة البلدان",
+  heroKicker: n => `انتخابات في أفريقيا · ${arN(n, AR_COUNTRY)} للاستكشاف`,
+  tagline: "مجهول الهوية · مصادر عامة · لا نقول لك لمن تصوّت",
+  legNone: "لا انتخابات وطنية قبل نهاية 2027",
+  noCountry: "لا يوجد بلد مطابق.",
+  qList: "الأسئلة",
+  qJumpTitle: "انتقل إلى سؤال",
+  qStateDone: "تمت الإجابة",
+  qStateSkip: "تم التخطي",
+  qStateOpen: "لم تتم الإجابة بعد",
+  startHint: "اختر قضية واحدة على الأقل",
+  ans: { "2": "موافق تمامًا", "1": "موافق", "0": "لا أوافق ولا أعارض", "-1": "غير موافق", "-2": "غير موافق إطلاقًا" },
+  ansShort: { "2": "موافق بشدة", "1": "موافق", "0": "لا هذا ولا ذاك", "-1": "غير موافق", "-2": "غير موافق بشدة" },
+  themeSkipped: "تخطّيت أسئلة هذه القضية.",
+  langWhy: "لم تُترجم بعد"
+});
+
+/* ================== Calendrier électoral africain (vérifié au 9 octobre 2026) ==================
+   Dates des sources en ISO (AAAA, AAAA-MM ou AAAA-MM-JJ) : l'interface les met en forme dans la langue choisie.
+   Quand un pays a une édition, ses dates (META.ev) priment ; tools/build.js signale tout désaccord avec cette liste. */
 const SRC_AF = {
-  af_center: { o: "Africa Center for Strategic Studies", t: "Africa’s 2026 Elections", d: "janv. 2026", u: "https://africacenter.org/spotlight/en-elections-2026/" },
-  af_elects: { o: "Africa Elects", t: "Election calendar", d: "mai 2026", u: "https://africaelects.com/calendar/" },
+  af_center: { o: "Africa Center for Strategic Studies", t: "Africa’s 2026 Elections", d: "2026-01", u: "https://africacenter.org/spotlight/en-elections-2026/" },
+  af_elects: { o: "Africa Elects", t: "Election calendar", d: "2026-05", u: "https://africaelects.com/calendar/" },
   af_cal27: { o: "Wikipedia", t: "2027 national electoral calendar", d: "2026", u: "https://en.wikipedia.org/wiki/2027_national_electoral_calendar" },
-  af_rio: { o: "The Rio Times", t: "Africa election calendar 2027", d: "21 sept. 2026", u: "https://www.riotimesonline.com/africa-election-calendar-2027/" },
+  af_rio: { o: "The Rio Times", t: "Africa election calendar 2027", d: "2026-09-21", u: "https://www.riotimesonline.com/africa-election-calendar-2027/" },
   af_cv: { o: "RTP", t: "Cabo Verde realiza eleições legislativas a 17 de maio e presidenciais a 15 de novembro", d: "2026", u: "https://www.rtp.pt/noticias/mundo/cabo-verde-realiza-eleicoes-legislativas-a-17-de-maio-e-presidenciais-a-15-de-novembro_n1711399" },
-  af_gw: { o: "Al Jazeera", t: "Guinea-Bissau sets election date following last year’s coup", d: "22 janv. 2026", u: "https://www.aljazeera.com/news/2026/1/22/guinea-bissau-sets-election-date-following-last-years-coup" },
-  af_ss: { o: "Wikipedia", t: "2026 South Sudanese general election", d: "sept. 2026", u: "https://en.wikipedia.org/wiki/2026_South_Sudanese_general_election" },
+  af_gw: { o: "Al Jazeera", t: "Guinea-Bissau sets election date following last year’s coup", d: "2026-01-22", u: "https://www.aljazeera.com/news/2026/1/22/guinea-bissau-sets-election-date-following-last-years-coup" },
+  af_ss: { o: "Wikipedia", t: "2026 South Sudanese general election", d: "2026-09", u: "https://en.wikipedia.org/wiki/2026_South_Sudanese_general_election" },
   af_cm: { o: "Investir au Cameroun", t: "Cameroon’s CRM prepares for 2027 elections", d: "2026", u: "https://m.investiraucameroun.com/stopblabla/i/16747/cameroons-crm-prepares-2027-elections-candidate-endorsements-risk" },
-  af_ly: { o: "The New Arab", t: "Libya’s governing bodies agree to hold long-awaited elections", d: "18 juin 2026", u: "https://www.newarab.com/news/libya-governing-bodies-agree-hold-elections-early-next-year" },
+  af_ly: { o: "The New Arab", t: "Libya’s governing bodies agree to hold long-awaited elections", d: "2026-06-18", u: "https://www.newarab.com/news/libya-governing-bodies-agree-hold-elections-early-next-year" },
   af_bi: { o: "Dakaractu", t: "Burundi : la présidentielle aura lieu le 3 mai 2027", d: "2026", u: "https://www.dakaractu.com/Burundi-la-presidentielle-aura-lieu-le-3-mai-2027-annonce-la-Commission-electorale_a271729.html" },
-  af_so: { o: "Dawan Africa", t: "Somali president says federal government’s term ends in 2027", d: "16 mai 2026", u: "https://www.dawan.africa/news/somali-president-says-federal-governments-term-ends-in-2027" },
-  af_mg: { o: "L’Express de Madagascar", t: "Élections : la CENI prévoit le référendum et la présidentielle en juin et octobre 2027", d: "mai 2026", u: "https://www.lexpress.mg/2026/05/elections-la-ceni-prevoit-le-referendum.html" },
+  af_so: { o: "Dawan Africa", t: "Somali president says federal government’s term ends in 2027", d: "2026-05-16", u: "https://www.dawan.africa/news/somali-president-says-federal-governments-term-ends-in-2027" },
+  af_mg: { o: "L’Express de Madagascar", t: "Élections : la CENI prévoit le référendum et la présidentielle en juin et octobre 2027", d: "2026-05", u: "https://www.lexpress.mg/2026/05/elections-la-ceni-prevoit-le-referendum.html" },
   af_ls: { o: "Wikipedia", t: "Next Lesotho general election", d: "2026", u: "https://en.wikipedia.org/wiki/Next_Lesotho_general_election" },
   af_gq: { o: "Wikipedia", t: "2027 Equatorial Guinean parliamentary election", d: "2026", u: "https://en.wikipedia.org/wiki/2027_Equatorial_Guinean_parliamentary_election" },
-  af_bf: { o: "AllAfrica", t: "Burkina Faso : dissolution des partis et formations politiques", d: "30 janv. 2026", u: "https://fr.allafrica.com/stories/202601300099.html" },
-  af_sn: { o: "Africanews", t: "Senegal ruling party Pastef presses government over 2027 local elections", d: "27 août 2026", u: "https://www.africanews.com/2026/08/27/senegal-ruling-party-pastef-presses-government-over-2027-local-elections/" }
+  af_bf: { o: "AllAfrica", t: "Burkina Faso : dissolution des partis et formations politiques", d: "2026-01-30", u: "https://fr.allafrica.com/stories/202601300099.html" },
+  af_sn: { o: "Africanews", t: "Senegal ruling party Pastef presses government over 2027 local elections", d: "2026-08-27", u: "https://www.africanews.com/2026/08/27/senegal-ruling-party-pastef-presses-government-over-2027-local-elections/" }
 };
 
 /* up: élection nationale prévue entre octobre 2026 et fin 2027. ev: liste d'échéances. q: exact | month | by | before | range */
@@ -1553,11 +1712,11 @@ const AFRICA = {
   "854": { a2: "BF", fr: "Burkina Faso", en: "Burkina Faso", langs: ["fr"], up: false, note: "bf", src: "af_bf" },
   "108": { a2: "BI", fr: "Burundi", en: "Burundi", langs: ["fr", "en", "sw"], up: true, ev: [{ t: "presidential", d: "2027-05-03", q: "exact" }], src: "af_bi" },
   "132": { a2: "CV", fr: "Cap-Vert", en: "Cabo Verde", langs: ["pt"], up: true, ev: [{ t: "presidential", d: "2026-11-15", q: "exact" }], src: "af_cv" },
-  "120": { a2: "CM", fr: "Cameroun", en: "Cameroon", langs: ["fr", "en"], up: true, ev: [{ t: "legislative", d: "2027-01", d2: "2027-04", q: "range" }], src: "af_cm" },
+  "120": { a2: "CM", fr: "Cameroun", en: "Cameroon", langs: ["fr", "en"], up: true, ev: [{ t: "legislative", d: "2027-01-29", d2: "2027-04-19", q: "range" }], src: "af_cm" },
   "140": { a2: "CF", fr: "Centrafrique", en: "Central African Republic", langs: ["fr"], up: false },
   "148": { a2: "TD", fr: "Tchad", en: "Chad", langs: ["fr", "ar"], up: false, next: { t: "legislative", d: "2028-12", q: "month" }, src: "af_elects" },
   "174": { a2: "KM", fr: "Comores", en: "Comoros", langs: ["ar", "fr"], up: false },
-  "178": { a2: "CG", fr: "Congo", en: "Republic of the Congo", langs: ["fr"], up: true, ev: [{ t: "legislative", d: "2027-07", q: "month" }], src: "af_rio" },
+  "178": { a2: "CG", fr: "Congo", en: "Republic of the Congo", langs: ["fr"], up: true, ev: [{ t: "legislative", d: "2027-07", q: "by" }], src: "af_rio" },
   "180": { a2: "CD", fr: "RD Congo", en: "DR Congo", langs: ["fr", "sw"], up: false, next: { t: "general", d: "2028-12-20", q: "exact" }, src: "af_elects" },
   "384": { a2: "CI", fr: "Côte d’Ivoire", en: "Côte d’Ivoire", langs: ["fr"], up: false },
   "262": { a2: "DJ", fr: "Djibouti", en: "Djibouti", langs: ["fr", "ar"], up: false, recent: "2026-04", next: { t: "legislative", d: "2028-02", q: "month" }, src: "af_elects" },
@@ -1567,15 +1726,15 @@ const AFRICA = {
   "748": { a2: "SZ", fr: "Eswatini", en: "Eswatini", langs: ["en"], up: false, next: { t: "legislative", d: "2028-09", q: "month" }, src: "af_elects" },
   "231": { a2: "ET", fr: "Éthiopie", en: "Ethiopia", langs: ["en"], up: false, recent: "2026-06", src: "af_center" },
   "266": { a2: "GA", fr: "Gabon", en: "Gabon", langs: ["fr"], up: false },
-  "270": { a2: "GM", fr: "Gambie", en: "The Gambia", langs: ["en"], up: true, ev: [{ t: "presidential", d: "2026-12-05", q: "exact" }, { t: "legislative", d: "2027-04", q: "month" }], src: "af_rio" },
+  "270": { a2: "GM", fr: "Gambie", en: "The Gambia", langs: ["en"], up: true, ev: [{ t: "presidential", d: "2026-12-05", q: "exact" }, { t: "legislative", d: "2027-04-10", q: "exact" }], src: "af_rio" },
   "288": { a2: "GH", fr: "Ghana", en: "Ghana", langs: ["en"], up: false, next: { t: "general", d: "2028-12-07", q: "exact" }, src: "af_elects" },
   "324": { a2: "GN", fr: "Guinée", en: "Guinea", langs: ["fr"], up: false, recent: "2026-05", src: "af_center" },
-  "624": { a2: "GW", fr: "Guinée-Bissau", en: "Guinea-Bissau", langs: ["pt"], up: true, ev: [{ t: "pres_leg", d: "2026-12-06", q: "exact" }], src: "af_gw" },
+  "624": { a2: "GW", fr: "Guinée-Bissau", en: "Guinea-Bissau", langs: ["pt"], up: true, ev: [{ t: "general", d: "2026-12-06", q: "exact" }], src: "af_gw" },
   "404": { a2: "KE", fr: "Kenya", en: "Kenya", langs: ["sw", "en"], up: true, ev: [{ t: "general", d: "2027-08-10", q: "exact" }], src: "af_cal27" },
   "426": { a2: "LS", fr: "Lesotho", en: "Lesotho", langs: ["en"], up: true, ev: [{ t: "legislative", d: "2027-10", q: "by" }], src: "af_ls" },
   "430": { a2: "LR", fr: "Liberia", en: "Liberia", langs: ["en"], up: false },
-  "434": { a2: "LY", fr: "Libye", en: "Libya", langs: ["ar"], up: true, ev: [{ t: "pres_leg", d: "2027-02-17", q: "before" }], src: "af_ly" },
-  "450": { a2: "MG", fr: "Madagascar", en: "Madagascar", langs: ["fr"], up: true, ev: [{ t: "referendum", d: "2027-06", q: "month" }, { t: "presidential", d: "2027-10", q: "month" }], src: "af_mg" },
+  "434": { a2: "LY", fr: "Libye", en: "Libya", langs: ["ar"], up: false, next: { t: "pres_leg", d: "2028-08", q: "by" }, src: "af_ly" },
+  "450": { a2: "MG", fr: "Madagascar", en: "Madagascar", langs: ["fr"], up: true, ev: [{ t: "referendum", d: "2027-05", d2: "2027-07", q: "range" }, { t: "presidential", d: "2027-09", d2: "2027-12", q: "range" }], src: "af_mg" },
   "454": { a2: "MW", fr: "Malawi", en: "Malawi", langs: ["en"], up: false },
   "466": { a2: "ML", fr: "Mali", en: "Mali", langs: ["fr"], up: false, note: "junta" },
   "478": { a2: "MR", fr: "Mauritanie", en: "Mauritania", langs: ["ar", "fr"], up: false, next: { t: "legislative", d: "2028-05", q: "month" }, src: "af_elects" },
@@ -1584,19 +1743,19 @@ const AFRICA = {
   "508": { a2: "MZ", fr: "Mozambique", en: "Mozambique", langs: ["pt"], up: false },
   "516": { a2: "NA", fr: "Namibie", en: "Namibia", langs: ["en"], up: false },
   "562": { a2: "NE", fr: "Niger", en: "Niger", langs: ["fr"], up: false, note: "junta" },
-  "566": { a2: "NG", fr: "Nigeria", en: "Nigeria", langs: ["en"], up: true, ed: "ng", ev: [{ t: "general", d: "2027-01-16", q: "exact" }], src: "inec_dates" },
+  "566": { a2: "NG", fr: "Nigeria", en: "Nigeria", langs: ["en"], up: true, ev: [{ t: "general", d: "2027-01-16", q: "exact" }], src: "inec_dates" },
   "646": { a2: "RW", fr: "Rwanda", en: "Rwanda", langs: ["en", "fr", "sw"], up: false },
   "678": { a2: "ST", fr: "Sao Tomé-et-Principe", en: "São Tomé and Príncipe", langs: ["pt"], up: false, recent: "2026-09", src: "af_center" },
   "686": { a2: "SN", fr: "Sénégal", en: "Senegal", langs: ["fr"], up: false, note: "sn_local", src: "af_sn" },
   "690": { a2: "SC", fr: "Seychelles", en: "Seychelles", langs: ["en", "fr"], up: false },
   "694": { a2: "SL", fr: "Sierra Leone", en: "Sierra Leone", langs: ["en"], up: false, next: { t: "general", d: "2028-06", q: "month" }, src: "af_elects" },
-  "706": { a2: "SO", fr: "Somalie", en: "Somalia", langs: ["ar"], up: true, ev: [{ t: "national", d: "2027-05-15", q: "before" }], src: "af_so" },
+  "706": { a2: "SO", fr: "Somalie", en: "Somalia", langs: ["ar"], up: true, ev: [{ t: "legislative", d: "2027-04-15", q: "exact" }, { t: "presidential", d: "2027-05-15", q: "exact" }], src: "af_so" },
   "710": { a2: "ZA", fr: "Afrique du Sud", en: "South Africa", langs: ["en"], up: false },
   "728": { a2: "SS", fr: "Soudan du Sud", en: "South Sudan", langs: ["en"], up: true, ev: [{ t: "general", d: "2026-12-22", q: "exact" }], src: "af_ss" },
   "729": { a2: "SD", fr: "Soudan", en: "Sudan", langs: ["ar", "en"], up: false, note: "war" },
   "834": { a2: "TZ", fr: "Tanzanie", en: "Tanzania", langs: ["sw", "en"], up: false },
   "768": { a2: "TG", fr: "Togo", en: "Togo", langs: ["fr"], up: false },
-  "788": { a2: "TN", fr: "Tunisie", en: "Tunisia", langs: ["ar", "fr"], up: true, ev: [{ t: "legislative", d: "2027-12", q: "month" }], src: "af_elects" },
+  "788": { a2: "TN", fr: "Tunisie", en: "Tunisia", langs: ["ar", "fr"], up: true, ev: [{ t: "legislative", d: "2027-11", d2: "2028-03", q: "range" }], src: "af_elects" },
   "800": { a2: "UG", fr: "Ouganda", en: "Uganda", langs: ["en", "sw"], up: false, recent: "2026-01", src: "af_center" },
   "894": { a2: "ZM", fr: "Zambie", en: "Zambia", langs: ["en"], up: false, recent: "2026-08", src: "af_center" },
   "716": { a2: "ZW", fr: "Zimbabwe", en: "Zimbabwe", langs: ["en"], up: false, next: { t: "general", d: "2028-08", q: "month" }, src: "af_elects" }
@@ -1606,7 +1765,7 @@ const AFRICA = {
 const MAP = {"w":800,"h":770,"vb":[-2,17,804,736],"c":{"108":"M542.3,421.8L541,424.3L541.5,424.8L541.1,426.6L544.5,427.7L544.6,430.6L542.8,431.5L543,432L541,433.7L540.2,435.6L539.4,436.3L538.2,438.7L536.2,440.9L533.9,442.3L530.8,442.3L530.2,438.8L529.1,436.9L529,431.5L529.2,428.4L527.2,425.9L527.1,425.1L527.6,423.9L529.9,424.6L530.8,426L533.9,425.8L535.5,425L536.2,421.3L538.2,422L540.9,421Z","120":"M325.1,350.9L327.5,346.6L328.9,340.8L330.2,338.5L333.3,335.5L336.2,333.4L337.4,331.1L341,328.8L341.5,329.9L344.3,329.9L345.5,328.2L346.8,328.9L349.7,331.8L350.1,333.7L350.8,334.4L352.5,334L354.8,331.9L355.1,330L357.8,327.7L356.9,326.2L359.4,323L359.5,321.7L360.8,319.6L361.6,316.2L363.3,313.1L365.1,312.9L366.5,311.7L367.3,310.3L368,306.1L368.5,304.9L370.9,303.8L371.4,302.8L371.9,298.9L373.4,297.6L374.6,293.3L378.1,288L379.7,287L381.1,286.8L384.6,284.6L384.6,282.2L385.3,278.5L384.3,276.6L381.2,275.8L379.9,268.9L381.7,268.9L384.3,269.9L384.6,271.5L386.7,273.1L387.5,274.6L387.8,276.9L389.7,281.1L389.7,283.1L390.1,284.1L389.5,285.8L389.2,288.3L389.5,290.9L390.8,294.5L391.6,295.8L394,298.5L395.2,299.3L394.1,299.7L390.7,299.5L387.2,299.9L381.4,299.5L380.4,300.3L378.8,302.4L379.1,303.4L382.3,307.2L386.2,310.5L387.4,311.2L389.9,313.6L391.2,315.9L393.1,320.6L394.1,321.2L394.2,322.4L393.4,323.8L392.4,325.5L391.1,326.4L389.1,331.1L387.3,333.4L386.4,335.8L383.5,337.6L383.1,338.5L383.8,339.7L384.9,340.2L384.9,343.9L384.4,346L385.1,347L385.8,352.1L386.4,353.2L388.8,355.2L390,358L389,358.5L389.9,360.4L393.1,364.1L396.3,367.4L397.5,367.7L399.1,369.5L399.1,370.9L399.6,373.8L400.3,375.9L399.2,378.3L399.8,381.3L399.1,381.7L395.9,379.4L394.5,379L391.9,379.1L390.2,378.2L387.6,378.4L384.4,376.5L383.5,377L371.7,376.9L371,375.9L367.5,376L362.5,375.5L358.3,375.6L352.5,375.5L352.3,376.8L339,376.7L337.2,375.3L338,369.3L338.7,367.7L338,365.4L336,363.1L336.9,362.3L335.7,362.4L334.9,360.5L335.6,359.8L336.7,360L335.3,358.2L334.2,357.8L333.6,359.3L329.4,357.6L328.5,354.2L328.7,353L327.1,352.7L326.1,351.8L326.4,353L325.2,353.2Z","132":"M15.3,215.4L14,215.4L14,213.7L16.2,212.8L17.2,213.9ZM27.6,236.8L26.9,237.7L25.2,237.1L24.6,235.9L25.3,233.3L26.9,235.4ZM17.5,216.9L16.3,217L16,216.2L17.3,215.8ZM34.2,224.4L36.1,225.2L35.7,226.6L34.7,227.1L33.5,226.4ZM19.6,237.8L18,237.5L18.1,236.4L19.6,236.1ZM24.3,219.5L24.2,220.2L22.9,219.7L22,220.7L21.8,218.7ZM35.1,220L34.7,220.5L34.4,218.4L35.2,218.1ZM30.1,235.7L29.6,235.2L30.1,233.7L30.8,233.8L30.7,235.4Z","140":"M478.4,312.3L479.2,312.8L478.8,314.3L479.9,316L484.3,316.9L485.4,317.4L489.4,321.5L488.8,323.5L490.7,325.4L495.8,328L497.2,329.1L498.6,330.8L500.5,332.2L500,334L502,337.8L504.1,338.5L507.7,340.7L509.1,342.8L509.5,345.5L510.9,347.3L508.1,346.4L505.2,347.8L498.8,346.8L492.4,345.4L491.2,346L489.7,348.3L487.9,348.9L485,349.3L481.8,348.5L480.6,348.7L471.7,352L468.8,351.3L466.3,351.4L465.2,352.2L463.8,354.2L462.8,356.6L462,357.3L456.9,356.1L454.7,355.8L453.2,356.2L451.4,355.6L450.2,355.7L447.4,354.6L443.5,354.1L441.9,351.9L440.2,350.5L438,349.3L436.1,347.9L433.1,347.5L431.3,348.1L428.8,349.9L426.5,353.5L423.9,356.2L424.5,359.2L424.2,361.9L424.3,363.9L423,362.4L419.9,363.7L419.4,363.2L417.1,363.1L412.7,361.8L411.4,362.5L408.4,363.1L405.2,363.3L404.1,364L403.2,367L403.1,370.3L400.3,375.9L399.6,373.8L399.1,370.9L399.1,369.5L397.5,367.7L396.3,367.4L393.1,364.1L389.9,360.4L389,358.5L390,358L388.8,355.2L386.4,353.2L385.8,352.1L385.1,347L384.4,346L384.9,343.9L384.9,340.2L383.8,339.7L383.1,338.5L383.5,337.6L386.4,335.8L387.3,333.4L389.1,331.1L391.1,326.4L392.4,325.5L393.4,323.8L397,324.3L398.8,323.4L402.3,322.2L402.5,321.4L403.9,320.5L404.3,321.7L406.3,323.6L407.3,322.7L409.5,322.1L410.8,321L414.8,319.3L415.9,319.4L424,318.5L424.4,317.4L427.1,315.1L429.1,312.6L426.8,310.5L429.4,309.1L434.5,309L437.3,308.4L438.5,307.9L441.1,307.9L445.3,305.1L447.4,302.9L447.6,302.1L450.1,299.5L451.4,299.2L452.6,297.2L453.7,296.9L454.5,295.6L454.3,293.5L456.8,291.9L457.6,291.1L462,289.3L465.5,290L466.6,291.7L470,295.3L472.4,298.8L473.4,300.8L473.2,305.6L471.7,307.9L472.6,309.6L472.5,310.8L473.9,311.6Z","148":"M474.3,205.5L475.4,242L475,242.7L472.8,242.4L467,242.8L465.4,244.5L465.8,246.7L465.5,248.2L464.2,249.3L463.1,251.2L463,252.5L461.1,253.4L460.3,254.2L461.6,258.4L458.4,260.6L457.8,262.3L458.7,264.2L459,266.3L458.3,267.4L456.7,268.5L455.2,271.7L455.7,272.5L456.9,272.8L459.1,272.4L460.3,272.9L461.8,279L462.6,279.5L462.5,282.7L463.3,284.2L466.1,285.8L466.2,287.3L465.5,290L462,289.3L457.6,291.1L456.8,291.9L454.3,293.5L454.5,295.6L453.7,296.9L452.6,297.2L451.4,299.2L450.1,299.5L447.6,302.1L447.4,302.9L445.3,305.1L441.1,307.9L438.5,307.9L437.3,308.4L434.5,309L429.4,309.1L426.8,310.5L429.1,312.6L427.1,315.1L424.4,317.4L424,318.5L415.9,319.4L414.8,319.3L410.8,321L409.5,322.1L407.3,322.7L406.3,323.6L404.3,321.7L403.9,320.5L402.5,321.4L402.3,322.2L398.8,323.4L397,324.3L393.4,323.8L394.2,322.4L394.1,321.2L393.1,320.6L391.2,315.9L389.9,313.6L387.4,311.2L386.2,310.5L382.3,307.2L379.1,303.4L378.8,302.4L380.4,300.3L381.4,299.5L387.2,299.9L390.7,299.5L394.1,299.7L395.2,299.3L394,298.5L391.6,295.8L390.8,294.5L389.5,290.9L389.2,288.3L389.5,285.8L390.1,284.1L389.7,283.1L389.7,281.1L387.8,276.9L387.5,274.6L386.7,273.1L384.6,271.5L384.3,269.9L381.7,268.9L379.9,268.9L375.6,262.7L374.1,256L376,253.6L377.7,250.3L383.1,242.6L393.8,231.3L396.5,201.9L398.5,198L398.3,197L395.1,193.8L394.7,192.4L395.3,191.6L392.4,187.2L391.4,186.1L391.3,182.2L389.6,171.7L399,167.3L415.4,175.8L424.3,180.4L442.4,189.6L456,196.4Z","174":"M673.9,519.5L674.2,521.9L673.6,522L671.4,520.3L672.9,520.3ZM667.2,521.6L667.8,522.3L666,522L665.8,521ZM664.4,517.5L662.9,516.9L662.3,516L662.8,512.7L664.1,512.5L663.8,514.6L664.7,517.1Z","178":"M350.3,437.1L351.9,434.4L354,433.1L355.8,434.8L357.4,434.9L357.3,433.3L358.3,431.2L355.8,429.3L356.5,427.8L355.3,426.6L354.3,426.4L355,424L355,421.5L356.2,422L358.4,421.5L359.5,422.2L363.3,421.4L363.6,419.2L363.2,417.4L364.7,416.4L366.7,417.4L368.7,421.2L372.3,422.1L373.4,422L376,419.5L377.6,421.8L377.6,422.7L379.6,422.7L380.7,421.6L380.3,420.3L381.2,418.1L382.5,417L382.7,414.1L383.2,412.3L382.7,407.9L383.4,404.5L382.3,403L380.7,402.6L379.4,401L377.3,400.3L377.5,396.4L378.2,394.8L379.6,393L381,392.9L383,390.3L382.9,389.4L380.5,384.7L377.2,384.3L371.5,386L370.7,385.6L371.2,384.8L370.4,382L370.5,380.6L371.7,376.9L383.5,377L384.4,376.5L387.6,378.4L390.2,378.2L391.9,379.1L394.5,379L395.9,379.4L399.1,381.7L399.8,381.3L399.2,378.3L400.3,375.9L403.1,370.3L403.2,367L404.1,364L405.2,363.3L408.4,363.1L411.4,362.5L412.7,361.8L417.1,363.1L419.4,363.2L419.9,363.7L423,362.4L424.3,363.9L424.4,365.6L423.1,369.4L420.4,374.4L419,378.4L418.9,383.1L417.3,387.3L417.2,389.8L417.6,393L417.2,396L416,398.9L415.6,401.1L415.9,403.8L413.8,406L411.1,408.2L408.2,409.6L406.2,412L403.8,416.5L400.6,419.9L400.4,420.9L400.6,428.3L400,432.6L398.4,435.6L397.2,437.3L394.5,438.2L392.5,440.4L391.2,441L389.7,442.5L386.4,446.3L385,446.7L382.8,446.1L382.3,443.7L383.2,442.4L382.3,440.9L378.1,442.7L375.9,442.4L375.6,444.7L373,446.2L370.2,443.9L369.6,444.2L367.7,442.3L366.9,442.2L365.3,443.2L362.8,444L362,445.5L361,445.6L359.2,447.8L356.8,444.6L356.8,443.5L355.7,442.2L352.9,439.9L352.6,439.2Z","180":"M543.4,479.5L525.9,482.2L525.2,482.4L525.4,484.5L523,487.6L520.2,489.7L521.5,492.5L522.3,495.7L521.9,501.3L522.2,504L521.2,505.3L519.2,512L520.3,515.3L523.8,518.4L525.8,520.6L529.3,521.5L530.1,521L530.7,519.2L533,518.8L532.5,531L531.1,531.2L530.3,529.5L526.8,531L525,530.7L522.8,526.9L521.9,525.7L520.7,525.4L520,523.3L518.9,521.9L514.1,519.9L512,519.7L511,519L510,516.5L508.3,514.9L507.9,513.2L506.4,513.3L505.4,516.1L504.2,516.7L501.9,516.8L496.4,516L492.5,514.5L491.4,514.6L489.9,513.3L489.3,511.1L489.7,509.5L488.4,509.5L483.3,510.6L481.8,511.4L480,510.8L480.7,509.6L480,507.8L478.2,507.4L477.6,506L476.5,505.8L475.2,507.2L471,506.9L468.6,507.8L465.3,507.9L462.8,507.6L460,509L459.1,506L460.3,504L460.3,501.1L459.3,497.6L458.3,495.9L456.9,494.5L455.6,492L455.8,489L456.6,484.3L456.6,480.8L455.6,478.6L455.4,476.1L456.1,471.7L455.2,470.6L444,470.3L443.3,468.8L443.9,466.9L442.7,466.7L436.7,467.4L434.6,467.9L433.3,469L432.8,472.2L431.7,474L431.4,477.1L427.1,477.4L424.7,476.8L420.1,477.7L418.3,478.5L417.4,478.1L414.1,478.4L413.7,478.2L409.9,472.1L408.2,470.1L407.6,466.9L405.8,463.8L405.4,459.3L403.8,457.4L401.6,456.4L395.8,456.4L382.7,456.6L378.5,456.3L369.6,456.4L368.9,456.1L366.8,456.5L365.8,457.3L363.1,457.6L361.1,455.3L364,454.7L364.1,449.3L363.4,448.5L364.6,447.8L367.2,445.2L369.6,444.2L370.2,443.9L373,446.2L375.6,444.7L375.9,442.4L378.1,442.7L382.3,440.9L383.2,442.4L382.3,443.7L382.8,446.1L385,446.7L386.4,446.3L389.7,442.5L391.2,441L392.5,440.4L394.5,438.2L397.2,437.3L398.4,435.6L400,432.6L400.6,428.3L400.4,420.9L400.6,419.9L403.8,416.5L406.2,412L408.2,409.6L411.1,408.2L413.8,406L415.9,403.8L415.6,401.1L416,398.9L417.2,396L417.6,393L417.2,389.8L417.3,387.3L418.9,383.1L419,378.4L420.4,374.4L423.1,369.4L424.4,365.6L424.3,363.9L424.2,361.9L424.5,359.2L423.9,356.2L426.5,353.5L428.8,349.9L431.3,348.1L433.1,347.5L436.1,347.9L438,349.3L440.2,350.5L441.9,351.9L443.5,354.1L447.4,354.6L450.2,355.7L451.4,355.6L453.2,356.2L454.7,355.8L456.9,356.1L462,357.3L462.8,356.6L463.8,354.2L465.2,352.2L466.3,351.4L468.8,351.3L471.7,352L480.6,348.7L481.8,348.5L485,349.3L487.9,348.9L489.7,348.3L491.2,346L492.4,345.4L498.8,346.8L505.2,347.8L508.1,346.4L510.9,347.3L511.8,348.7L513.5,349.9L514.7,351.9L516.7,353L518.8,354.8L521.1,355L524,353.2L526.1,353.3L528.2,354.3L530.5,353.2L531.3,352L533.3,352.3L535.3,354.8L538.5,358.2L541.6,359.7L542.4,361.8L544.1,361.8L544.9,363.1L545.6,363.9L544.8,365.1L544.1,367.6L545,369.5L544.3,371.2L543.9,373.4L546.2,373.9L547.4,375L548.4,375.2L549.3,376.4L549.1,377.5L546.1,381.1L541.6,385.6L540,386.1L538.7,388.2L536.3,389.8L536.3,393L534.7,396.3L534.1,397L533.3,402.4L533.4,403.3L532.6,407.7L532.7,411.8L530.5,413.1L528.3,416.5L528.5,419.2L528.1,420.2L525.6,422.4L526.2,424.7L527.1,425.1L527.2,425.9L529.2,428.4L529,431.5L529.1,436.9L530.2,438.8L530.8,442.3L530,446.1L530.2,447.6L532.1,452.7L532.7,454.9L531.4,457.9L531.9,460.8L533.5,463.8L537.4,466.8L539.3,469.7L540.2,472.2L543.1,478.6Z","204":"M257.3,335.7L258.9,334.9L258.6,333.6L257,331L257.3,330.5L256.6,327.9L257.6,327.9L257.9,315.2L257.9,307.4L256,304.3L255.7,302.2L255.7,297.9L250.3,293.9L250.7,290.7L251.9,287.9L253.5,287.3L254.4,285.4L256,285L257.2,283.5L258.8,284L261.3,283.6L262.5,283.9L265.6,281.2L266.6,279.2L266.9,278.2L266.6,276L271.6,274.6L274.1,277.1L276,279.5L277.7,280.5L278.2,281.4L277.1,283.3L277.1,284.4L279.2,287.6L279.4,290.7L280.2,292.3L279.6,294L278.2,294.2L277.5,295.6L278.2,296.7L277.2,299.2L274.9,300.4L274.9,301.5L273,303.7L273.1,305L272,307.3L269.3,307.6L268.9,310.3L268.2,319.3L268.4,321.9L269,323.3L268.7,324.1L268.5,327.8L268.2,328.2L268.7,330.9L267.9,334.3L263.9,334.7Z","226":"M326.8,360.9L328.5,360.9L328.9,362.2L326.4,366.2L324.2,365.7L324.1,363.9L325.2,363.6L326.2,361.1ZM352.3,376.8L352.3,388.3L339.4,388.3L338.2,388.7L336.8,387.5L335.1,388L333.1,386.9L334.1,384L335.5,382.7L337.2,379.1L337,377.7L337.2,375.3L339,376.7Z","231":"M587.8,342.5L585.9,340.7L584.9,338.9L584.6,337L583.4,334.5L582.1,330.9L579.8,328.5L577.8,327.5L575.6,325.3L575.2,323.9L574,322.5L571.6,321L567.3,320.1L565.2,319.1L565.2,318.3L567.2,313.8L568.9,313.2L574.1,313.2L575.4,311.8L575,303L575.3,300.3L576.8,296.3L576.9,295L576.4,292.3L577.8,289.7L579.1,288.7L581.1,290L582.6,288.8L582.7,284.7L583.9,279.2L585.1,277.8L588.1,271.9L590.2,270.4L592.9,269.9L593.6,264.4L595.1,260.8L595.5,258.7L595.3,257.2L595.9,254.5L598.6,253.8L600.7,254.2L601.6,252.8L602.8,252.3L605.3,255.2L606,255.2L608.4,248.1L609.6,249.2L611.7,250L613.4,251.8L614.6,252.2L617.5,251.5L619.8,250L621.1,251.4L624.2,250.7L627.7,251.6L630.8,251.5L633.8,253.5L636.2,254.2L637.9,255.8L639.9,258.2L642.3,260.5L646.4,263.5L648.4,266.5L650.2,267.6L652.7,270.5L649.5,276.3L648,278.2L647.6,279.6L648.3,285.7L649.8,286.1L653.1,285.3L655.5,284.5L659,285.2L656.7,289.1L658.7,293.3L661.1,296L662.2,296.4L663.5,299.1L665.4,301.4L666.7,301.8L670.7,305.2L698.8,314.1L699.4,314.4L708.9,314L695,329.9L690.5,335.1L681.5,346.4L681.2,346.6L672.7,346.2L668,347.5L664.1,349.6L663.1,350.4L662,352.5L661,353.2L655.6,354.2L653.7,354.9L652.4,356.6L646,357.1L644.6,356.6L641.5,353.8L634.3,357.2L632.7,358.2L630.9,361L629.4,362.3L626.7,362.1L620.7,361L615.7,360.6L614.3,359.6L604,353.1L603.2,352.9L596,352.8L595,352.3L592.8,349.3L593.1,345.8L592.5,343.9L589.8,343.2L588.4,343.8Z","232":"M595.9,254.5L594.4,245.8L595.2,244.6L596.4,239.8L597.4,237.1L598.1,234L597.7,230.8L598.4,229L598.5,226.4L602.2,226.2L603,223.9L605.6,222.1L609.4,220.9L610.7,219.4L611,218.3L612.6,216.4L616,222L618.7,228.9L620,234.2L620.9,236.9L622.2,238.2L623.2,240.7L624.4,241.5L626.2,244.7L626,242.8L626.6,241.2L628.4,242.5L628.9,244.3L630.2,245.7L634.4,246.8L636,248.2L639.7,249.3L642.9,252.9L644.7,255.5L650.6,259.3L652.4,263L653.5,262.9L655.7,264.8L656.4,266.4L658.1,266.9L658.3,265.9L659.5,267.8L657.3,268.8L656.5,270.8L655.6,271.3L653.7,270L652.7,270.5L650.2,267.6L648.4,266.5L646.4,263.5L642.3,260.5L639.9,258.2L637.9,255.8L636.2,254.2L633.8,253.5L630.8,251.5L627.7,251.6L624.2,250.7L621.1,251.4L619.8,250L617.5,251.5L614.6,252.2L613.4,251.8L611.7,250L609.6,249.2L608.4,248.1L606,255.2L605.3,255.2L602.8,252.3L601.6,252.8L600.7,254.2L598.6,253.8ZM628.1,235L628.5,236L627.3,235.5ZM629,238.9L630,238.8L631.5,239.9L627.5,239.8L627.1,238.5L627.9,237.1Z","262":"M661.7,280L659,285.2L655.5,284.5L653.1,285.3L649.8,286.1L648.3,285.7L647.6,279.6L648,278.2L649.5,276.3L652.7,270.5L653.7,270L655.6,271.3L656.5,270.8L657.3,268.8L659.5,267.8L661.5,270.2L662.7,273L661.6,275.2L659.6,276.7L657.3,277.7L655.9,279.6L659.7,279.2Z","266":"M371.7,376.9L370.5,380.6L370.4,382L371.2,384.8L370.7,385.6L371.5,386L377.2,384.3L380.5,384.7L382.9,389.4L383,390.3L381,392.9L379.6,393L378.2,394.8L377.5,396.4L377.3,400.3L379.4,401L380.7,402.6L382.3,403L383.4,404.5L382.7,407.9L383.2,412.3L382.7,414.1L382.5,417L381.2,418.1L380.3,420.3L380.7,421.6L379.6,422.7L377.6,422.7L377.6,421.8L376,419.5L373.4,422L372.3,422.1L368.7,421.2L366.7,417.4L364.7,416.4L363.2,417.4L363.6,419.2L363.3,421.4L359.5,422.2L358.4,421.5L356.2,422L355,421.5L355,424L354.3,426.4L355.3,426.6L356.5,427.8L355.8,429.3L358.3,431.2L357.3,433.3L357.4,434.9L355.8,434.8L354,433.1L351.9,434.4L350.3,437.1L348.5,434.6L345.5,431.9L344.9,430.7L342.6,428.1L339.2,425.5L336.7,423.2L336.8,422.7L339.1,423.9L339.7,423.5L337.7,422.4L335.9,422.2L334.5,419.7L332.2,417.1L334,417.7L334,417L331.8,416.3L331.8,415.3L329.6,411.2L332.4,414.4L334.4,414.1L333.6,413.2L332,412.9L332.6,411.4L331.2,411.9L329.8,411.1L327.7,407.3L326.3,404L327.4,405.2L328.7,405L330.5,403.9L332.1,401.7L332.6,398.8L332.2,395.3L332.7,394.8L333.3,396.2L337.1,397.8L337.2,397L339.1,396.3L336.9,396.3L334.6,395.3L332.4,392.7L332.5,392.1L334.1,391.6L335.3,392.5L335.1,388L336.8,387.5L338.2,388.7L339.4,388.3L352.3,388.3L352.3,376.8L352.5,375.5L358.3,375.6L362.5,375.5L367.5,376L371,375.9Z","270":"M88.5,255.6L90.8,255.6L98.2,256.1L99.1,254.7L102.2,254L103.8,254.4L105.2,255.6L107,256.3L108.4,257.5L112.4,257.3L113.5,258L113.4,259.5L109.6,260.3L105.8,258.9L101.5,256.6L100.1,258.2L95.2,258.7L94.8,260.4L87.2,260L86.1,260.9L85.8,258L87.4,256.7L88.3,258.5L89.5,258.9L91.7,258.9L92,257.9L98.8,257.2L97.6,257L92.3,257.2L90.2,258.2L88.7,256.9Z","288":"M242.6,286.5L243.3,287.4L242.2,290.5L242.5,291.3L245.1,293.8L246.6,294.8L245.8,300.8L244.8,303L246.9,302.9L247.7,303.7L247,306.6L247.1,309.2L245.9,310.1L246.9,311.9L248.2,312.9L248.8,314.7L247.8,316.2L247.9,320.4L246.7,322.2L246.8,323.3L248,324.2L247.4,327.7L246.8,329.2L248.7,333.2L251.1,334.6L253,336.9L251.7,337.8L250.7,339.6L248.7,340.1L243.9,340.1L240.1,341.9L237.9,342.6L236.6,343.6L233.5,345.2L230.9,345.6L225.2,347.6L221.6,349.7L220.8,349.7L217.8,348L210.9,346.2L211.2,345.8L211.8,345.8L213.8,345.6L214.5,342.8L214.1,341.2L212.5,340.7L210.4,333.6L210.1,331.7L210.3,328.9L212.8,325L213.9,320.2L215,317.7L216.7,316.6L216.8,315.6L217.8,315L217.2,309.1L216.8,307.5L215.8,306.6L216.5,304.9L216.6,302.2L215.9,300.4L216.2,299L216,296.2L216.1,292.7L215,291L216,287L216.7,287.1L227.8,287.3L228.4,287.1L231.3,287.4L236.5,287.6L236.9,288.2L238.5,287.5L240.4,285.9Z","324":"M143.3,310.2L142.2,310.2L140.6,311.9L139.1,311.6L140,309.7L141.3,308.4L140.4,306.2L140.5,304.3L139.2,303.6L139.9,301.7L138.4,299.6L135.5,294.8L134.8,294.5L128.8,294.3L128.6,295.1L126.5,295.5L125.3,294.9L123.1,295.5L122.5,297.1L120.4,300.4L118.4,301.4L117.6,303L116.6,303.6L115.1,303.5L115.4,302.3L114,299.6L112.8,298.3L111.6,298.4L112,297.3L112,294.4L111.3,294.9L109.5,293.8L108.8,292L107.6,292.1L105.3,290.8L103.8,287.6L104.1,285.4L103.3,286.2L102.5,283.6L101.5,283.2L100.6,284.9L100.1,283.4L101.1,282.1L102.9,278.8L103.9,277.8L106.1,277.4L108,276.4L110.9,276.5L113,275.9L113.2,273.1L111.4,271.2L113.8,270L114.2,268.3L113.9,266.3L119.9,267L120.4,268.6L121.2,268.1L122.4,269L127,270.4L129.4,269.8L131.6,270L133.9,269.7L135.6,270L134.3,272.1L136,274L137,274L138.4,272.5L139.7,272.2L141.3,275.1L141.9,275.4L144,273.1L145.9,272.4L150.1,274.3L151.1,274.3L151.7,273.3L154.6,272.3L154.4,270.2L156.1,270.1L157.7,270.9L159.5,275.9L159.2,278.4L160.6,280L163,281.4L160.3,284.9L162.1,284.8L163.4,285.4L163.3,287.9L163.7,290.6L166.1,292.3L166.1,293.9L164.6,295.3L164.3,300.6L165.3,301.7L166.6,301.5L166.2,303.8L167.5,304.9L165.9,305.9L165.7,307.9L167.3,308.6L168.1,310.2L168.1,311.7L164.6,310.8L162.8,311.1L162.5,313.2L164.8,314.3L164.8,315L163.6,317.1L163.6,318.2L162.4,320.2L160.5,319.7L160,320.1L158.4,318.8L157.5,320.7L155.9,323L153.8,323.5L152.4,321.8L150.5,321.3L151.6,318.4L151,316.8L150.5,311.9L148.2,309.9L145.3,310.9L144.6,309.9Z","384":"M211.2,345.8L210.9,346.2ZM166.1,293.9L167.9,293.2L169.4,291.4L171,291.3L172.2,293.2L175.9,293.9L176.2,292.4L178.6,292.4L179.2,289.4L180,290.1L181.5,290.3L181.4,289.3L183,288.8L183.5,292.1L182.9,293.3L184.8,294.2L186.8,292.3L189.8,292L191.1,293.2L192.3,293.2L193.8,294L194.9,297.1L198.1,299.4L199,299.3L200.9,300.2L201.5,299.2L205.3,297.8L208.2,297.6L211.6,297.9L213.8,300.1L215.3,302.8L216.6,302.2L216.5,304.9L215.8,306.6L216.8,307.5L217.2,309.1L217.8,315L216.8,315.6L216.7,316.6L215,317.7L213.9,320.2L212.8,325L210.3,328.9L210.1,331.7L210.4,333.6L212.5,340.7L214.1,341.2L214.5,342.8L213.8,345.6L211.8,345.8L210.4,345.1L210.6,343.6L209.8,343.7L208.7,345.8L203.6,344.8L201.2,343.8L197,344.1L196.4,344.5L201.2,344.3L202,344.7L193.6,345.4L192.4,344.7L189.9,344.6L189.1,345.2L192,345.5L187.2,345.8L183.8,346.5L177.6,348.9L174.6,349.8L172.6,351L169,352.6L167.8,352.9L167.5,352.5L167.5,348.1L167.8,345.5L168.5,344.9L169.2,343L169.6,340.8L169.2,337.8L166.5,337L165.9,336.4L165.1,333.7L164.2,333.2L162.1,333.1L160.8,332.4L159.8,331.3L158.4,330.8L161.1,327.9L161.6,325.1L160.4,320.6L160,320.1L160.5,319.7L162.4,320.2L163.6,318.2L163.6,317.1L164.8,315L164.8,314.3L162.5,313.2L162.8,311.1L164.6,310.8L168.1,311.7L168.1,310.2L167.3,308.6L165.7,307.9L165.9,305.9L167.5,304.9L166.2,303.8L166.6,301.5L165.3,301.7L164.3,300.6L164.6,295.3Z","404":"M644.3,418.9L645.2,417.6L645.5,418.3ZM575.2,407.7L575.5,401.7L575.4,397.9L575.6,395.9L576.5,394.7L577.7,391.6L578.8,390.8L580.2,389L580.9,387.2L582.5,385.8L583.8,385.3L583.8,383.8L585.5,381.1L585.5,376.9L584.6,373.4L584.8,372.7L583.2,369.4L581.7,368.3L581,366.4L580.3,365.9L579.8,363.5L580.2,361.5L579.7,360.7L577.4,359.5L575.5,355.4L587.8,342.5L588.4,343.8L589.8,343.2L592.5,343.9L593.1,345.8L592.8,349.3L595,352.3L596,352.8L603.2,352.9L604,353.1L614.3,359.6L615.7,360.6L620.7,361L626.7,362.1L629.4,362.3L630.9,361L632.7,358.2L634.3,357.2L641.5,353.8L644.6,356.6L646,357.1L652.4,356.6L647.3,364.5L643.7,368.5L644.2,405.8L649.4,412.9L649.5,414.1L648.1,415.9L645.4,417.1L644.3,416.8L643.3,417.5L643.6,419.2L642.5,421.2L640.9,422.7L638.6,422.9L636.8,424.3L636.3,425.6L636.5,427.6L635.7,430L634.4,431L633.2,433.3L632.7,435.4L629.4,442.4L628.3,443.9L626.7,444.5L626.5,444.4L613.1,434.3L611.3,432.2L612,430.6L611.7,428L581.6,410.9L576,407.7Z","426":"M512.8,693.5L509.7,693.9L507.3,696.7L506,698.5L503.7,698.1L501.6,695.8L500.7,695.3L500.5,693.8L498.8,690.7L498.2,689L500.4,687.7L504.8,682.2L506.8,681.6L509.4,680L513,678.9L515.7,681.9L518.7,683.9L519.3,685.7L518.2,688.5L516.7,689.8L516.2,691.8Z","430":"M130.8,325.9L133.2,322.7L135,321.1L137.1,319.7L139.4,317.5L140.3,314.4L142.1,313.5L143.3,310.2L144.6,309.9L145.3,310.9L148.2,309.9L150.5,311.9L151,316.8L151.6,318.4L150.5,321.3L152.4,321.8L153.8,323.5L155.9,323L157.5,320.7L158.4,318.8L160,320.1L160.4,320.6L161.6,325.1L161.1,327.9L158.4,330.8L159.8,331.3L160.8,332.4L162.1,333.1L164.2,333.2L165.1,333.7L165.9,336.4L166.5,337L169.2,337.8L169.6,340.8L169.2,343L168.5,344.9L167.8,345.5L167.5,348.1L167.5,352.5L167.8,352.9L166.7,352.7L163.5,351.2L161,350.3L152.7,345.4L150.4,343.4L147.9,340.6L142.1,334.7L140.8,333.8L139.1,333.3L137.4,332.2L136.8,330.6L132.7,328.2Z","434":"M342.4,101L345.8,99.6L348.8,95.8L349.2,93.5L348.3,89.3L350.1,87L351.6,86.7L352.8,84.9L354.8,83.5L360.8,80.4L361.1,79.4L360.4,78.2L361.1,73.1L363.7,74L367.7,76.3L371.7,76.9L376.3,75.8L379.5,77L381.1,77.1L384.5,78.2L386.9,79.8L392.6,81L394.1,83.2L394.2,85L395.3,88L397.1,90.2L400.7,91.8L406.5,92.3L411.5,93.6L415.7,95L418.8,96.5L423.1,99.9L425.5,101.1L428.6,101.1L432.3,99.2L434.9,96.1L436,93.5L435.5,91.3L434.2,88.9L433.9,86.4L434.3,84.7L435.5,82.5L437.6,80.5L439.7,79L443.5,77.1L446.6,76.9L448.3,75.5L450.1,75.8L453.1,75.6L456.1,76.8L461,78.4L461.3,81.1L462.9,82.2L467.4,82.7L470.3,84L475.1,83.9L476.8,84.1L478.2,85.1L479.4,87.2L477,90.3L477.4,93L478.4,95.7L477.7,98.8L476.3,101.3L477.4,104.3L479.3,111L482.7,180.8L483.5,200.3L474.1,200.6L474.3,205.5L456,196.4L442.4,189.6L424.3,180.4L415.4,175.8L399,167.3L389.6,171.7L382.6,175.3L382.4,175.3L376.9,170.4L375.8,169.8L361.9,166.4L358.1,158.8L357.9,158.6L350.4,156.2L348.1,156.8L346.5,155.7L345.3,153.8L344.6,151.2L344.4,148.5L339.7,141.3L339.7,139.5L340.3,138.7L343.7,136.6L344.1,133.8L343.7,133.1L343,129.1L344.8,124.7L344.4,122.2L344.2,117.2L344.7,113.3L344,109.4L343.2,106.8L340.5,102.1Z","450":"M721.3,523.8L722,525.9L724.4,530.4L724.5,532.4L725.2,535.6L725.7,540.4L725.5,547.5L726,549.6L727,551.8L727.1,554.2L726.1,556.7L723.9,560L722.3,558.3L721.5,554.8L720.2,554.7L719.2,555.8L719.2,561L720,562.9L719.9,565.2L718.6,567.4L718.8,568.6L717.5,569.3L716.4,570.7L715.1,573.9L715.2,577.2L714.8,579.5L713.1,583.9L711.1,588.4L709.3,591.7L705.8,600L703.3,605.1L699.7,613.9L697.4,618.8L694.3,624.3L691.3,632.6L689.4,636.5L688.6,638.9L686.4,642.2L684.9,645.6L683.7,647.8L682.1,649.7L679.1,651.2L676.1,651.3L673.9,651.8L667.6,654.8L664.1,654.4L661.8,652.2L657.8,651L657.2,649.9L655.4,648.6L654.4,644L653.2,642.1L653.7,636.1L654.7,634L653.9,629.5L652.6,627.5L652.1,622.5L652.6,619.1L653.6,616.6L654.6,615.2L655.6,612.3L657.6,611.4L659.2,609.6L660,607.6L663.6,602.8L664.9,600.5L665.7,598.3L666.7,593.4L665.1,589.8L665.5,586.4L664.6,584L664.2,581.9L664.4,575.9L664,574.7L664.6,572.9L669.4,566L669.9,561.9L670.4,561.2L674.5,560.8L677.6,558.6L678.6,559.5L681.1,559.2L682.2,557.4L686.9,556.8L687.8,558.4L689.1,558.4L688.2,556.5L689.7,554.5L693.8,551.7L694.8,551.9L695,554L696.1,552.5L695.9,551L697.8,548.9L698.7,547.1L699.5,546.5L700,547.7L699.2,549.5L700.1,549.5L702.2,546.4L702.7,545.9L704.5,546.3L703.2,545L703,543.2L705.4,539.1L704.7,538L704.7,536.7L706.2,535.4L708.1,536.7L709.7,534.9L711.8,533.8L713.6,532.2L715.1,527.8L714.2,524.1L715.3,524L718.5,520.1L719.4,520.6ZM709.3,533.1L708,533.3L707.9,532L709.1,531.4ZM720.3,569.5L719,571.4L719.5,569.8L721.3,567.4Z","454":"M565.1,537.4L564.6,536.7L563.2,537.5L562,535.4L561,534.9L561.1,533.8L560.2,533.4L562,531.9L563.2,529.6L563.7,526.4L563.2,525.4L564,523.7L567.7,522.3L568.7,520.7L567.2,520.5L566.4,518.6L567,516.3L567,513.6L566.4,512.8L568.1,509.1L567,506.5L569,505.4L571,503.5L569.9,501.1L569.9,499.9L567.8,498L568.3,496.2L566.8,493.8L564.9,493.8L564.2,491.7L566.2,492.5L568.2,492.8L569,493.7L571.7,493.6L574.1,494.3L574.7,492.6L577.7,494.9L579.6,497.9L579.9,500L580,502.9L580.7,504.7L579.9,508L581.5,511L582.2,511.1L583.1,513.4L580.3,513.5L579.1,515.9L577.3,518.7L577.1,519.6L578.1,524.2L578.5,531.1L579.4,532.3L581.2,532.6L582.6,533.9L584.8,536.5L590.1,544.2L590.4,546.4L589.3,550.1L589.4,551.7L588.7,557L588.3,558L586.8,558.6L584.5,558.9L583.8,559.8L582.4,562.9L583.3,565.3L583.2,568.2L581.6,568.5L580.9,567.4L581.6,566.2L580,564.8L575.3,559.2L575.4,558L574.1,556.1L575.2,554.3L576.1,552.1L577.2,550.3L577.5,547.5L577.3,543.3L575.7,541.4L569.5,542.6L569,543L566.7,540.2Z","466":"M135.6,270L135.1,268.7L136.1,264.6L134.8,262.2L134.1,260.1L133,259.8L132.2,260.6L130.4,257.3L131.6,254.8L131.1,253.8L131.3,251.5L129.6,248.8L130.2,246.9L129.5,245.2L131.1,246L133.5,243.5L134.2,241L135,239.2L137.6,237.2L141.8,241.6L142.8,242.4L144.9,239.7L146.8,239.6L151.9,240.6L156.6,239.9L156.7,238.8L157.7,237.8L157.7,239.3L159.1,239.7L180,240.6L193.5,241.1L195.6,233.3L193.3,230.3L193.1,198L193.3,170.7L194,146.1L209.9,147L228.2,162.2L242.1,173.4L250.5,180.1L260.4,187.7L260.3,190.6L261.4,191.6L264.3,193.3L264.8,195L267,196.1L269.7,196.5L271.3,198.3L275.6,199.5L278.6,201.3L278.4,203.5L278.8,205L277.3,207.5L278.6,208.9L279.9,209.2L287.8,207.9L286.7,229L286.4,229.4L286,233.1L285.3,235.3L284.2,236.9L282.7,241.2L279.1,243.9L278.9,245.1L274.7,244.3L274.1,245.1L257.9,245.4L254.4,248.2L252.1,248.4L249.5,248.1L247.5,248.2L247.4,248.7L243.1,247.1L241.5,247.6L240.3,246.9L238.1,247.1L235.2,249.3L230.9,251.1L228.9,252.2L226.2,252.7L225.3,255.2L224.7,255.5L221.5,254.3L220.2,254.8L217.3,257.4L216.7,260.1L215.5,260.5L214.1,260.1L213.3,261L212.8,264L210.1,264.8L207.6,262.9L205.7,262.8L202.9,265.3L203.8,267.7L203.7,268.6L201.2,269.8L201.7,270.7L201.5,273.1L199.8,274.9L197.8,276.1L194.8,276.6L193,278L192.8,279.4L193.3,281.1L192.4,284.2L190.5,285.8L190.7,288.6L189.8,292L186.8,292.3L184.8,294.2L182.9,293.3L183.5,292.1L183,288.8L181.4,289.3L181.5,290.3L180,290.1L179.2,289.4L178.6,292.4L176.2,292.4L175.9,293.9L172.2,293.2L171,291.3L169.4,291.4L167.9,293.2L166.1,293.9L166.1,292.3L163.7,290.6L163.3,287.9L163.4,285.4L162.1,284.8L160.3,284.9L163,281.4L160.6,280L159.2,278.4L159.5,275.9L157.7,270.9L156.1,270.1L154.4,270.2L154.6,272.3L151.7,273.3L151.1,274.3L150.1,274.3L145.9,272.4L144,273.1L141.9,275.4L141.3,275.1L139.7,272.2L138.4,272.5L137,274L136,274L134.3,272.1Z","478":"M98.4,193.2L97.7,194.2L97.5,193.1L98.9,191.6ZM129.5,245.2L127.3,242.8L126.3,242.3L124.6,240.5L124.7,239.6L123.6,237.8L122.8,237.7L121.4,235.7L120.9,232.9L119.2,231.1L116.3,230.8L115.5,229.1L112.8,226.2L110.8,225.3L108.5,225.3L106.6,224.9L105.3,225.5L101.7,225.8L99.3,226.4L95,225.6L92.8,228.9L91.4,232.5L92,228L93.1,224.8L94.6,221.5L96.2,218.9L97.9,215.4L98.8,211.9L99.2,205.4L98.8,200.5L98.1,198.9L96.6,196.6L97.9,196.2L98.7,195.2L97.4,195.5L99.3,192.5L100.7,188L99.9,186L99.4,183.6L98.6,182.9L97.6,183.6L96.1,178.9L95,179.3L94.1,181.6L94.2,180.6L95.8,176.4L113.3,177.7L131.1,178.9L132.2,167.2L132,164.6L133.6,162.2L137.7,159.7L140,159.4L143.3,158.1L143.6,157.1L147.7,133L163.7,134.2L177,135.1L179,122.4L189.4,130.8L196.9,136.7L204.2,142.5L209.9,147L194,146.1L193.3,170.7L193.1,198L193.3,230.3L195.6,233.3L193.5,241.1L180,240.6L159.1,239.7L157.7,239.3L157.7,237.8L156.7,238.8L156.6,239.9L151.9,240.6L146.8,239.6L144.9,239.7L142.8,242.4L141.8,241.6L137.6,237.2L135,239.2L134.2,241L133.5,243.5L131.1,246Z","480":"M784.3,609.2L781.8,609.3L781.4,608.4L782.7,606L784.5,604.1L785.2,604.1L786,606.5L785.7,607.6Z","504":"M246.9,50.1L247.4,51.5L249.9,53.7L249.2,55.1L250,56.5L249.4,57.4L249.8,59.3L249.1,63.7L249.5,65.2L248.7,67.6L249.5,70L249.5,71.9L250.6,73.6L252.5,75.2L252.8,76L251.1,77.2L250.9,79.4L250.4,79.6L240.5,78.6L236.2,79.2L235.2,81.2L231.4,82.2L228,82.4L227.9,85.4L227.3,86.9L228.9,88.3L228,89.4L225.5,89.6L222.3,91.5L218.1,92.7L216.4,93.4L214.1,96.2L211.4,98.1L208.5,98.8L204.6,99.1L202.1,98.9L201.7,100.4L200.6,101.2L196.7,100.4L195.4,100.8L192.9,102.4L191.2,102.7L188.1,104.6L181.6,108.3L181.3,109.2L179.6,118.7L178.5,118.6L178.3,123.2L177.8,123.9L175.9,124.1L172.3,123.8L169.1,125.9L167.6,125.9L166.6,125.2L164.6,125.6L162.2,124.1L159,123.6L154.7,124.6L155.1,126L154.7,127.1L153.3,128.1L150.9,131L150.4,132.1L147.6,132.6L145.7,136.4L143.5,141.6L141.9,144.3L135.6,148.1L132.7,152.2L128.3,153.8L127.1,154.7L125.2,158.1L123,163.8L121.8,168.3L117.4,172.6L117.4,173.7L116.7,175.2L114.9,176.6L109.4,176.2L106.8,175.6L98.1,175.1L95.6,175.4L97.1,170.6L98.7,168.1L99.9,167L101.5,166.5L103.3,164L104.3,161.6L105.8,159.7L105.6,159L110.3,152.7L110.5,151.8L108.6,153.4L109.7,151.7L112.8,149.7L117.1,145.9L118.5,145.3L120,143.7L120.7,142.2L121.5,138.7L122.3,136.9L125.6,131.9L127.2,128.7L129.7,127.3L131.7,126.7L135.4,124.5L136.4,123.2L137.7,120.5L139.5,117.8L140.6,115.7L143.1,113.3L144.6,112.8L147.5,112.7L151.8,111.8L157.1,109.7L160.7,106.7L166.5,103.7L169.6,100.8L173.4,96.8L175.5,94L176.3,91.6L176.3,90.7L174.9,87.9L175.5,86.6L176.8,81L178.5,78.3L182,74.9L182.8,73.4L183.8,70.2L188,67.1L190.5,64.7L193.3,63.1L200,61L203.8,59.5L206.1,58.3L207.6,56.8L212.2,50.9L217.2,42.4L217.6,41.4L220.2,41.2L222.2,40.4L223.1,40.7L222.3,42.2L223.7,45L225.6,47L227.2,47.8L229.6,48.4L232.6,47.8L235,47.6L235.8,48.2L239,48.3L241.2,46.8L241.8,49.6Z","508":"M541.9,619.6L543.3,618.6L552.7,609.4L553.3,609L552.7,607.5L554,605.6L554.2,603.3L554.7,602.4L556.1,601.4L559.5,596.3L559.7,595.2L558.3,592.1L557.9,590.4L558.5,588.9L558.6,587.2L557.6,586.6L557.8,584.9L559.5,583.5L560.7,579.8L560.4,578.7L560.6,574.4L561.1,569.4L560.4,567.3L560.4,565.7L561.2,564.1L559.2,563.7L558.3,562.8L554.6,561.4L551.8,561.1L549.5,559L547,558.4L545.2,557.1L537.6,556.7L537.3,556.5L537.4,553.2L537.1,550.3L536.2,548.7L536.1,546.8L540.4,545.1L548.8,542.8L550.7,542.1L565.1,537.4L566.7,540.2L569,543L569.5,542.6L575.7,541.4L577.3,543.3L577.5,547.5L577.2,550.3L576.1,552.1L575.2,554.3L574.1,556.1L575.4,558L575.3,559.2L580,564.8L581.6,566.2L580.9,567.4L581.6,568.5L583.2,568.2L583.3,565.3L582.4,562.9L583.8,559.8L584.5,558.9L586.8,558.6L588.3,558L588.7,557L589.4,551.7L589.3,550.1L590.4,546.4L590.1,544.2L584.8,536.5L582.6,533.9L581.2,532.6L579.4,532.3L578.5,531.1L578.1,524.2L577.1,519.6L577.3,518.7L579.1,515.9L580.3,513.5L583.1,513.4L589.6,513.5L591.2,512.2L592.4,512.2L594,513.1L595,514.4L598.1,514.9L599.6,514.6L601.6,513.5L603.4,513.7L603.9,514.3L606.3,514.9L608,514.6L610.9,512.7L611.5,511L614.3,510.7L617.2,512L620.2,510.2L622.1,509.6L625.3,509.2L627.7,507.8L630.2,507.1L631.9,506.2L636.6,502.7L638,504.7L636.7,505.7L637.7,506.4L636.9,507.4L637.1,508.8L635.6,511.4L636.1,512.6L635.7,514.7L636.4,518.2L636.1,519.3L636.1,522.1L635.7,523.1L636.5,524.5L636.1,526.4L634.9,528L636.1,528L636,531.9L635.6,532.8L635.8,536.7L635.7,539.9L636.7,540.4L635.8,542.1L635.8,543.6L636.6,542.4L637.5,542.9L637.4,546.2L636,547.5L635.8,548.9L635.1,549.4L635.3,550.8L634.3,552.9L629.6,557.9L628.2,560.3L626.3,561L626.7,562.4L620.8,565.8L619.1,567.6L617.2,568.3L614.8,568.6L610,570.1L609.1,570.9L607,571.6L601.2,574.9L598.1,577.3L597.6,578.7L593.9,582.5L591.7,585.1L591.1,584.4L590.8,585.8L589.8,585.6L587.1,587L585.1,588.7L582.1,591.9L578,594.9L577.1,595L575.2,593.8L576.2,595L575.9,597.6L575.2,600.7L575.6,602.3L577.5,604.7L578.4,608.6L578.3,610.5L579.4,613.1L579.6,616.9L579.2,620.4L579.8,621L580.3,618.2L581.1,617.8L581.3,620.2L580.6,623L581,626L580.1,628.1L578.4,634.1L579.9,634.4L578.6,637.8L575.7,641.3L574.1,642.3L570.4,643.9L563.1,646.1L558.5,647.9L554.8,650L553.1,651.5L552.3,653.2L550.9,654.9L553,657.5L554.2,655.8L552.8,663.2L548,663.2L545.8,662.9L546.1,659.8L545.7,657.5L546.1,654.9L545.1,654.3L545,652.5L545.7,651.2L546.7,639.8L545.5,634.2L543.5,630.2L543.5,628.2L542.8,623.8Z","516":"M469.5,572.3L478.1,570.8L484.3,571.4L485.8,572.3L487.4,573.9L484,574.1L482.9,574.6L480.3,576.4L478.7,575.6L476.5,576.6L474.3,578.1L472.3,580L471.2,580.2L470.1,578.1L468.6,576.1L466.7,575.9L456.3,577.7L448.8,578.7L446.4,578.8L445.7,614.2L445.7,614.6L436.3,614.6L436,641.4L435.3,676.7L432.5,677.2L430.8,678.7L428.9,679.8L428.6,680.9L426.6,681.2L424.9,680.6L422.8,680.5L420.2,680.8L418.3,680.6L417.2,680.1L412.4,679L411.5,677.1L411.9,675.7L411.2,674.5L410.3,674.2L408.9,672.6L407.8,672.9L405.9,676.8L405,676.9L403.4,678.2L396.8,672L393.3,666.4L391.3,660.7L391.6,658.9L391,657.2L389.8,656.2L389.4,652.7L388.6,650.5L388.7,648.7L388.3,647L388.4,643.8L387.8,641.5L386.4,639.2L385.2,635.8L384.8,626.9L384.1,623.9L385,623.5L385.2,621.3L384.6,618.9L383.3,616.4L379.9,612.3L378.6,609.5L374.9,604.1L373.3,600.3L372.1,597L370.9,595.4L365.1,584.7L363.9,583L361.6,581L358.5,575.8L357.8,570.5L358,568.4L360.6,567.6L362.5,568L365.7,568L371,565.6L373.9,566L375.4,567.3L379,569.7L379.8,569.9L383.6,569.7L396.6,569.7L416.4,569.7L421.8,569.8L422.7,570.2L424.8,572.7L427.1,573.7L431.1,573.9L436.3,574.5L439,574.3L440.8,574.6L444.2,575.9L447.7,575.3L450.6,575.7Z","562":"M375.6,262.7L372.8,263L371.5,264L370.2,264.4L366.3,266.4L364.4,268.7L361.1,268.7L359.9,267.7L357,266.6L354.3,266L349.9,265.8L345.2,266.2L342.4,266.7L339.9,268.1L336.8,271.2L332.8,271.1L328.4,270.2L325.6,268.6L322.2,266.3L319.3,265.8L315,268L313.3,268.2L312.1,269L310.9,268.9L309.7,267.9L308.1,265.4L305.8,263L297.3,260.2L294.9,261.3L290.8,261.2L287,262.2L284.3,264L283.5,268L282,270.8L279,273.2L278.8,278.7L278.9,280.8L278.2,281.4L277.7,280.5L276,279.5L274.1,277.1L271.6,274.6L266.6,276L266.9,278.2L266.6,279.2L263.9,275.4L263.7,274.6L265.1,274L265.2,272.8L264.3,271.1L262.8,271L261.2,272L259,271.7L254.7,267.9L253.7,267.5L253.9,264.3L255.9,264.4L254.2,263.3L253.9,262.4L251.7,261.2L250.5,260.8L248.8,258.1L248.2,256.5L248.5,255.4L246.6,252.8L247.4,248.7L247.5,248.2L249.5,248.1L252.1,248.4L254.4,248.2L257.9,245.4L274.1,245.1L274.7,244.3L278.9,245.1L279.1,243.9L282.7,241.2L284.2,236.9L285.3,235.3L286,233.1L286.4,229.4L286.7,229L287.8,207.9L302.2,205.3L303.1,204.9L314.4,195.4L319.2,191.6L337.4,180.9L347.2,175.1L361.9,166.4L375.8,169.8L376.9,170.4L382.4,175.3L382.6,175.3L389.6,171.7L391.3,182.2L391.4,186.1L392.4,187.2L395.3,191.6L394.7,192.4L395.1,193.8L398.3,197L398.5,198L396.5,201.9L393.8,231.3L383.1,242.6L377.7,250.3L376,253.6L374.1,256Z","566":"M312.7,354.2L311.1,354.4L312,353.1ZM375.6,262.7L379.9,268.9L381.2,275.8L384.3,276.6L385.3,278.5L384.6,282.2L384.6,284.6L381.1,286.8L379.7,287L378.1,288L374.6,293.3L373.4,297.6L371.9,298.9L371.4,302.8L370.9,303.8L368.5,304.9L368,306.1L367.3,310.3L366.5,311.7L365.1,312.9L363.3,313.1L361.6,316.2L360.8,319.6L359.5,321.7L359.4,323L356.9,326.2L357.8,327.7L355.1,330L354.8,331.9L352.5,334L350.8,334.4L350.1,333.7L349.7,331.8L346.8,328.9L345.5,328.2L344.3,329.9L341.5,329.9L341,328.8L337.4,331.1L336.2,333.4L333.3,335.5L330.2,338.5L328.9,340.8L327.5,346.6L325.1,350.9L323.9,351L322.1,349.3L322.8,351.9L322.5,352.9L317.6,353.2L315.3,352.8L315,351.9L314.3,352.8L312.6,352.9L311.2,351.5L311.3,353.2L309.9,354.4L308.4,353.9L307.5,351.1L307.7,353.7L308.4,354.6L306.1,354.9L305.6,353.6L305.3,354.9L300.6,355.4L297.9,353.7L295.9,351.8L294,347L293.8,344.9L295.2,344.5L295.6,343.6L294,344.3L292.5,343.4L292.4,342.6L294.1,342.5L293.5,341.2L291.9,342.2L289,338L286.8,336.1L284.8,334.7L281.9,334.1L275.6,334L275.2,333.8L278.2,332.3L275.1,332.9L274.1,334.1L267.9,334.3L268.7,330.9L268.2,328.2L268.5,327.8L268.7,324.1L269,323.3L268.4,321.9L268.2,319.3L268.9,310.3L269.3,307.6L272,307.3L273.1,305L273,303.7L274.9,301.5L274.9,300.4L277.2,299.2L278.2,296.7L277.5,295.6L278.2,294.2L279.6,294L280.2,292.3L279.4,290.7L279.2,287.6L277.1,284.4L277.1,283.3L278.2,281.4L278.9,280.8L278.8,278.7L279,273.2L282,270.8L283.5,268L284.3,264L287,262.2L290.8,261.2L294.9,261.3L297.3,260.2L305.8,263L308.1,265.4L309.7,267.9L310.9,268.9L312.1,269L313.3,268.2L315,268L319.3,265.8L322.2,266.3L325.6,268.6L328.4,270.2L332.8,271.1L336.8,271.2L339.9,268.1L342.4,266.7L345.2,266.2L349.9,265.8L354.3,266L357,266.6L359.9,267.7L361.1,268.7L364.4,268.7L366.3,266.4L370.2,264.4L371.5,264L372.8,263Z","624":"M85.8,268.2L88.6,268.2L91.2,267.4L94,267.7L96.5,267.3L100.2,265.6L113.9,266.3L114.2,268.3L113.8,270L111.4,271.2L113.2,273.1L113,275.9L110.9,276.5L108,276.4L106.1,277.4L103.9,277.8L102.9,278.8L101.1,282.1L100.1,283.4L99.6,282.7L100.1,281.4L98.4,282.4L98.6,281.2L97,280.5L97.5,278.6L96.4,278.4L96.9,277.6L98.7,276.9L100.4,276.7L99,275.7L97.2,276.4L96.4,275.2L97.4,273.7L100.4,273.4L97.3,273L95.2,274.2L93.5,274.7L92.4,274.4L92.4,272.6L90.7,272.9L89.1,271.5L90,269.6L88.2,269.8ZM90.1,281.8L89,281.2L90.7,280.4ZM92.5,277.7L91.4,277.5L92,276.3ZM92.1,273.4L91.5,274.6L90.6,273.3Z","646":"M532.7,411.8L535.2,411.3L535.7,412.4L537.9,411.6L540.5,408.6L541.9,408.6L541.5,409.2L543.1,411.5L543.9,411.8L544.9,413.5L544.9,417.5L545.5,419.3L545,421.2L542.3,421.8L540.9,421L538.2,422L536.2,421.3L535.5,425L533.9,425.8L530.8,426L529.9,424.6L527.6,423.9L527.1,425.1L526.2,424.7L525.6,422.4L528.1,420.2L528.5,419.2L528.3,416.5L530.5,413.1Z","678":"M313.7,382.5L312.8,382.2L313.6,381.2ZM306.1,396.9L305.1,397.6L304.2,395.8L304.8,394.7L306.4,394.1L307,395.7Z","686":"M129.5,245.2L130.2,246.9L129.6,248.8L131.3,251.5L131.1,253.8L131.6,254.8L130.4,257.3L132.2,260.6L133,259.8L134.1,260.1L134.8,262.2L136.1,264.6L135.1,268.7L135.6,270L133.9,269.7L131.6,270L129.4,269.8L127,270.4L122.4,269L121.2,268.1L120.4,268.6L119.9,267L113.9,266.3L100.2,265.6L96.5,267.3L94,267.7L91.2,267.4L88.6,268.2L85.8,268.2L85.5,266.4L88.5,265.5L87.2,264.5L85.7,265.8L86.1,260.9L87.2,260L94.8,260.4L95.2,258.7L100.1,258.2L101.5,256.6L105.8,258.9L109.6,260.3L113.4,259.5L113.5,258L112.4,257.3L108.4,257.5L107,256.3L105.2,255.6L103.8,254.4L102.2,254L99.1,254.7L98.2,256.1L90.8,255.6L88.5,255.6L88.4,254.5L87.1,252.9L87.3,251.7L88.5,250.9L86.8,251.2L86.9,250.3L85.7,247L84.8,246.1L84.1,244.5L81.9,243.5L81.6,244.2L80.9,243.1L84.7,241.6L87.9,237.9L91,233.6L91.4,232.5L92.8,228.9L95,225.6L99.3,226.4L101.7,225.8L105.3,225.5L106.6,224.9L108.5,225.3L110.8,225.3L112.8,226.2L115.5,229.1L116.3,230.8L119.2,231.1L120.9,232.9L121.4,235.7L122.8,237.7L123.6,237.8L124.7,239.6L124.6,240.5L126.3,242.3L127.3,242.8Z","690":"M782.3,444.2L782.3,445.1L780.9,443.3L781.6,442.7Z","694":"M143.3,310.2L142.1,313.5L140.3,314.4L139.4,317.5L137.1,319.7L135,321.1L133.2,322.7L130.8,325.9L128.7,324L126.9,323L121.7,320.8L122.3,319.2L121.6,317.9L119.9,317.3L118.2,315.8L117.7,312.8L115.9,312.1L114.9,309.8L115,309.2L116.6,309.9L118.4,308.4L116.7,307.9L115.8,308.4L115.4,307.1L115.7,305.6L117,305.5L115.2,304.1L115.1,303.5L116.6,303.6L117.6,303L118.4,301.4L120.4,300.4L122.5,297.1L123.1,295.5L125.3,294.9L126.5,295.5L128.6,295.1L128.8,294.3L134.8,294.5L135.5,294.8L138.4,299.6L139.9,301.7L139.2,303.6L140.5,304.3L140.4,306.2L141.3,308.4L140,309.7L139.1,311.6L140.6,311.9L142.2,310.2ZM121.3,320.2L117.4,318.7L118.3,318.2L120.6,318.2L121.6,318.8Z","706":"M715.5,280.2L719.6,279.2L721.9,277.9L726.2,276.9L729.3,274.7L730.7,272.4L732.1,271.9L736.5,273.3L736.4,275.1L735.4,278.5L736,281.1L736.6,285.5L736.1,287.8L737.2,286.5L738.9,287.2L739.1,288.1L737.4,287.8L734.9,288.9L734.7,289.7L734.5,295.3L734.6,298.2L733.1,301.6L731.4,304.4L730.3,307.9L728.8,311.2L726.6,313.7L725.9,316.9L724.3,320.7L722.4,323.9L721.5,326.1L720.3,330L720,332.4L716.6,339.5L712.9,345.2L710.6,349.9L706.3,355.5L700.5,362.6L692.8,371.1L690.7,372.8L682.1,378.1L676.5,382.5L673.6,385.4L670.6,388L668.2,390.4L661,398.6L659.5,400.1L656.2,404.4L653.9,406.8L651.5,411.4L649.5,414.1L649.4,412.9L644.2,405.8L643.7,368.5L647.3,364.5L652.4,356.6L653.7,354.9L655.6,354.2L661,353.2L662,352.5L663.1,350.4L664.1,349.6L668,347.5L672.7,346.2L681.2,346.6L681.5,346.4L690.5,335.1L695,329.9L708.9,314L699.4,314.4L698.8,314.1L670.7,305.2L666.7,301.8L665.4,301.4L663.5,299.1L662.2,296.4L661.1,296L658.7,293.3L656.7,289.1L659,285.2L661.7,280L663.6,281.5L665.7,284.6L668,287L671,289.3L673.3,290.4L678.5,290.2L682.1,287.9L686.5,285.8L693.6,286.4L697.3,284.4L699.6,282.6L701.2,281.7L704.1,282.2L707,281.8L710.8,280.1L712.9,279.7Z","710":"M524.1,617.3L526.9,616.9L529.1,617.3L531.8,618.4L534.2,618.8L536.6,618.5L539.9,618.7L541.9,619.6L542.8,623.8L543.5,628.2L543.5,630.2L545.5,634.2L546.7,639.8L545.7,651.2L545,652.5L545.1,654.3L544.4,654.5L540.5,652.2L538.5,653L534.4,658.5L534,661.9L534.8,662.2L536.1,665.3L537.9,666.6L539.6,667.1L544,667.4L544,666.1L544.8,662.6L545.8,662.9L548,663.2L552.8,663.2L552.2,665.4L550,670.4L548.3,676.1L545.7,680.1L543.2,682.1L540.9,683L536.5,687.2L534.8,689.2L533.2,692.1L531.8,693.7L529.6,697.1L525.8,702.1L522.7,705.4L520.4,706.8L514.7,711.7L512,714.4L508.2,717.5L506.1,718.8L502.8,721.4L495.6,725.7L489.9,727.8L486.1,727.3L484.5,727.5L483.1,728.6L482.9,730.1L481.5,730.2L478.9,729.5L477.4,729.6L475.8,731.4L473.8,731.5L470.3,730.3L465.2,729.5L462.4,730.4L459.5,730.2L456.3,729.6L453.6,730.2L449.6,733L445.8,733.3L443.3,732.9L440.8,733.5L438.7,733.7L434.3,736.7L431,736.4L428.9,735L428.1,735.1L428.4,733.9L426.5,732.6L424.1,732.7L424,730.3L421.6,730.1L421,730.9L421,732.5L420,731L420.1,728.7L421.1,728.2L420.8,726.6L419.3,723.8L418.4,723.2L416.1,719.5L415.8,718.2L416.8,717.1L417.4,717.7L419.3,716.5L420,715.2L419.9,711.5L419,707.9L414.4,701.1L411.5,695.6L410.1,692.3L407.9,685.7L406,681.9L403.4,678.2L405,676.9L405.9,676.8L407.8,672.9L408.9,672.6L410.3,674.2L411.2,674.5L411.9,675.7L411.5,677.1L412.4,679L417.2,680.1L418.3,680.6L420.2,680.8L422.8,680.5L424.9,680.6L426.6,681.2L428.6,680.9L428.9,679.8L430.8,678.7L432.5,677.2L435.3,676.7L436,641.4L439.3,643.8L441.6,648.3L443.2,652.4L443.3,654.8L441.6,657.5L441.6,660.3L442.5,661.4L443.7,661L445.5,661.4L449,661.2L450.8,661.5L452.5,659.8L454.9,658.9L456.1,657L459.2,655L460.1,654L462.5,648.1L463.8,646.9L466.1,646.3L468.4,647.1L471.8,649.6L474.5,649.9L475.7,651L479.5,651.8L481.8,651.2L485.9,650.9L487.3,649.8L490.1,643.4L490.7,641.6L495.2,640.4L497.4,638.3L499.5,636.8L501.2,631.6L502.1,630.4L504.3,629L506.1,628.4L507.5,627L508.6,626.8L509.9,625.6L511.3,623.7L513.1,622L514.7,621L517.7,620.5L520.1,619.2L521.9,617.4ZM512.8,693.5L516.2,691.8L516.7,689.8L518.2,688.5L519.3,685.7L518.7,683.9L515.7,681.9L513,678.9L509.4,680L506.8,681.6L504.8,682.2L500.4,687.7L498.2,689L498.8,690.7L500.5,693.8L500.7,695.3L501.6,695.8L503.7,698.1L506,698.5L507.3,696.7L509.7,693.9Z","716":"M541.9,619.6L539.9,618.7L536.6,618.5L534.2,618.8L531.8,618.4L529.1,617.3L526.9,616.9L524.1,617.3L523,616.2L521.8,616L521,614.8L520.9,613.2L516.7,611.9L512.2,611.1L510.4,608L508.9,606.1L509.4,603.2L509.4,600.9L508.7,600.4L505.5,600.3L505.1,597.1L503.9,596.1L500.1,594.5L496.1,591.3L495.4,591L493.5,586.5L493.5,585.2L492.3,583.8L491.9,582.3L489.4,579.4L488.5,577.3L487,575.1L487.4,573.9L489.2,574.4L491,574.2L493.1,575.5L494.4,575.7L495.7,575.1L497.6,575.3L499.9,576.2L501.8,576.4L504.1,575.7L508.3,571.3L511.5,566.9L513.2,565.3L517.8,563.1L521.3,561.8L522.1,560.8L522.6,557L524.4,555.6L528.6,553.7L531,553.2L537.4,553.2L537.3,556.5L537.6,556.7L545.2,557.1L547,558.4L549.5,559L551.8,561.1L554.6,561.4L558.3,562.8L559.2,563.7L561.2,564.1L560.4,565.7L560.4,567.3L561.1,569.4L560.6,574.4L560.4,578.7L560.7,579.8L559.5,583.5L557.8,584.9L557.6,586.6L558.6,587.2L558.5,588.9L557.9,590.4L558.3,592.1L559.7,595.2L559.5,596.3L556.1,601.4L554.7,602.4L554.2,603.3L554,605.6L552.7,607.5L553.3,609L552.7,609.4L543.3,618.6Z","728":"M575.5,355.4L571.6,359.6L570.8,360.1L567.5,360L566,358.9L564.4,359.8L559.5,360.8L557.8,362.6L555.7,361.8L554.2,359.9L552.6,360.9L551.2,361.1L547.9,360.1L545.8,361.6L544.9,363.1L544.1,361.8L542.4,361.8L541.6,359.7L538.5,358.2L535.3,354.8L533.3,352.3L531.3,352L530.5,353.2L528.2,354.3L526.1,353.3L524,353.2L521.1,355L518.8,354.8L516.7,353L514.7,351.9L513.5,349.9L511.8,348.7L510.9,347.3L509.5,345.5L509.1,342.8L507.7,340.7L504.1,338.5L502,337.8L500,334L500.5,332.2L498.6,330.8L497.2,329.1L495.8,328L490.7,325.4L488.8,323.5L489.4,321.5L485.4,317.4L484.3,316.9L479.9,316L478.8,314.3L479.2,312.8L478.4,312.3L479.1,311.2L482.2,310L483.3,307.1L483.5,305.1L484.5,303.7L484.5,301.2L486.6,298.4L487.1,296.1L489.3,295.8L494.3,294.7L494.8,294.9L495.5,297.2L498,299.2L501.8,303.5L503.9,303.7L506.9,302.6L513.9,302.7L514.8,302.6L516.4,305.3L524.2,305.2L524.1,303.9L525.4,302.5L527.9,301.2L530.2,300.7L531.4,299.2L531.4,297.8L535.2,295.6L539.9,298.5L542.5,300.8L546.5,300.4L547.2,300.1L551.2,295.9L553,293.3L553.7,291.4L558.1,287.4L557.4,284.9L557.2,280.9L554.5,278L560.9,277.8L560.7,275.7L565.3,275.7L564.8,278.4L564.8,280.9L564.3,281.9L565.6,289.3L565.4,290.4L567.7,291.3L568.5,292.2L572.9,295.6L573.6,297.1L573.7,299.2L573.1,300.5L573.2,303L575,303L575.4,311.8L574.1,313.2L568.9,313.2L567.2,313.8L565.2,318.3L565.2,319.1L567.3,320.1L571.6,321L574,322.5L575.2,323.9L575.6,325.3L577.8,327.5L579.8,328.5L582.1,330.9L583.4,334.5L584.6,337L584.9,338.9L585.9,340.7L587.8,342.5Z","729":"M575,303L573.2,303L573.1,300.5L573.7,299.2L573.6,297.1L572.9,295.6L568.5,292.2L567.7,291.3L565.4,290.4L565.6,289.3L564.3,281.9L564.8,280.9L564.8,278.4L565.3,275.7L560.7,275.7L560.9,277.8L554.5,278L557.2,280.9L557.4,284.9L558.1,287.4L553.7,291.4L553,293.3L551.2,295.9L547.2,300.1L546.5,300.4L542.5,300.8L539.9,298.5L535.2,295.6L531.4,297.8L531.4,299.2L530.2,300.7L527.9,301.2L525.4,302.5L524.1,303.9L524.2,305.2L516.4,305.3L514.8,302.6L513.9,302.7L506.9,302.6L503.9,303.7L501.8,303.5L498,299.2L495.5,297.2L494.8,294.9L494.3,294.7L489.3,295.8L487.1,296.1L486.6,298.4L484.5,301.2L484.5,303.7L483.5,305.1L483.3,307.1L482.2,310L479.1,311.2L478.4,312.3L473.9,311.6L472.5,310.8L472.6,309.6L471.7,307.9L473.2,305.6L473.4,300.8L472.4,298.8L470,295.3L466.6,291.7L465.5,290L466.2,287.3L466.1,285.8L463.3,284.2L462.5,282.7L462.6,279.5L461.8,279L460.3,272.9L459.1,272.4L456.9,272.8L455.7,272.5L455.2,271.7L456.7,268.5L458.3,267.4L459,266.3L458.7,264.2L457.8,262.3L458.4,260.6L461.6,258.4L460.3,254.2L461.1,253.4L463,252.5L463.1,251.2L464.2,249.3L465.5,248.2L465.8,246.7L465.4,244.5L467,242.8L472.8,242.4L475,242.7L475.4,242L474.3,205.5L474.1,200.6L483.5,200.3L482.7,180.8L493.4,180.6L514.7,180.2L525.3,179.9L540.5,179.5L541.7,177.5L543,177.9L542.6,179.4L553.4,179L568.5,178.5L580.6,178L592.6,177.5L593.6,181.5L595.3,184L596.6,185.4L597.2,186.8L596.1,186.2L596.7,189.9L597.4,191.6L597.1,193.2L597.5,195.9L598.4,199.2L598.5,201.2L600,206.1L601.3,208.7L602.6,209.7L603.8,209.9L605.7,211.2L608.6,214.1L609.8,214.4L612.2,215.7L612.6,216.4L611,218.3L610.7,219.4L609.4,220.9L605.6,222.1L603,223.9L602.2,226.2L598.5,226.4L598.4,229L597.7,230.8L598.1,234L597.4,237.1L596.4,239.8L595.2,244.6L594.4,245.8L595.9,254.5L595.3,257.2L595.5,258.7L595.1,260.8L593.6,264.4L592.9,269.9L590.2,270.4L588.1,271.9L585.1,277.8L583.9,279.2L582.7,284.7L582.6,288.8L581.1,290L579.1,288.7L577.8,289.7L576.4,292.3L576.9,295L576.8,296.3L575.3,300.3Z","732":"M179.6,118.7L179,122.4L177,135.1L163.7,134.2L147.7,133L143.6,157.1L143.3,158.1L140,159.4L137.7,159.7L133.6,162.2L132,164.6L132.2,167.2L131.1,178.9L113.3,177.7L95.8,176.4L94.2,180.6L94.1,181.6L93.8,181L95.6,175.4L98.1,175.1L106.8,175.6L109.4,176.2L114.9,176.6L116.7,175.2L117.4,173.7L117.4,172.6L121.8,168.3L123,163.8L125.2,158.1L127.1,154.7L128.3,153.8L132.7,152.2L135.6,148.1L141.9,144.3L143.5,141.6L145.7,136.4L147.6,132.6L150.4,132.1L150.9,131L153.3,128.1L154.7,127.1L155.1,126L154.7,124.6L159,123.6L162.2,124.1L164.6,125.6L166.6,125.2L167.6,125.9L169.1,125.9L172.3,123.8L175.9,124.1L177.8,123.9L178.3,123.2L178.5,118.6Z","748":"M545.1,654.3L546.1,654.9L545.7,657.5L546.1,659.8L545.8,662.9L544.8,662.6L544,666.1L544,667.4L539.6,667.1L537.9,666.6L536.1,665.3L534.8,662.2L534,661.9L534.4,658.5L538.5,653L540.5,652.2L544.4,654.5Z","768":"M251.9,287.9L250.7,290.7L250.3,293.9L255.7,297.9L255.7,302.2L256,304.3L257.9,307.4L257.9,315.2L257.6,327.9L256.6,327.9L257.3,330.5L257,331L258.6,333.6L258.9,334.9L257.3,335.7L253,336.9L251.1,334.6L248.7,333.2L246.8,329.2L247.4,327.7L248,324.2L246.8,323.3L246.7,322.2L247.9,320.4L247.8,316.2L248.8,314.7L248.2,312.9L246.9,311.9L245.9,310.1L247.1,309.2L247,306.6L247.7,303.7L246.9,302.9L244.8,303L245.8,300.8L246.6,294.8L245.1,293.8L242.5,291.3L242.2,290.5L243.3,287.4L242.6,286.5L247.9,287.8L247.9,288.2Z","788":"M361.1,73.1L360.4,78.2L361.1,79.4L360.8,80.4L354.8,83.5L352.8,84.9L351.6,86.7L350.1,87L348.3,89.3L349.2,93.5L348.8,95.8L345.8,99.6L342.4,101L339.3,83.3L333.5,78.6L332.7,74.9L331.6,73.3L328.8,71.5L327.2,66.1L327.5,63.7L329.7,62.1L330.5,60.7L333.1,59.2L334.2,57.7L335,54.3L335.8,53.2L335.3,51.3L335.5,48.9L335,46.9L336.3,42.2L335.2,40.9L337.3,38.5L338.7,37.8L338.6,36.8L340.6,36.3L343.4,34.5L348,33.3L349.5,34.1L352.1,34.6L352,36.3L353.1,37.9L352.7,38.7L353.6,39.2L355,37.8L356.7,37.3L359.1,36L359.6,37.9L358.3,39.1L356.7,41.5L354.3,43L353.9,44.4L354.7,47.2L358,49.7L358.2,52.5L358.8,53.4L356.5,56.8L353.5,59.9L350.5,61.8L349.3,63L349.1,64.5L349.9,66.5L352.3,68.3L354.6,68.1L354.6,69.8L356.1,69.6L356.6,68.7L357.7,69.4L358.5,72.4ZM359.9,58.1L358.5,58.7L359.7,57.4ZM356.7,67.8L354.7,67.6L354.9,66.2L356.4,66.2L357.4,67.3Z","800":"M575.2,407.7L545.2,407.9L541.9,408.6L540.5,408.6L537.9,411.6L535.7,412.4L535.2,411.3L532.7,411.8L532.6,407.7L533.4,403.3L533.3,402.4L534.1,397L534.7,396.3L536.3,393L536.3,389.8L538.7,388.2L540,386.1L541.6,385.6L546.1,381.1L549.1,377.5L549.3,376.4L548.4,375.2L547.4,375L546.2,373.9L543.9,373.4L544.3,371.2L545,369.5L544.1,367.6L544.8,365.1L545.6,363.9L544.9,363.1L545.8,361.6L547.9,360.1L551.2,361.1L552.6,360.9L554.2,359.9L555.7,361.8L557.8,362.6L559.5,360.8L564.4,359.8L566,358.9L567.5,360L570.8,360.1L571.6,359.6L575.5,355.4L577.4,359.5L579.7,360.7L580.2,361.5L579.8,363.5L580.3,365.9L581,366.4L581.7,368.3L583.2,369.4L584.8,372.7L584.6,373.4L585.5,376.9L585.5,381.1L583.8,383.8L583.8,385.3L582.5,385.8L580.9,387.2L580.2,389L578.8,390.8L577.7,391.6L576.5,394.7L575.6,395.9L575.4,397.9L575.5,401.7Z","818":"M592.6,177.5L580.6,178L568.5,178.5L553.4,179L542.6,179.4L543,177.9L541.7,177.5L540.5,179.5L525.3,179.9L514.7,180.2L493.4,180.6L482.7,180.8L479.3,111L477.4,104.3L476.3,101.3L477.7,98.8L478.4,95.7L477.4,93L477,90.3L479.4,87.2L480.1,88.4L481.5,88.5L485.9,87.4L490.9,88.3L497.8,89.4L500.5,90.9L503,91L504.3,91.9L509.1,92.2L513.3,93.9L514.9,94.1L517.2,93.1L521.3,90L523.8,89.6L525.1,87.7L526.6,87.5L529.5,86.4L526.6,88L527.8,88.1L530.3,87.4L530.6,86.1L531.8,86.1L534.8,87.3L537.9,86.3L540.3,88.2L538,86.9L537.2,88.8L539.3,89.4L540.3,90.6L542,88.9L544.6,90.6L549,89.4L549.7,90.2L551.2,89.7L553.7,89.6L555.7,89L558.1,87.5L558.6,88.6L563.5,98.2L566.5,105L565.3,107.1L564.9,112.2L563.8,116.1L563.8,119.5L562.5,122L560.9,121.4L558.1,119.4L556.4,117.5L553,114.6L552.4,112.5L550.9,109.7L548.9,107.7L547.4,105.5L545.5,101.2L544.1,104.6L544.5,105.5L546.1,106.9L547,108.8L547.1,110.7L549.9,114.7L553,118.1L556.4,121L556.7,123.8L558.3,126.3L559.3,127L560.4,129.1L561.4,133L562.3,133.9L565.4,138.9L567.8,142.1L574.8,153.8L577.7,156.8L580.7,158.8L578.5,159.1L578.3,160.5L578.8,163.8L579.4,165.4L580.9,168.6L583.1,170.5L586.1,171.5L588.1,173.7L592.2,176.5Z","834":"M629.1,459.5L629.7,461.6L628.8,462.3L628.3,461.2L626.6,460.5L626,459.5L626.2,457L627.4,454.9L628.5,458.9ZM632.9,446.7L632.8,450.2L631.7,452.1L630.7,451.4L631.3,448.8L631.1,446.9ZM564.2,491.7L560.1,489.7L559.6,489.1L554.8,488.1L554.6,487L552.2,486.6L550.9,484.7L549.2,483.6L546.5,483.7L545.5,483.1L544.1,481.4L543.4,479.5L543.1,478.6L540.2,472.2L539.3,469.7L537.4,466.8L533.5,463.8L531.9,460.8L531.4,457.9L532.7,454.9L532.1,452.7L530.2,447.6L530,446.1L530.8,442.3L533.9,442.3L536.2,440.9L538.2,438.7L539.4,436.3L540.2,435.6L541,433.7L543,432L542.8,431.5L544.6,430.6L544.5,427.7L541.1,426.6L541.5,424.8L541,424.3L542.3,421.8L545,421.2L545.5,419.3L544.9,417.5L544.9,413.5L543.9,411.8L543.1,411.5L541.5,409.2L541.9,408.6L545.2,407.9L575.2,407.7L576,407.7L581.6,410.9L611.7,428L612,430.6L611.3,432.2L613.1,434.3L626.5,444.4L626.7,444.5L624.2,452.9L622.6,456.5L622.4,458.4L623,461L625.4,463.3L626.9,465.9L628.6,466.6L629.3,468L629,469L627.3,471.2L626.6,473L626.5,475.7L627.9,476L627.9,478L626.8,480.3L626.4,482.3L627,485.1L628,486.5L627.6,487.3L629.4,489.9L629.1,492L629.7,493.7L630.4,497.1L629.8,498L631.1,498.2L632.2,499.6L633.2,499.6L636,501.6L636.6,502.7L631.9,506.2L630.2,507.1L627.7,507.8L625.3,509.2L622.1,509.6L620.2,510.2L617.2,512L614.3,510.7L611.5,511L610.9,512.7L608,514.6L606.3,514.9L603.9,514.3L603.4,513.7L601.6,513.5L599.6,514.6L598.1,514.9L595,514.4L594,513.1L592.4,512.2L591.2,512.2L589.6,513.5L583.1,513.4L582.2,511.1L581.5,511L579.9,508L580.7,504.7L580,502.9L579.9,500L579.6,497.9L577.7,494.9L574.7,492.6L574.1,494.3L571.7,493.6L569,493.7L568.2,492.8L566.2,492.5ZM630.5,477.6L629.5,477.2L632.6,474.3L631.7,476.9Z","854":"M251.9,287.9L247.9,288.2L247.9,287.8L242.6,286.5L240.4,285.9L238.5,287.5L236.9,288.2L236.5,287.6L231.3,287.4L228.4,287.1L227.8,287.3L216.7,287.1L216,287L215,291L216.1,292.7L216,296.2L216.2,299L215.9,300.4L216.6,302.2L215.3,302.8L213.8,300.1L211.6,297.9L208.2,297.6L205.3,297.8L201.5,299.2L200.9,300.2L199,299.3L198.1,299.4L194.9,297.1L193.8,294L192.3,293.2L191.1,293.2L189.8,292L190.7,288.6L190.5,285.8L192.4,284.2L193.3,281.1L192.8,279.4L193,278L194.8,276.6L197.8,276.1L199.8,274.9L201.5,273.1L201.7,270.7L201.2,269.8L203.7,268.6L203.8,267.7L202.9,265.3L205.7,262.8L207.6,262.9L210.1,264.8L212.8,264L213.3,261L214.1,260.1L215.5,260.5L216.7,260.1L217.3,257.4L220.2,254.8L221.5,254.3L224.7,255.5L225.3,255.2L226.2,252.7L228.9,252.2L230.9,251.1L235.2,249.3L238.1,247.1L240.3,246.9L241.5,247.6L243.1,247.1L247.4,248.7L246.6,252.8L248.5,255.4L248.2,256.5L248.8,258.1L250.5,260.8L251.7,261.2L253.9,262.4L254.2,263.3L255.9,264.4L253.9,264.3L253.7,267.5L254.7,267.9L259,271.7L261.2,272L262.8,271L264.3,271.1L265.2,272.8L265.1,274L263.7,274.6L263.9,275.4L266.6,279.2L265.6,281.2L262.5,283.9L261.3,283.6L258.8,284L257.2,283.5L256,285L254.4,285.4L253.5,287.3Z","894":"M537.4,553.2L531,553.2L528.6,553.7L524.4,555.6L522.6,557L522.1,560.8L521.3,561.8L517.8,563.1L513.2,565.3L511.5,566.9L508.3,571.3L504.1,575.7L501.8,576.4L499.9,576.2L497.6,575.3L495.7,575.1L494.4,575.7L493.1,575.5L491,574.2L489.2,574.4L487.4,573.9L485.8,572.3L484.3,571.4L478.1,570.8L469.5,572.3L465.5,568.8L459.4,562.9L457.9,562L456.9,558.7L456.4,555.7L456.9,526.7L475,526.8L476.1,526.7L475.4,524.8L476.5,521.1L476.3,518.1L476.5,513.4L477.2,511.1L476.5,505.8L477.6,506L478.2,507.4L480,507.8L480.7,509.6L480,510.8L481.8,511.4L483.3,510.6L488.4,509.5L489.7,509.5L489.3,511.1L489.9,513.3L491.4,514.6L492.5,514.5L496.4,516L501.9,516.8L504.2,516.7L505.4,516.1L506.4,513.3L507.9,513.2L508.3,514.9L510,516.5L511,519L512,519.7L514.1,519.9L518.9,521.9L520,523.3L520.7,525.4L521.9,525.7L522.8,526.9L525,530.7L526.8,531L530.3,529.5L531.1,531.2L532.5,531L533,518.8L530.7,519.2L530.1,521L529.3,521.5L525.8,520.6L523.8,518.4L520.3,515.3L519.2,512L521.2,505.3L522.2,504L521.9,501.3L522.3,495.7L521.5,492.5L520.2,489.7L523,487.6L525.4,484.5L525.2,482.4L525.9,482.2L543.4,479.5L544.1,481.4L545.5,483.1L546.5,483.7L549.2,483.6L550.9,484.7L552.2,486.6L554.6,487L554.8,488.1L559.6,489.1L560.1,489.7L564.2,491.7L564.9,493.8L566.8,493.8L568.3,496.2L567.8,498L569.9,499.9L569.9,501.1L571,503.5L569,505.4L567,506.5L568.1,509.1L566.4,512.8L567,513.6L567,516.3L566.4,518.6L567.2,520.5L568.7,520.7L567.7,522.3L564,523.7L563.2,525.4L563.7,526.4L563.2,529.6L562,531.9L560.2,533.4L561.1,533.8L561,534.9L562,535.4L563.2,537.5L564.6,536.7L565.1,537.4L550.7,542.1L548.8,542.8L540.4,545.1L536.1,546.8L536.2,548.7L537.1,550.3Z","012":"M338.6,36.8L338.7,37.8L337.3,38.5L335.2,40.9L336.3,42.2L335,46.9L335.5,48.9L335.3,51.3L335.8,53.2L335,54.3L334.2,57.7L333.1,59.2L330.5,60.7L329.7,62.1L327.5,63.7L327.2,66.1L328.8,71.5L331.6,73.3L332.7,74.9L333.5,78.6L339.3,83.3L342.4,101L340.5,102.1L343.2,106.8L344,109.4L344.7,113.3L344.2,117.2L344.4,122.2L344.8,124.7L343,129.1L343.7,133.1L344.1,133.8L343.7,136.6L340.3,138.7L339.7,139.5L339.7,141.3L344.4,148.5L344.6,151.2L345.3,153.8L346.5,155.7L348.1,156.8L350.4,156.2L357.9,158.6L358.1,158.8L361.9,166.4L347.2,175.1L337.4,180.9L319.2,191.6L314.4,195.4L303.1,204.9L302.2,205.3L287.8,207.9L279.9,209.2L278.6,208.9L277.3,207.5L278.8,205L278.4,203.5L278.6,201.3L275.6,199.5L271.3,198.3L269.7,196.5L267,196.1L264.8,195L264.3,193.3L261.4,191.6L260.3,190.6L260.4,187.7L250.5,180.1L242.1,173.4L228.2,162.2L209.9,147L204.2,142.5L196.9,136.7L189.4,130.8L179,122.4L179.6,118.7L181.3,109.2L181.6,108.3L188.1,104.6L191.2,102.7L192.9,102.4L195.4,100.8L196.7,100.4L200.6,101.2L201.7,100.4L202.1,98.9L204.6,99.1L208.5,98.8L211.4,98.1L214.1,96.2L216.4,93.4L218.1,92.7L222.3,91.5L225.5,89.6L228,89.4L228.9,88.3L227.3,86.9L227.9,85.4L228,82.4L231.4,82.2L235.2,81.2L236.2,79.2L240.5,78.6L250.4,79.6L250.9,79.4L251.1,77.2L252.8,76L252.5,75.2L250.6,73.6L249.5,71.9L249.5,70L248.7,67.6L249.5,65.2L249.1,63.7L249.8,59.3L249.4,57.4L250,56.5L249.2,55.1L249.9,53.7L247.4,51.5L246.9,50.1L249.5,50.4L251.6,49.7L254.7,48.1L257,46.2L262.9,43.8L264.8,44.3L266.9,43.7L268,42.2L271.3,40.4L275.3,38.9L277.7,38.3L283.7,38.2L286.8,37.9L288.8,38.1L292.2,36.5L296.7,36.6L298.9,35.8L307,36.1L308.9,37L310.4,38.3L312.3,38.4L314.9,37.3L317.7,36.8L319.3,36.2L320.1,35.2L321.4,34.9L322.1,35.7L324.9,36.6L327.5,36.2L327.4,35L330.6,36L333,37.4L334.8,37Z","024":"M369.6,444.2L367.2,445.2L364.6,447.8L363.4,448.5L364.1,449.3L364,454.7L361.1,455.3L360.5,454.1L361,452.4L360.7,451L359.2,447.8L361,445.6L362,445.5L362.8,444L365.3,443.2L366.9,442.2L367.7,442.3ZM476.5,505.8L477.2,511.1L476.5,513.4L476.3,518.1L476.5,521.1L475.4,524.8L476.1,526.7L475,526.8L456.9,526.7L456.4,555.7L456.9,558.7L457.9,562L459.4,562.9L465.5,568.8L469.5,572.3L450.6,575.7L447.7,575.3L444.2,575.9L440.8,574.6L439,574.3L436.3,574.5L431.1,573.9L427.1,573.7L424.8,572.7L422.7,570.2L421.8,569.8L416.4,569.7L396.6,569.7L383.6,569.7L379.8,569.9L379,569.7L375.4,567.3L373.9,566L371,565.6L365.7,568L362.5,568L360.6,567.6L358,568.4L358.6,563.1L358.2,556L357.8,554.5L359.8,552.6L360.8,548.8L362.7,542.8L363.6,536.9L364.7,534.1L365.2,531L368.5,527L369.3,524.5L373.5,522L375.2,519.7L376.1,518.1L377,515L376.9,511.8L377.5,507.6L377.4,506.3L376.3,503.4L374.5,501.3L374,499.7L372.4,497.2L371.2,494.3L370.7,491.2L369.1,487.8L372.6,484.2L372.8,481.1L369.9,475.3L367.6,469.9L367.2,467.1L364.2,463.5L362,458.6L366.8,457.7L369.6,456.4L378.5,456.3L382.7,456.6L395.8,456.4L401.6,456.4L403.8,457.4L405.4,459.3L405.8,463.8L407.6,466.9L408.2,470.1L409.9,472.1L413.7,478.2L414.1,478.4L417.4,478.1L418.3,478.5L420.1,477.7L424.7,476.8L427.1,477.4L431.4,477.1L431.7,474L432.8,472.2L433.3,469L434.6,467.9L436.7,467.4L442.7,466.7L443.9,466.9L443.3,468.8L444,470.3L455.2,470.6L456.1,471.7L455.4,476.1L455.6,478.6L456.6,480.8L456.6,484.3L455.8,489L455.6,492L456.9,494.5L458.3,495.9L459.3,497.6L460.3,501.1L460.3,504L459.1,506L460,509L462.8,507.6L465.3,507.9L468.6,507.8L471,506.9L475.2,507.2Z","072":"M487.4,573.9L487,575.1L488.5,577.3L489.4,579.4L491.9,582.3L492.3,583.8L493.5,585.2L493.5,586.5L495.4,591L496.1,591.3L500.1,594.5L503.9,596.1L505.1,597.1L505.5,600.3L508.7,600.4L509.4,600.9L509.4,603.2L508.9,606.1L510.4,608L512.2,611.1L516.7,611.9L520.9,613.2L521,614.8L521.8,616L523,616.2L524.1,617.3L521.9,617.4L520.1,619.2L517.7,620.5L514.7,621L513.1,622L511.3,623.7L509.9,625.6L508.6,626.8L507.5,627L506.1,628.4L504.3,629L502.1,630.4L501.2,631.6L499.5,636.8L497.4,638.3L495.2,640.4L490.7,641.6L490.1,643.4L487.3,649.8L485.9,650.9L481.8,651.2L479.5,651.8L475.7,651L474.5,649.9L471.8,649.6L468.4,647.1L466.1,646.3L463.8,646.9L462.5,648.1L460.1,654L459.2,655L456.1,657L454.9,658.9L452.5,659.8L450.8,661.5L449,661.2L445.5,661.4L443.7,661L442.5,661.4L441.6,660.3L441.6,657.5L443.3,654.8L443.2,652.4L441.6,648.3L439.3,643.8L436,641.4L436.3,614.6L445.7,614.6L445.7,614.2L446.4,578.8L448.8,578.7L456.3,577.7L466.7,575.9L468.6,576.1L470.1,578.1L471.2,580.2L472.3,580L474.3,578.1L476.5,576.6L478.7,575.6L480.3,576.4L482.9,574.6L484,574.1Z"},"cent":{"108":[536,431],"120":[366,342],"132":[25,227],"140":[442,333],"148":[424,247],"174":[666,517],"178":[391,407],"180":[474,427],"204":[265,302],"226":[343,381],"231":[628,310],"232":[617,243],"262":[655,278],"266":[357,404],"270":[99,258],"288":[230,318],"324":[138,290],"384":[188,320],"404":[613,391],"426":[509,688],"430":[151,331],"434":[418,133],"450":[687,593],"454":[576,530],"466":[214,224],"478":[154,192],"480":[784,607],"504":[184,99],"508":[586,569],"516":[410,615],"562":[335,226],"566":[321,303],"624":[102,272],"646":[536,418],"678":[306,394],"686":[109,249],"690":[782,444],"694":[129,309],"706":[689,334],"710":[482,682],"716":[530,586],"728":[538,325],"729":[532,239],"732":[142,151],"748":[540,660],"768":[252,313],"788":[345,64],"800":[560,385],"818":[525,136],"834":[583,460],"854":[227,275],"894":[513,531],"012":[280,121],"024":[414,519],"072":[472,616]},"isl":{"132":[26,236],"174":[663,515],"480":[784,607],"678":[306,396],"690":[782,443]},"nb":"M283.4,18.1L281.9,18L282.3,17.1ZM297.3,8.2L299.7,8.6L299.7,9.2L297.6,12L296.1,12.7L293.8,11.6L292.9,10.2L291.8,10.9L290.9,9.5L295.6,7L297.7,6.5ZM306.5,8.1L303.1,6.7L303.3,5.9L306.2,6.3ZM282.6,15.7L282.2,16.2L280.8,15.7L282,14.1L283.8,13.8L284.2,14.6ZM277.8,0L276.1,2L271.9,5.9L269.3,9.2L269.1,10.1L269.6,13.5L270.7,15.2L272.3,16.6L270.1,18.1L267.2,19.4L264.6,21.9L264.1,23.4L262.5,26L263.2,26.8L262.3,27.3L258.2,27.2L255.3,28.7L253.8,30L252.2,32.7L249.8,34.5L249,33.7L246.6,33.7L244.9,34.4L241.1,33.8L239.6,34.1L236.5,33.5L232,33.5L229.2,35.3L227.1,35.2L225,35.8L222.9,38.4L220.5,39.3L217.5,37.5L216.7,36L216.4,33.4L215.5,32.1L217.1,30.6L215.9,31.1L215.3,29.9L212.7,27.3L210.3,27L208.4,27.1L204.6,28.5L202.4,27.6L198.8,26.8L195.4,27.4L197.7,23.7L198.6,20.8L198.4,18.6L199.5,16.5L199.6,13.9L201.2,14.3L200.3,13.3L196.9,13.7L197.1,11.6L198.5,11.4L199.6,10.5L200.3,8.5L198.2,10.9L196.4,11.2L195.6,10.8L197.8,5.1L200.1,3.3L202.5,0L277.8,0ZM410.5,0L412.1,1.1L416,2.9L419,5.5L420.3,8L419.2,10.7L417,9.6L415.3,6.4L412.2,6.1L410.4,5.3L409.8,4.3L407.8,4.7L405.7,7.7L404.6,10.3L405.1,12.4L407,13L409.3,14.8L409.8,18.4L409.2,19.1L406.4,19.4L404.8,21.1L404.7,23.9L402.5,25.4L400.7,28.3L397.9,28.3L397.3,26.1L398.8,24.9L399.4,23.2L399.2,22L400,21.1L401.9,20.6L402,18.9L401.2,18.1L400.5,15L399.1,12.5L397.9,9.1L397.1,8.5L394.7,8.3L392,6.7L392.3,5.4L391.7,3.7L390.6,2.7L387.2,3.3L388.2,2.1L387,1.3L385.4,1.1L384.6,0L410.5,0ZM115.2,106L114,108.2L112.6,109.3L111.6,109.4L110.7,107.9L110.3,105.9L113.7,105.5L115.7,104.2L117.3,104.7ZM138.6,102.8L137.3,103.1L138.3,101.3L140.6,100.7L141.4,99.8L140.8,102.1ZM132.9,109.8L131.5,110.8L130.3,110.2L132.7,109.3L133.8,107.5L136.2,104.3L137,104.4L137,106L135.4,109.2ZM122.6,109.1L122.1,111.8L120.4,112.9L119.2,112.4L118.8,110.3L120.2,108.8ZM107.2,108.8L106.2,107.8L106.9,107L107.9,107.6ZM100.7,110.4L99.5,111.9L98.3,110.6ZM102.8,103.6L102,100.8L102.8,100L104.2,100.7L103.6,102.9ZM119,60.8L121,61.3L122.8,62.4L121.3,63.3L118.8,62.3ZM69.1,2.6L72.6,3.2L71.7,4.2L70.2,4.1L68.2,3.3L67.7,2.5L68.4,1.7ZM396.7,25.7L393.9,29.8L392.7,32.8L393.3,35.2L394.2,37.1L393,38.2L392.7,40.1L389.9,39.9L387.6,39L386.5,37.4L384.7,36.1L382.8,36.1L378.3,33.7L376.8,32.5L374.8,31.6L372.9,31.6L371.6,30.6L370.9,29.2L371.9,27L373.5,25.8L374.8,27.2L376.9,25.8L378.5,25.9L381.2,27.6L382,27.8L384.2,27.3L386.1,27.5L387.9,27.3L390.7,26.1L393,26.3L396.1,25ZM349.9,0L351,3L350.8,4.1L349.6,5.7L349.9,7.4L348.8,14.3L348.2,16L347.6,16.3L344.2,15.2L343.8,17.1L342.5,18.3L340.6,18.1L339,15.4L339.1,12.8L339.9,10.3L340.5,9.5L339.5,8.7L340.3,5.2L339.5,3.2L338.3,1.8L338.7,0L341.4,0L341.4,0L341.5,0L341.6,0L349.9,0ZM339.4,16.7L338.8,17.6L338.5,16.2ZM437.9,24L438.1,25.1L439.4,26.2L439.2,26.9L437.3,26.6L436.7,25.4L435.8,25.9L436.5,24.3ZM440.4,29.4L439.8,30.7L438.1,29L438.7,28.3ZM438.4,21.9L437.4,22.1L437.9,19.9L438.6,20.1ZM433.3,14.2L431.7,13.9L429.7,11.5L431.2,10.6L432,11.3L431.3,12L432.3,13.8ZM460.5,18.2L461,19.2L464.4,20.7L466.2,20.7L467.9,25L470.3,25.6L470.2,27.2L468.7,26.8L467.4,25.9L465.9,23.4L463.6,23.4L462.3,22L459.2,19.7L457.4,19.1L456.1,19.1L458.2,17.8L459.6,17.5ZM463.3,16.6L462.4,16.9L461.7,15.8ZM470.8,19.3L469,18.6L469.1,17.8ZM470.3,2.4L469.3,2.7L468.2,2.1L468.9,0.7L469.7,0.8ZM459,44.4L458.1,44.5L458,42.6L459.3,43.8ZM493.9,50.3L493,49.1L494,46.9L493.7,48.8ZM491.4,36.2L490.6,36.4L490.2,35ZM491,38.4L491.8,37.3L493.5,36.7L494.2,37ZM479.2,36.5L478.5,36.9L477.6,35.6L478.9,34.4L479.4,34.7ZM476.9,35.6L475.5,36L476.8,35ZM479.1,42L478.2,42.3L478.4,41.2ZM489.1,28.2L490.8,28.5L491,29.1L489.3,29.8L487.1,29.1ZM482.8,31.1L483.2,30.1L485.3,29.6L484.2,30.7ZM487.1,39.9L486.1,40.6L485.5,39.9ZM471,38.7L471,39.4L469.3,39.7L469.5,38.9ZM474.1,29.1L473.9,29.8L471.7,27.9L472.3,27L473.7,27.8ZM476.4,30.6L475.6,31.1L474.2,29.9ZM482.7,24.6L482,25.1L480.9,24.1L481.8,23.3L480.4,21.3L481.8,21L483,21.5L483.2,23.8ZM484.4,14L486,16.8L484.5,17.4L482.6,16.9L479.9,15.4L482.4,13.7ZM477.6,3.9L476.8,4.2L475.7,3.4L476.6,3.1ZM476,8.1L475.5,9.8L473.1,9.4L473,8.1ZM499.1,45.7L498,45.5L497.8,43.5L499.3,41.8L501.9,40.8L501.1,44.4L500.1,44.6ZM466,50.5L467.6,50.4L469.4,51L470,52L473.4,51.3L475.8,51.4L476.7,52L479.8,52.3L481.9,51.8L482.2,53.8L485.7,53L486.6,52.1L486.5,54.6L483,54.9L477.8,55.7L474.4,56L473.5,54.5L471.4,53.9L466.5,53.2L464.4,53.3L463.5,51.6L464,50.2L464.5,50.7L465,49.3ZM490.7,0L489.9,1L486.2,2.9L483,6.6L482.1,7.1L482.3,4.8L483.7,3.5L485.8,2.5L486.3,1.7L480.8,2.1L480.2,1L478.7,0L490.7,0ZM470.4,0L470.2,0.1L469.9,0L470.4,0ZM466.7,0L464.7,1.5L462.1,1.3L462,2L463.2,3.2L463.2,4.4L464.5,4.5L466,5.2L467.1,6.8L465.6,5.6L462.9,4.9L462.1,5.7L464.2,7.2L464.1,8.6L463.2,8.1L461.7,6.3L459.8,5.9L460.2,7.7L461.9,8.8L459.7,8.5L458.9,6.4L455.5,4.8L455.6,3L453.3,3.9L453.2,8.2L455.3,10.4L456.1,12L457.6,13.2L459.2,15.1L459.6,16.2L458,16.6L458.2,15.4L456.8,14.8L455.6,15.5L456.8,17.6L457.6,17.5L455.5,18.8L453.8,19L455.3,19.8L459.3,21L460.3,22.3L462,22.6L463,23.8L465.3,24.5L465.9,25.8L466.4,29.8L465.7,30.1L462.4,27.1L459.2,27.6L457.9,28.4L458.9,29.2L459.4,30.8L460.7,31L461.9,32.5L459.3,33.5L458.7,32.5L456,31.2L456,33L458.1,36.6L458.9,38.8L458.7,40.1L459.7,41.9L458.2,41.2L456.4,38.8L455,38.9L454.1,40.9L454.2,42L453.2,41.4L453.1,39.6L450.5,36.6L449.5,37L449.1,39.4L447.7,38.2L446.4,36.2L446.3,35L447.2,34L446.1,31.8L444,30.6L443.7,29.7L442.4,28.9L443.7,27.3L444.4,25.7L446.5,25.8L447.8,24.4L448.9,24.4L451.3,25.6L453.9,26.3L457,27.7L456.7,26.8L458.6,26.6L458.7,25.6L457,25.4L452.7,23.2L451.1,24.1L448.9,23.6L445,24.5L443.7,22.9L443.6,24L442,23.9L440.9,21.4L439.1,20L439.1,18.9L441.5,19.2L441.8,17.9L439.1,18.1L436.5,15.8L435.1,15.2L434.1,13.1L432.5,11.6L434.2,12.1L435.6,10.7L434.9,9L437.7,7.7L438.8,4.6L439.9,4.1L440.5,2.9L439.9,0.8L444.7,0.6L445.8,0L466.7,0ZM480.1,6.6L478.3,6.9L478.3,6.1L479.7,5.6ZM800,128.1L796.3,127.5L794.6,126.1L794,127.5L790.7,127.1L787.2,127.4L785.6,126.7L782.4,127.8L779.9,126.7L777.6,126.5L774.8,126.9L772.3,126.1L771.2,126.6L770.5,126L767,125.7L765.3,123.3L765,122.1L763.6,120L762.6,116.9L761.2,114.7L759.3,113L755.2,112.4L753.4,113.2L752.2,114.4L749.9,115.3L748.5,117.6L747.3,117.6L744.5,120.3L742.5,121L738.7,119.4L737.1,119.2L734,119.6L732,118.5L731.4,117.7L726.9,116.1L724,114.5L722.9,112.9L721.5,111.8L718.9,111L717.2,110.1L714.1,110.2L712.7,109.7L710.2,107.7L710,106.8L707.7,104L707,101.9L705,100.7L704.6,98.7L702.8,98.1L701.9,95.4L696.7,90.8L695.2,88.2L694.5,88.1L691.3,90.3L690,89.4L686.5,87.9L685.9,87.3L687.4,87.2L687.5,86.2L685.6,86L685.1,87.2L685.7,89.9L685.2,90.8L682.9,91.8L681.4,92L679.4,91.3L678.1,92L678.7,93.5L680.4,96L678.8,95.7L677.2,97.8L680.1,98.2L682,101.8L683.8,103.8L685.2,105.9L687.6,109.8L689.2,111.4L690.1,113L689.9,113.8L691,114.6L694.2,115.7L693.7,116.3L696.3,118.7L697.5,118.9L699.4,120.7L702,121.7L703.7,123.3L702.6,123L703,124.7L704.6,125.8L705,126.8L704.9,128.9L703.9,128.9L705.2,131.5L707.1,134.1L708.9,135.4L710.5,138.7L713.2,141.5L713.4,140.5L712.2,137.6L711.5,135L712.1,133.2L712.5,129.4L714.4,127.5L717.3,129.8L717.8,131L717.6,133.6L719.4,137.3L719.7,139.2L718.9,142.3L717.6,143L718.9,143.3L718.5,145.7L720.9,146L722.7,146.2L723.2,148L724.4,148.8L727.4,148.4L730.5,146.5L733.8,146.2L736.6,146.5L741.5,146.2L745.4,143.8L746.1,141.1L747.3,138.1L749.7,135.4L751,133.2L752.3,130.4L755.2,127L755.7,124.1L756.1,122.6L758,121.1L758.8,126.5L758.6,128.1L759.3,128.9L760.9,134.9L762.4,137.4L764.3,139.8L767.3,142.8L770.5,144.9L774.1,145.7L778.7,146.1L780.6,146.9L782.7,146.5L784.7,147.6L787.8,151.3L789.5,152.8L791,154.5L793.4,156.5L796,157L796.5,160L795.8,162.9L795,164.8L794.4,167.8L792.2,170.3L791.1,172.3L790,175.6L788.9,179.9L786.6,180L786.5,178.1L785.3,178.6L783.9,182.1L783.8,188.8L784.6,190.6L785.8,194.9L784.7,195.6L780.4,196.6L777.6,198.4L776.4,200.2L776.2,204.7L775,206.6L774,207.1L768.3,208.2L767.2,208.8L765.6,211.6L766.3,213.7L765.5,216.1L764.7,217.4L762.2,218.3L760.3,217.8L755.8,218.4L755,219.4L752.1,221.2L749.3,221.8L747.5,222.7L743.2,224.9L741.1,226.8L740.5,228.1L740.2,230.4L741,233.4L735.8,237.1L733.4,238.4L730.6,239.4L726.3,240.7L723.2,242.9L720.8,243.2L715.9,245.4L713.3,247.5L713,248.5L711.2,251L710.2,251.8L706.7,252.5L704,252.1L700.8,254.2L698.9,256.4L695,257.7L693.3,258.6L690.7,259.3L687.9,259.3L682.9,260.4L680.7,263.3L678.6,264.1L677.5,266L674.9,266.6L673.6,266.1L671.3,267.7L667.3,268.4L664.4,267.3L663,267.8L662.8,266.4L660.2,262.1L660.3,258.3L659.7,256.2L658.2,254.7L658.1,252.7L657,250L657.1,249.2L655.8,246.2L655.9,245.4L655,243.5L653,242.5L653.3,241.6L654.2,242.2L654.2,241.1L653.2,238.3L654,234.4L653.3,231L651.9,227.4L650.5,226.1L650.3,225.2L648.6,223.7L647.5,220.6L645,218.3L642,216.3L639.3,212.7L638.4,210.8L636.3,208.6L634.8,204.6L630.8,198.1L629.4,197.4L627.9,195.8L624,193.3L622.1,193.1L619.4,191L618,188.8L615.8,186.6L613.8,183.3L614,181.2L612.1,177.7L612.2,174.5L612.5,172.6L611.3,168.9L609,166.3L607.9,163.8L605.3,159.8L603.4,158L599.8,155.4L597.8,154.6L596.2,154.6L592.3,149.5L593,148.1L591.5,144.9L589,141.6L587.5,140.6L586.4,137.8L584.9,137.2L581.9,132.5L577.8,128.1L576.8,126.3L575,124.6L573.2,121.8L570.7,118.9L569.7,118.5L565.6,118.1L566.6,114.5L566.5,112.4L567.1,106.2L567,104.3L566.5,105L563.5,98.2L558.6,88.6L558.1,87.5L560.1,84.8L561.5,81.7L562.2,78.8L562.6,74.7L563.5,70.1L564.3,67.1L564.9,65.9L565.8,62.2L566.4,60.7L566.4,58.6L567.4,56.7L568.7,55.6L568.6,54.8L567.6,52.7L567.2,50.7L567.4,49.1L566.7,47.3L565.3,45.9L565.9,42.5L566.2,41.7L564.6,38.8L565,37.9L567.1,35.3L566.8,33.9L565.5,33L562.7,35L561.9,36.2L560.7,36.5L558.9,36.1L555.6,34.7L553.9,34.9L551.7,36.8L549.8,39.4L547.4,41.1L542.6,42.1L540.1,42.9L537.9,42.4L536.5,41.7L533.1,38.5L531,37.8L527.2,36.2L521.4,35.9L520.9,36.6L521,39.1L520.7,41.2L519.9,41.9L518.6,41.3L514.2,43L511.3,42.1L509.5,40.9L508.3,38.1L505.7,38.1L503.6,37.2L502.1,37.2L501.4,38.4L500,39L500.4,37.9L498.1,38.1L496.9,38.7L495.2,38.4L496.6,37.7L499.1,37.4L501.4,35.2L496.7,35.6L494,35.5L493.2,35L495.5,34.1L495.3,33.3L492.6,32.1L491.2,29.3L492.4,28.9L492.2,26.5L489.8,25.8L487.5,24.6L486.8,25.1L484.3,23.9L485.3,22.4L484.7,20.7L485.8,20.6L486.6,22.5L488.9,22.9L490.7,22.4L488.5,21.2L487.8,19.7L489.6,18L488.4,17.7L488.1,15.9L486.6,14.3L488.2,12.1L487.5,11.7L481.9,12.8L482,7.9L483,7.5L484.1,5.8L486,3.9L488.2,3.8L490.3,3.2L492,4.4L494,4.3L494.9,3.7L494.1,2.5L495.9,2.7L495.8,3.8L498.3,3.4L501.1,3.5L504.1,3.2L504.4,2.9L502.1,2L503.4,1L508.6,0L628.2,0L628.2,0L628.9,0.5L629.4,0.9L633.4,4.8L637,6.8L641.4,7.2L644.3,6.6L644.8,6.6L646.4,4L647.4,3.5L648.5,1.8L650.4,0L656.7,0L656.7,0L657,0.2L655.8,1.2L656.1,2.6L657.5,3.1L657.6,4.3L656.2,4.9L656.3,6.1L658.7,7.5L660.1,7.9L661.9,9.4L664,8.9L666.2,14.1L667.8,16.1L671.3,17.4L673.4,17.3L676.7,17.6L679.1,19.9L681,21L684.7,22.6L686.4,23.1L691.8,23.7L695.1,23.2L703.5,19.5L707.5,18.3L705.9,19.4L708.3,19.4L708.2,18L706.2,14.3L706.2,14.3L708.3,14.1L712,11.9L712,9.6L713.1,7.6L714.9,5.8L716.3,5.1L721.2,4.6L722.2,2.6L728,2L729.5,3.1L729.9,4.1L736.4,5.1L738,6.1L739.4,6.1L742.1,5.2L746.3,6.3L747.5,7.9L749.5,9.2L752.9,10L754.1,10.7L757.4,13.5L763.2,12.4L763.8,13.1L766,17.7L766,19L767.1,19.9L768.1,22.3L768.6,23.4L768.7,25.5L768.2,26L769.2,27.7L769.6,30.2L769.3,32.4L768.2,34.2L770,35.7L768.2,36.2L767.7,38.5L768.9,41L769.5,43L770.9,43.6L773.1,43.8L771.6,48L772.2,49.4L776.7,56.5L777.3,59.2L778.4,62.5L779.5,64.2L786.2,64.2L787.3,65.1L788.4,67.1L789,69.6L784.6,80.6L789.9,85L790.4,86.1L794.2,90.5L797.1,92.7L800,93.3L800,128.1ZM540.6,51.2L542,51.9L544.6,50.9L546.2,51L547.5,52.1L548.8,52.2L550.3,51.4L551.5,51.6L552,52.3L549.1,52.7L547.8,54.3L546,55.3L544.6,55.5L543.3,56.8L542.5,56L541.1,56.2L538.9,55.5L537.5,53.4L537.3,52.2L538,52.5L539.3,51.4ZM589.2,144.1L587.4,142.7L589.3,143.7ZM645.4,227.9L645.9,227L647,227.9L647.1,229.3L646.2,228.3L645.2,228.5L643.6,227.4L643.9,225.1L644.8,225.7ZM758.8,263.7L762.7,263.2L765.8,264.2L762.5,266.4L758.8,267L757.6,266.8L754.8,265L755.7,263.6L757.6,263ZM791.4,181.7L790.7,181.8L790.5,180.5L791.4,178.7L791.9,176.7L792.8,178.4L792,179.4ZM736.3,144.9L735,144.6L737,143.6ZM741.6,145.2L740.6,145.7L739.1,145.5L740.6,144.4ZM709.3,130.7L709.2,131.5L707.9,130L707.4,127.4L708.4,127.1ZM681.4,95.3L680.6,95.5L679.4,93.8L679.9,91.9L681.7,93.7ZM754.5,115.3L753.1,117.8L752.1,117.6L748.9,119.5L748.1,118.9L751.2,116.9L750.9,115.5L752.2,115.7L754.5,114.5ZM679.9,528.6L678.9,527.8L679.3,525.3L680.5,526.3ZM766.3,617.1L764.1,617.2L762.6,616.2L761.8,613.9L762.8,612.4L764.1,612L765.9,612.6L767,615ZM388,48L386.9,48.3L386.2,46.8Z"};
 
 /* ================== Catalogue des éditions (généré par tools/build.js) ================== */
-const CATALOG = {"ao":{"kind":"info","a3":"024","langs":["en"],"ev":[{"t":"general","d":"2027-08","q":"month"}],"evSrc":{"o":"Plataforma Media","t":"Angola vai a eleições em 2027 e prepara sucessão de João Lourenço","d":"24 Aug 2026","u":"https://www.plataformamedia.com/2026/08/24/angola-vai-a-eleicoes-em-2027-e-prepara-sucessao-de-joao-lourenco/"}},"bi":{"kind":"ed","a3":"108","langs":["en","fr"],"ev":[{"t":"presidential","d":"2027-05-03","q":"exact"}],"evSrc":{"o":"Ecofin Agency","t":"Burundi Sets May 2027 Presidential Vote With $38.9 Million Budget","d":"12 May 2026","u":"https://www.ecofinagency.com/news/1205-55485-burundi-sets-may-2027-presidential-vote-with-38-9-million-budget"}},"cm":{"kind":"ed","a3":"120","langs":["en","fr"],"ev":[{"t":"legislative","d":"2027-01-29","d2":"2027-04-19","q":"range"}],"evSrc":{"o":"Investir au Cameroun","t":"Cameroon’s CRM Prepares for 2027 Elections with Candidate Endorsements at Risk","d":"1 Sep 2026","u":"https://m.investiraucameroun.com/stopblabla/i/16747/cameroons-crm-prepares-2027-elections-candidate-endorsements-risk"},"note":"The legislative elections have been postponed twice; no decree setting the date had been reported by September 2026."},"cv":{"kind":"ed","a3":"132","langs":["en","fr","pt"],"ev":[{"t":"presidential","d":"2026-11-15","q":"exact"}],"evSrc":{"o":"Forbes África Lusófona","t":"Eleições presidenciais em Cabo Verde marcadas para 15 de Novembro deste ano","d":"31 Jul 2026","u":"https://forbesafricalusofona.com/?p=174758"}},"fr":{"kind":"ed","a3":null,"langs":["fr"],"ev":[{"t":"presidential","d":"2027-04-18","q":"exact"}],"evSrc":{"o":"Public Sénat","t":"La prochaine élection présidentielle aura lieu les 18 avril et 2 mai 2027","d":"1er juil. 2026","u":"https://www.publicsenat.fr/actualites/politique/la-prochaine-election-presidentielle-aura-lieu-les-18-avril-et-2-mai-2027"}},"gm":{"kind":"ed","a3":"270","langs":["en","fr"],"ev":[{"t":"presidential","d":"2026-12-05","q":"exact"},{"t":"legislative","d":"2027-04-10","q":"exact"}],"evSrc":{"o":"Independent Electoral Commission (IEC)","t":"Electoral Calendar 2026–2027","d":"Oct 2025","u":"https://iec.gm/wp-content/uploads/2025/10/ELECTORALCALENDAR2026-2027.pdf"}},"gq":{"kind":"info","a3":"226","langs":["en","fr","pt"],"ev":[{"t":"legislative","d":"2027-11","q":"by"}],"evSrc":{"o":"IPU Parline","t":"Equatorial Guinea: Senate, 20 November 2022 election","d":"2023","u":"https://data.ipu.org/parliament/GQ/GQ-UC01/election/GQ-UC01-E20221120"}},"gw":{"kind":"info","a3":"624","langs":["en","fr","pt"],"ev":[{"t":"general","d":"2026-12-06","q":"exact"}],"evSrc":{"o":"Reuters (via Internazionale)","t":"Guinea-Bissau to delay elections following last year’s coup","d":"8 Oct 2026","u":"https://www.internazionale.it/ultime-notizie-reuters/2026/10/08/guinea-bissau-to-delay-elections-following-last-year-s-coup"},"note":"On 8 Oct 2026 the transitional Prime Minister said the 6 December vote must be postponed; no new date had been set by 11 Oct 2026."},"ke":{"kind":"ed","a3":"404","langs":["en","fr","sw"],"ev":[{"t":"general","d":"2027-08-10","q":"exact"}],"evSrc":{"o":"Kenyans.co.ke","t":"IEBC Sets August 10, 2027 Election Date, Orders Public Officers to Resign by February 9","d":"24 Jun 2026","u":"https://www.kenyans.co.ke/news/124581-iebc-sets-august-10-2027-election-date-orders-public-officers-resign-february-9"}},"ls":{"kind":"ed","a3":"426","langs":["en"],"ev":[{"t":"legislative","d":"2027-10","q":"by"}],"evSrc":{"o":"Wikipedia","t":"Next Lesotho general election","d":"2026","u":"https://en.wikipedia.org/wiki/Next_Lesotho_general_election"},"note":"No polling day has been announced; the IEC is preparing for “the 2027 general elections”."},"ly":{"kind":"info","a3":"434","langs":["en","ar","fr"],"ev":[{"t":"pres_leg","d":"2028-08","q":"by"}],"evSrc":{"o":"Al Jazeera","t":"Libya’s parliament removes Speaker Saleh after 12 years as discontent grows","d":"7 Oct 2026","u":"https://www.aljazeera.com/news/2026/10/7/libyas-parliament-removes-speaker-aguila-saleh-after-12-years"},"note":"No date set: the UN-facilitated 4+4 agreement of 30 Aug 2026 only requires elections within 24 months; the High Council of State and the Presidential Council contest it, and the elections commission’s leadership is disputed."},"mg":{"kind":"ed","a3":"450","langs":["en","fr"],"ev":[{"t":"referendum","d":"2027-05","d2":"2027-07","q":"range"},{"t":"presidential","d":"2027-09","d2":"2027-12","q":"range"}],"evSrc":{"o":"L’Express de Madagascar (via AllAfrica)","t":"Madagascar: Préparation des élections - La Présidence lance une concertation multi-acteurs","d":"31 Aug 2026","u":"https://fr.allafrica.com/stories/202608310147.html"},"note":"Transition after the October 2025 military takeover. As of 16 Oct 2026 no decree fixes the dates: the CENI proposed June (referendum) and October 2027 (presidential), the head of state spoke of a first vote in July 2027, and the order of the votes is still debated."},"ng":{"kind":"ed","a3":"566","langs":["en","fr","pt","sw","ar"],"ev":[{"t":"general","d":"2027-01-16","q":"exact"}],"evSrc":{"o":"News Agency of Nigeria","t":"INEC reschedules 2027 general election","d":"27 Feb 2026","u":"https://nannews.ng/election-15/"}},"so":{"kind":"ed","a3":"706","langs":["en","ar"],"ev":[{"t":"legislative","d":"2027-04-15","q":"exact"},{"t":"presidential","d":"2027-05-15","q":"exact"}],"evSrc":{"o":"The Somali Digest","t":"The Electoral Commission Sets Somalia’s Vote for 15 May 2027 and the Opposition Rejects It","d":"15 Oct 2026","u":"https://thesomalidigest.com/electoral-commission-2027-election-timetable/"},"note":"Dates set by the electoral commission on 15 October 2026 without political agreement; the opposition, Puntland and Jubaland reject the process, so whether and where the vote takes place is uncertain."},"ss":{"kind":"info","a3":"728","langs":["en","ar","fr"],"ev":[{"t":"general","d":"2026-12-22","q":"exact"}],"evSrc":{"o":"Radio Tamazuj","t":"Kiir’s envoy says December polls are non-negotiable","d":"9 Oct 2026","u":"https://www.radiotamazuj.org/en/news/article/kiirs-envoy-says-december-polls-are-non-negotiable"},"note":"Vote in serious doubt: transitional government dissolved on 22 Sep 2026, main opposition rejects the polls, and no voter had been registered by 7 Oct 2026."},"tn":{"kind":"ed","a3":"788","langs":["en"],"ev":[{"t":"legislative","d":"2027-11","q":"range","d2":"2028-03"}],"evSrc":{"o":"Webdo","t":"Municipales : Un scrutin possible avant fin 2026, sinon d’ici mars 2027","d":"13 Oct 2026","u":"https://www.webdo.tn/fr/actualite/national/municipales-un-scrutin-possible-avant-fin-2026-sinon-dici-mars-2027/405501/"}}};
+const CATALOG = {"ao":{"kind":"info","a3":"024","langs":["en","fr","pt"],"ev":[{"t":"general","d":"2027-08","q":"month"}],"evSrc":{"o":"Plataforma Media","t":"Angola vai a eleições em 2027 e prepara sucessão de João Lourenço","d":"24 Aug 2026","u":"https://www.plataformamedia.com/2026/08/24/angola-vai-a-eleicoes-em-2027-e-prepara-sucessao-de-joao-lourenco/"}},"bi":{"kind":"ed","a3":"108","langs":["en","fr"],"ev":[{"t":"presidential","d":"2027-05-03","q":"exact"}],"evSrc":{"o":"Ecofin Agency","t":"Burundi Sets May 2027 Presidential Vote With $38.9 Million Budget","d":"12 May 2026","u":"https://www.ecofinagency.com/news/1205-55485-burundi-sets-may-2027-presidential-vote-with-38-9-million-budget"}},"cg":{"kind":"ed","a3":"178","langs":["en","fr"],"ev":[{"t":"legislative","d":"2027-07","q":"by"}],"evSrc":{"o":"Wikipedia (background only)","t":"2027 Republic of the Congo parliamentary election","d":"2026","u":"https://en.wikipedia.org/wiki/2027_Republic_of_the_Congo_parliamentary_election"}},"cm":{"kind":"ed","a3":"120","langs":["en","fr"],"ev":[{"t":"legislative","d":"2027-01-29","d2":"2027-04-19","q":"range"}],"evSrc":{"o":"Investir au Cameroun","t":"Cameroon’s CRM Prepares for 2027 Elections with Candidate Endorsements at Risk","d":"1 Sep 2026","u":"https://m.investiraucameroun.com/stopblabla/i/16747/cameroons-crm-prepares-2027-elections-candidate-endorsements-risk"},"note":"The legislative elections have been postponed twice; no decree setting the date had been reported by September 2026."},"cv":{"kind":"ed","a3":"132","langs":["en","fr","pt"],"ev":[{"t":"presidential","d":"2026-11-15","q":"exact"}],"evSrc":{"o":"Forbes África Lusófona","t":"Eleições presidenciais em Cabo Verde marcadas para 15 de Novembro deste ano","d":"31 Jul 2026","u":"https://forbesafricalusofona.com/?p=174758"}},"fr":{"kind":"ed","a3":null,"langs":["fr"],"ev":[{"t":"presidential","d":"2027-04-18","q":"exact"}],"evSrc":{"o":"Public Sénat","t":"La prochaine élection présidentielle aura lieu les 18 avril et 2 mai 2027","d":"1er juil. 2026","u":"https://www.publicsenat.fr/actualites/politique/la-prochaine-election-presidentielle-aura-lieu-les-18-avril-et-2-mai-2027"}},"gm":{"kind":"ed","a3":"270","langs":["en","fr"],"ev":[{"t":"presidential","d":"2026-12-05","q":"exact"},{"t":"legislative","d":"2027-04-10","q":"exact"}],"evSrc":{"o":"Independent Electoral Commission (IEC)","t":"Electoral Calendar 2026–2027","d":"Oct 2025","u":"https://iec.gm/wp-content/uploads/2025/10/ELECTORALCALENDAR2026-2027.pdf"}},"gq":{"kind":"info","a3":"226","langs":["en","fr","pt"],"ev":[{"t":"legislative","d":"2027-11","q":"by"}],"evSrc":{"o":"IPU Parline","t":"Equatorial Guinea: Senate, 20 November 2022 election","d":"2023","u":"https://data.ipu.org/parliament/GQ/GQ-UC01/election/GQ-UC01-E20221120"}},"gw":{"kind":"info","a3":"624","langs":["en","fr","pt"],"ev":[{"t":"general","d":"2026-12-06","q":"exact"}],"evSrc":{"o":"Reuters (via Internazionale)","t":"Guinea-Bissau to delay elections following last year’s coup","d":"8 Oct 2026","u":"https://www.internazionale.it/ultime-notizie-reuters/2026/10/08/guinea-bissau-to-delay-elections-following-last-year-s-coup"},"note":"On 8 Oct 2026 the transitional Prime Minister said the 6 December vote must be postponed; no new date had been set by 11 Oct 2026."},"ke":{"kind":"ed","a3":"404","langs":["en","fr","sw"],"ev":[{"t":"general","d":"2027-08-10","q":"exact"}],"evSrc":{"o":"Kenyans.co.ke","t":"IEBC Sets August 10, 2027 Election Date, Orders Public Officers to Resign by February 9","d":"24 Jun 2026","u":"https://www.kenyans.co.ke/news/124581-iebc-sets-august-10-2027-election-date-orders-public-officers-resign-february-9"}},"ls":{"kind":"ed","a3":"426","langs":["en"],"ev":[{"t":"legislative","d":"2027-10","q":"by"}],"evSrc":{"o":"Wikipedia","t":"Next Lesotho general election","d":"2026","u":"https://en.wikipedia.org/wiki/Next_Lesotho_general_election"},"note":"No polling day has been announced; the IEC is preparing for “the 2027 general elections”."},"ly":{"kind":"info","a3":"434","langs":["en","ar","fr"],"ev":[{"t":"pres_leg","d":"2028-08","q":"by"}],"evSrc":{"o":"Al Jazeera","t":"Libya’s parliament removes Speaker Saleh after 12 years as discontent grows","d":"7 Oct 2026","u":"https://www.aljazeera.com/news/2026/10/7/libyas-parliament-removes-speaker-aguila-saleh-after-12-years"},"note":"No date set: the UN-facilitated 4+4 agreement of 30 Aug 2026 only requires elections within 24 months; the High Council of State and the Presidential Council contest it, and the elections commission’s leadership is disputed."},"mg":{"kind":"ed","a3":"450","langs":["en","fr"],"ev":[{"t":"referendum","d":"2027-05","d2":"2027-07","q":"range"},{"t":"presidential","d":"2027-09","d2":"2027-12","q":"range"}],"evSrc":{"o":"L’Express de Madagascar (via AllAfrica)","t":"Madagascar: Préparation des élections - La Présidence lance une concertation multi-acteurs","d":"31 Aug 2026","u":"https://fr.allafrica.com/stories/202608310147.html"},"note":"Transition after the October 2025 military takeover. As of 16 Oct 2026 no decree fixes the dates: the CENI proposed June (referendum) and October 2027 (presidential), the head of state spoke of a first vote in July 2027, and the order of the votes is still debated."},"ng":{"kind":"ed","a3":"566","langs":["en","fr","pt","sw","ar"],"ev":[{"t":"general","d":"2027-01-16","q":"exact"}],"evSrc":{"o":"News Agency of Nigeria","t":"INEC reschedules 2027 general election","d":"27 Feb 2026","u":"https://nannews.ng/election-15/"}},"so":{"kind":"ed","a3":"706","langs":["en","ar"],"ev":[{"t":"legislative","d":"2027-04-15","q":"exact"},{"t":"presidential","d":"2027-05-15","q":"exact"}],"evSrc":{"o":"The Somali Digest","t":"The Electoral Commission Sets Somalia’s Vote for 15 May 2027 and the Opposition Rejects It","d":"15 Oct 2026","u":"https://thesomalidigest.com/electoral-commission-2027-election-timetable/"},"note":"Dates set by the electoral commission on 15 October 2026 without political agreement; the opposition, Puntland and Jubaland reject the process, so whether and where the vote takes place is uncertain."},"ss":{"kind":"info","a3":"728","langs":["en","ar","fr"],"ev":[{"t":"general","d":"2026-12-22","q":"exact"}],"evSrc":{"o":"Radio Tamazuj","t":"Kiir’s envoy says December polls are non-negotiable","d":"9 Oct 2026","u":"https://www.radiotamazuj.org/en/news/article/kiirs-envoy-says-december-polls-are-non-negotiable"},"note":"Vote in serious doubt: transitional government dissolved on 22 Sep 2026, main opposition rejects the polls, and no voter had been registered by 7 Oct 2026."},"tn":{"kind":"ed","a3":"788","langs":["en","ar","fr"],"ev":[{"t":"legislative","d":"2027-11","q":"range","d2":"2028-03"}],"evSrc":{"o":"Webdo","t":"Municipales : Un scrutin possible avant fin 2026, sinon d’ici mars 2027","d":"13 Oct 2026","u":"https://www.webdo.tn/fr/actualite/national/municipales-un-scrutin-possible-avant-fin-2026-sinon-dici-mars-2027/405501/"}}};
 
 /* ================== Éditions ==================
    Chaque pays a son fichier data/<cc>.json (questionnaire « ed » ou page d'information « info »), chargé à la demande.
@@ -1697,16 +1856,73 @@ function localizeEdition(D, lang) {
   return E;
 }
 
-/* Couleurs des partis : --c-<édition>-<parti>, clair et sombre, injectées au chargement de l'édition. */
+/* Couleurs des partis : --c-<édition>-<parti>, clair et sombre, injectées au chargement de l'édition.
+   Dans une édition, deux partis doivent se distinguer (ΔE CIE76 ≥ MIN_DE, dans chaque thème) et le sigle doit rester lisible
+   sur le badge (contraste ≥ 4,5:1 avec --on-party). Les couleurs de l'édition sont gardées quand elles conviennent ; sinon on
+   essaie la même teinte plus claire ou plus foncée, puis une palette fixe d'une dizaine de teintes (aussi utilisée quand
+   l'édition ne donne aucune couleur). Les partis sont traités dans l'ordre de l'édition : les premiers gardent leur couleur. */
 const cssId = s => String(s).toLowerCase().replace(/[^a-z0-9_-]/g, "-");
 const pvar = pid => `--c-${cssId(state.country)}-${cssId(pid)}`;
 const hex = c => (/^#[0-9a-f]{3,8}$/i.test(c || "") ? c : "");
+const MIN_DE = 20, MIN_TEXT = 4.6, ON_PARTY = ["#FFFFFF", "#110F19"];
+const PALETTE = [["#B3261E", "#FF8A80"], ["#1D5FA8", "#7FB6F5"], ["#2D7D46", "#7BD389"], ["#7B3FA0", "#C792EA"], ["#B85C00", "#FFB070"],
+  ["#00796B", "#5CD3C2"], ["#B0236B", "#F78DB8"], ["#7A6A00", "#E6D25A"], ["#455A64", "#9FB4BF"], ["#6D4C41", "#C9A28F"]];
+const rgbOf = h => { h = h.replace("#", ""); if (h.length < 6) h = h.replace(/./g, "$&$&"); return [0, 2, 4].map(i => parseInt(h.substr(i, 2), 16)); };
+const hexOf = c => "#" + c.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join("");
+const lin = v => { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+const unlin = v => 255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055);
+const lumOf = c => 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
+const contrastOf = (a, b) => { const x = lumOf(a), y = lumOf(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+function toLab(c) {
+  const r = lin(c[0]), g = lin(c[1]), b = lin(c[2]);
+  const f = t => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  const x = f((0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047), y = f(0.2126 * r + 0.7152 * g + 0.0722 * b), z = f((0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883);
+  return [116 * y - 16, 500 * (x - y), 200 * (y - z)];
+}
+function fromLab(l) {
+  const fy = (l[0] + 16) / 116, fx = fy + l[1] / 500, fz = fy - l[2] / 200;
+  const g = t => (t * t * t > 0.008856 ? t * t * t : (t - 16 / 116) / 7.787);
+  const x = g(fx) * 0.95047, y = g(fy), z = g(fz) * 1.08883;
+  return [unlin(3.2406 * x - 1.5372 * y - 0.4986 * z), unlin(-0.9689 * x + 1.8758 * y + 0.0415 * z), unlin(0.0557 * x - 0.204 * y + 1.057 * z)];
+}
+const deltaE = (a, b) => Math.sqrt(Math.pow(a[0] - b[0], 2) + Math.pow(a[1] - b[1], 2) + Math.pow(a[2] - b[2], 2));
+/* Éclaircit (thème sombre, texte foncé) ou assombrit (thème clair, texte blanc) jusqu'à un sigle lisible ; renvoie la couleur en Lab. */
+function fitLab(lab, k) {
+  const on = rgbOf(ON_PARTY[k]);
+  let l = lab.slice();
+  for (let i = 0; i < 60 && contrastOf(fromLab(l), on) < MIN_TEXT; i++) l[0] += k ? 1.5 : -1.5;
+  return toLab(fromLab(l).map(v => Math.max(0, Math.min(255, v))));
+}
+/* [clair, sombre] : { identifiant du parti : "#rrggbb" } */
+function partyColours(parties) {
+  return [0, 1].map(k => {
+    const chosen = [], out = {}, on = rgbOf(ON_PARTY[k]);
+    parties.forEach((p, i) => {
+      const given = hex((p.col || [])[k]) || hex((p.col || [])[0]) || PALETTE[i % PALETTE.length][k];
+      const base = toLab(rgbOf(given));
+      const cands = [{ lab: base, hex: given.length < 7 ? hexOf(rgbOf(given)) : given.slice(0, 7) }];
+      [-1, 1, -2, 2, -3, 3].forEach(m => cands.push({ lab: [base[0] + m * 9, base[1], base[2]] }));
+      PALETTE.forEach(pc => cands.push({ lab: toLab(rgbOf(pc[k])) }));
+      let best = null, bestD = -1;
+      for (let j = 0; j < cands.length; j++) {
+        const c = cands[j];
+        // la couleur de l'édition est gardée telle quelle quand le sigle y est déjà lisible
+        const asIs = c.hex && contrastOf(rgbOf(c.hex), on) >= MIN_TEXT;
+        const lab = asIs ? c.lab : fitLab(c.lab, k);
+        const d = chosen.length ? Math.min.apply(null, chosen.map(x => deltaE(x, lab))) : 999;
+        if (d > bestD) { best = { lab: lab, hex: asIs ? c.hex : hexOf(fromLab(lab)) }; bestD = d; }
+        if (d >= MIN_DE) break;
+      }
+      chosen.push(best.lab);
+      out[p.id] = best.hex;
+    });
+    return out;
+  });
+}
 function injectColours(D) {
   if (D.kind !== "ed" || !D.ed || $("pc-" + cssId(D.id))) return;
-  const vars = k => D.ed.parties.map(p => {
-    const c = hex((p.col || [])[k]) || hex((p.col || [])[0]);
-    return c ? `--c-${cssId(D.id)}-${cssId(p.id)}:${c}` : "";
-  }).filter(Boolean).join(";");
+  const cols = partyColours(D.ed.parties);
+  const vars = k => D.ed.parties.map(p => `--c-${cssId(D.id)}-${cssId(p.id)}:${cols[k][p.id]}`).join(";");
   const st = document.createElement("style");
   st.id = "pc-" + cssId(D.id);
   st.textContent = `:root{${vars(0)}}@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){${vars(1)}}}:root[data-theme="dark"]{${vars(1)}}`;
@@ -1743,8 +1959,10 @@ function srcObj(id) {
   const D = state.country && DATA[state.country];
   return (D && D.src && D.src[id]) || SRC_AF[id] || null;
 }
+/* Date d'une source : ISO (AAAA, AAAA-MM, AAAA-MM-JJ) mise en forme dans la langue de l'interface ; un texte libre reste tel quel. */
+const srcDate = d => (/^\d{4}(-\d\d){0,2}$/.test(d || "") ? fmtDate(d) : d);
 function srcA(s) {
-  return s ? `<a href="${esc(s.u)}" target="_blank" rel="noopener">${esc(s.o)}, ${esc(s.d)}</a>` : "";
+  return s ? `<a href="${esc(s.u)}" target="_blank" rel="noopener">${esc(s.o)}, ${esc(srcDate(s.d))}</a>` : "";
 }
 const srcLink = id => srcA(srcObj(id));
 const srcLine = (ids, L, style) => {
@@ -1752,9 +1970,9 @@ const srcLine = (ids, L, style) => {
   return links.length ? `<p class="src muted"${style ? ` style="${style}"` : ""}>${L.source}${C()} ${links.join(" · ")}</p>` : "";
 };
 /* Candidat·e à la présidentielle, ou dirigeant·e du parti (élection sans présidentielle, candidat·e pas encore désigné·e). */
-function candLine(p, E, L) {
+function candLine(p, E, L, short) {
   const lead = E.role === "leader" || !!p.candNote;
-  return `${lead ? L.partyLeader : L.presCand}${C()} ${esc(p.cand)}${p.candNote ? ` <span class="cand-note">(${esc(p.candNote)})</span>` : ""}`;
+  return `${lead ? L.partyLeader : L.presCand}${C()} ${esc(p.cand)}${p.candNote && !short ? ` <span class="cand-note">(${esc(p.candNote)})</span>` : ""}`;
 }
 function noteHTML(E, L) {
   return E.note ? `<p class="caveat"><b>${L.noteLabel}${C()}</b> <span lang="${esc(E.noteLang)}" dir="auto">${esc(E.note)}</span></p>` : "";
@@ -1788,7 +2006,7 @@ function catName(cc) {
 function fmtDate(iso) {
   const parts = iso.split("-").map(Number);
   const d = new Date(Date.UTC(parts[0], (parts[1] || 1) - 1, parts[2] || 15, 12));
-  const opts = parts.length === 3 ? { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" } : { month: "long", year: "numeric", timeZone: "UTC" };
+  const opts = parts.length === 3 ? { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" } : parts.length === 2 ? { month: "long", year: "numeric", timeZone: "UTC" } : { year: "numeric", timeZone: "UTC" };
   try { return new Intl.DateTimeFormat(locale(), opts).format(d); } catch (e) { return iso; }
 }
 function evText(ev) {
@@ -1811,7 +2029,7 @@ function isUp(id) {
 function statusLine(id) {
   const c = AFRICA[id];
   if (!c) return t().legDisputed;
-  if (isUp(id) || catFor(id)) return evsFor(id).map(evText).join(" ; ") || t().legNone;
+  if (isUp(id) || catFor(id)) return evsFor(id).map(evText).join(state.ui === "ar" ? " ؛ " : " ; ") || t().legNone;
   return t().legNone;
 }
 function kindLine(cat, L) { return cat ? (cat.kind === "ed" ? "✓ " + L.legReady : "ⓘ " + L.legInfo) : ""; }
@@ -1939,7 +2157,7 @@ function route(h) {
   navMode = "replace";
   loadSeq++;
   clearTimeout(advanceTimer); clearTimeout(backTimer);
-  closeFiche();
+  closeFiche(); closeQList();
   curHash = location.hash;
   const cat = r.cc ? CATALOG[r.cc] : null;
   const id = cat ? cat.a3 : r.cc ? A2ID[r.cc] : null;
@@ -2050,12 +2268,32 @@ function renderChrome() {
   document.documentElement.lang = state.ui;
   document.documentElement.dir = (langOf(state.ui) || {}).rtl ? "rtl" : "ltr";
   $("protoTag").textContent = L.proto;
-  // Pendant le chargement d'un pays, seules ses langues sont proposées (les autres restent visibles mais désactivées)
+  // Pendant le chargement d'un pays, seules ses langues sont proposées. Une langue indisponible reste focalisable
+  // (aria-disabled, pas disabled) : on entend et on voit pourquoi (infobulle), au lieu d'un bouton muet.
   const loadCat = (state.view === "loading" || state.view === "loaderror") && CATALOG[state.loadCc];
   const list = state.country && DATA[state.country] ? ed().langs : LANGS.map(l => ({ code: l.code, label: l.code.toUpperCase(), name: l.name, ready: !loadCat || loadCat.langs.includes(l.code) }));
-  $("langs").innerHTML = list.map(l => `<button type="button" data-lang="${l.code}" aria-pressed="${state.ui === l.code}" ${l.ready ? "" : "disabled"} title="${l.name}${l.ready ? "" : " · " + L.soonLang}" lang="${l.code}">${l.label}</button>`).join("");
+  $("langs").innerHTML = list.map(l => `<button type="button" data-lang="${l.code}" aria-pressed="${state.ui === l.code}" ${l.ready ? "" : 'aria-disabled="true" aria-describedby="langTip"'} title="${l.name}${l.ready ? "" : " · " + L.langWhy}" lang="${l.code}">${l.label}</button>`).join("");
   $("langs").setAttribute("aria-label", L.langLabel);
-  $("footer").innerHTML = `<span>${L.footer1}</span><span>${L.footer2}</span>`;
+  $("langTip").textContent = L.langWhy;
+  // Le slogan de prudence sur les positions codées n'a de sens que là où des positions de partis sont affichées
+  const pos = ["start", "question", "checkpoint", "results"].includes(state.view);
+  $("footer").innerHTML = `${pos ? `<span>${L.footer1}</span>` : ""}<span>${L.footer2}</span>`;
+  // Lien d'évitement : seulement sur la carte (premier élément focalisable de la page)
+  const sk = $("skip");
+  sk.textContent = L.skipList;
+  sk.hidden = state.view !== "map";
+  document.body.classList.toggle("qv", state.view === "question");
+}
+/* Infobulle d'une langue indisponible : au survol, au focus ou au toucher ; placée sous le bouton, sans déborder de l'écran. */
+let langTipTimer = null;
+function langTip(btn) {
+  const tip = $("langTip");
+  clearTimeout(langTipTimer);
+  if (!btn) { tip.hidden = true; return; }
+  tip.hidden = false;
+  const r = btn.getBoundingClientRect(), w = tip.offsetWidth;
+  tip.style.top = Math.round(r.bottom + 6) + "px";
+  tip.style.left = Math.round(Math.max(8, Math.min(r.left + r.width / 2 - w / 2, document.documentElement.clientWidth - w - 8))) + "px";
 }
 function renderSteps(active) {
   const el = $("steps");
@@ -2082,16 +2320,23 @@ function titleOf(h) {
 let booted = false;
 function land(h) {
   let y = 0;
-  if (state.view === "question") {
-    const meta = $("app").querySelector(".q-meta"), ans = $("app").querySelectorAll(".ans");
+  if (state.view === "question") {   // la carte de la question (et non le haut de la fenêtre) reste en vue, si les réponses ne tiennent pas dans l'écran
+    const meta = $("app").querySelector(".q-top"), ans = $("app").querySelectorAll(".ans");
     const last = ans[ans.length - 1];
     if (meta && last && last.getBoundingClientRect().bottom + window.scrollY > window.innerHeight) y = Math.max(0, meta.getBoundingClientRect().top + window.scrollY - 8);
   }
   window.scrollTo({ top: y });
   if (h && booted) { try { h.focus({ preventScroll: true }); } catch (e) { h.focus(); } }
 }
+let lastView = null;
 function show(html, step, cls, keep) {
-  $("app").innerHTML = `<section class="${cls || "screen"}">${html}</section>`;
+  // Réaffichage de la même page (changement de langue, sujet coché) : les sections ouvertes (<details>) le restent
+  const open = keep ? [].map.call($("app").querySelectorAll("details"), d => d.open) : [];
+  // Fondu d'entrée seulement quand l'écran change vraiment (pas d'une question à la suivante, ni au réaffichage)
+  const enter = !keep && state.view !== lastView;
+  lastView = state.view;
+  $("app").innerHTML = `<section class="${cls || "screen"}${enter ? " enter" : ""}">${html}</section>`;
+  if (open.length) [].forEach.call($("app").querySelectorAll("details"), (d, i) => { if (open[i]) d.open = true; });
   renderChrome();
   renderSteps(step);
   syncUrl();
@@ -2118,37 +2363,112 @@ function rerender() {
   window.scrollTo({ top: y });
 }
 
-/* ================== Carte ================== */
+/* ================== Carte ==================
+   Chaque pays qui a un questionnaire ou une fiche, et chaque île, a un marqueur : une zone tactile invisible d'au moins
+   12 px de rayon à l'écran (quelle que soit la largeur de la carte), avec son repère (✓ ou ⓘ) par-dessus. Les marqueurs
+   qui se chevauchent (Gambie et Guinée-Bissau, Cap-Vert…) sont écartés les uns des autres, un trait les relie à leur vrai
+   emplacement : toucher un marqueur ouvre toujours son propre pays. Au clavier, seuls les pays avec une élection ou un
+   contenu sont dans l'ordre de tabulation (par nom), les autres restent accessibles par la liste. */
 const INFO_MARK = (x, y, r) => `<circle class="ring" cx="${x}" cy="${y}" r="${r}"></circle><path class="stem" d="M${x} ${y - r * .1}v${r * .55}"></path><circle class="dot" cx="${x}" cy="${y - r * .5}" r="${r * .17}"></circle>`;
+const CHECK_MARK = (x, y) => `<circle class="pin" cx="${x}" cy="${y}" r="11"></circle><path class="pin-check" d="M${x - 5} ${y}l3.5 3.5L${x + 6} ${y - 5}"></path>`;
+const MK_R = 18;   // rayon de la zone tactile, en unités locales du marqueur (anneau : 11)
+function markerIds() {
+  const ids = Object.values(CATALOG).filter(c => c.a3 && AFRICA[c.a3] && (MAP.isl[c.a3] || MAP.cent[c.a3])).map(c => c.a3);
+  Object.keys(MAP.isl).forEach(id => { if (ids.indexOf(id) < 0) ids.push(id); });
+  return ids.sort();
+}
 function mapSVG() {
   const L = t();
-  const ids = Object.keys(MAP.c);
   const aria = id => {
     const k = kindLine(catFor(id), L);
     return esc(`${cname(id)} · ${statusLine(id)}${k ? " · " + k.slice(2) : ""}`);
   };
-  const paths = ids.map(id => {
-    const d = MAP.c[id];
-    if (id === "732") return `<path class="disp" d="${d}"><title>${esc(cname("732"))} · ${esc(L.legDisputed)}</title></path>`;
-    return `<path class="ctry ${isUp(id) ? "up" : "none"}" data-place="${id}" d="${d}" tabindex="0" role="button" aria-label="${aria(id)}"></path>`;
-  }).join("");
-  const isl = Object.entries(MAP.isl).map(([id, [x, y]]) => {
-    return `<circle class="isl-hit" data-place="${id}" cx="${x}" cy="${y}" r="22" aria-hidden="true"></circle><circle class="isl ${isUp(id) ? "up" : "none"}" data-place="${id}" cx="${x}" cy="${y}" r="9" tabindex="0" role="button" aria-label="${aria(id)}"></circle>`;
-  }).join("");
-  const pins = Object.values(CATALOG).filter(c => c.a3 && AFRICA[c.a3] && (MAP.isl[c.a3] || MAP.cent[c.a3])).map(c => {
-    const [x, y] = MAP.isl[c.a3] || MAP.cent[c.a3];
-    if (c.kind === "info") return `<g class="pin-info">${INFO_MARK(x, y, 9)}</g>`;
-    return `<circle class="pin" cx="${x}" cy="${y}" r="11"></circle><path class="pin-check" d="M${x - 5} ${y}l3.5 3.5L${x + 6} ${y - 5}"></path>`;
+  const foc = id => isUp(id) || !!catFor(id);
+  // Une île a sa forme (minuscule) et son point : seul le point est dans l'ordre de tabulation
+  const shape = id => {
+    const tab = foc(id) ? 0 : -1;
+    let h = MAP.c[id] ? `<path class="ctry ${isUp(id) ? "up" : "none"}" data-place="${id}" d="${MAP.c[id]}" tabindex="${MAP.isl[id] ? -1 : tab}" role="button" aria-label="${aria(id)}"${MAP.isl[id] ? ' aria-hidden="true"' : ""}></path>` : "";
+    if (MAP.isl[id]) h += `<circle class="isl ${isUp(id) ? "up" : "none"}" data-place="${id}" cx="${MAP.isl[id][0]}" cy="${MAP.isl[id][1]}" r="9" tabindex="${tab}" role="button" aria-label="${aria(id)}"></circle>`;
+    return h;
+  };
+  const all = Object.keys(MAP.c).filter(id => id !== "732").concat(Object.keys(MAP.isl).filter(id => !MAP.c[id]));
+  const sorted = all.filter(foc).sort((a, b) => cname(a).localeCompare(cname(b), locale()));
+  const shapes = (MAP.c["732"] ? `<path class="disp" d="${MAP.c["732"]}"><title>${esc(cname("732"))} · ${esc(L.legDisputed)}</title></path>` : "")
+    + all.filter(id => !foc(id)).map(shape).join("") + sorted.map(shape).join("");
+  const marks = markerIds().map(id => {
+    const [x, y] = MAP.isl[id] || MAP.cent[id];
+    const cat = catFor(id);
+    const sym = !cat ? "" : cat.kind === "info" ? `<g class="pin-info">${INFO_MARK(0, 0, 9)}</g>` : CHECK_MARK(0, 0);
+    return `<g class="mk" data-place="${id}" data-x="${x}" data-y="${y}" transform="translate(${x} ${y})" aria-hidden="true"><circle class="mk-halo" r="16"></circle><circle class="mk-focus" r="16"></circle><circle class="mk-hit" r="${MK_R}"></circle>${sym}</g>`;
   }).join("");
   return `<svg viewBox="${MAP.vb.join(" ")}" role="group" aria-label="${esc(L.mapAria)}" dir="ltr">
-    <defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="var(--none)"></rect><rect width="1.6" height="6" fill="var(--none-hatch)"></rect></pattern></defs>
-    <path class="nb" d="${MAP.nb}"></path>${paths}${isl}${pins}
+    <defs><pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" fill="var(--none)"></rect><rect width="1.8" height="5" fill="var(--none-hatch)"></rect></pattern></defs>
+    <path class="nb" d="${MAP.nb}"></path>${shapes}<g class="leads"></g><g class="marks">${marks}</g><g class="fring"></g>
   </svg><div class="tip" id="tip" hidden></div>`;
+}
+/* Place les marqueurs : taille d'écran constante (zone tactile ≥ 12 px de rayon), écartés quand ils se touchent. */
+function layoutMarkers() {
+  const wrap = $("mapWrap"), svg = wrap && wrap.querySelector("svg");
+  if (!svg) return;
+  const w = svg.getBoundingClientRect().width;
+  if (!w) return;
+  const k = w / MAP.vb[2];                       // pixels d'écran par unité de la carte
+  const S = Math.max(1, 12 / (MK_R * k));         // échelle d'un marqueur
+  const gap = 2 * MK_R * S;                       // distance minimale entre deux centres, en unités de la carte
+  const m = [].map.call(svg.querySelectorAll(".mk"), el => ({ el: el, ax: +el.dataset.x, ay: +el.dataset.y, x: +el.dataset.x, y: +el.dataset.y }));
+  const x0 = MAP.vb[0] + gap / 2, x1 = MAP.vb[0] + MAP.vb[2] - gap / 2, y0 = MAP.vb[1] + gap / 2, y1 = MAP.vb[1] + MAP.vb[3] - gap / 2;
+  for (let it = 0; it < 120; it++) {
+    let moved = false;
+    for (let i = 0; i < m.length; i++) for (let j = i + 1; j < m.length; j++) {
+      let dx = m[j].x - m[i].x, dy = m[j].y - m[i].y, d = Math.sqrt(dx * dx + dy * dy);
+      if (d >= gap) continue;
+      if (d < 0.01) { dx = Math.cos(i * 2.4 + j); dy = Math.sin(i * 2.4 + j); d = 1; }
+      const push = (gap - d) / 2 + 0.05, ux = dx / d, uy = dy / d;
+      m[i].x -= ux * push; m[i].y -= uy * push; m[j].x += ux * push; m[j].y += uy * push;
+      moved = true;
+    }
+    for (let i = 0; i < m.length; i++) {
+      if (it < 90) { m[i].x += (m[i].ax - m[i].x) * 0.03; m[i].y += (m[i].ay - m[i].y) * 0.03; }   // rappel léger vers l'emplacement réel
+      m[i].x = Math.max(x0, Math.min(x1, m[i].x)); m[i].y = Math.max(y0, Math.min(y1, m[i].y));
+    }
+    if (!moved && it >= 90) break;
+  }
+  let leads = "";
+  m.forEach(o => {
+    o.el.setAttribute("transform", `translate(${o.x.toFixed(1)} ${o.y.toFixed(1)}) scale(${S.toFixed(3)})`);
+    const far = Math.sqrt(Math.pow(o.x - o.ax, 2) + Math.pow(o.y - o.ay, 2));
+    if (far > 11 * S * 0.9) leads += `<line class="lead" x1="${o.ax}" y1="${o.ay}" x2="${o.x.toFixed(1)}" y2="${o.y.toFixed(1)}"></line><circle class="lead-dot" cx="${o.ax}" cy="${o.ay}" r="${(2.6 / k).toFixed(1)}"></circle>`;
+  });
+  svg.querySelector(".leads").innerHTML = leads;
+}
+/* Recherche d'un pays : sans accents ni majuscules, tous les mots doivent se retrouver ; noms dans les 5 langues de l'interface
+   et appellations courantes (anglais, français, portugais) qui ne sont pas le nom officiel. */
+const fold = x => String(x == null ? "" : x).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[\u2019'`\u00b4.\-_,]/g, " ").replace(/\s+/g, " ").trim();
+const ALIASES = {
+  "384": "ivory coast cote d ivoire costa do marfim civ", "132": "cape verde cabo verde cap vert", "748": "swaziland eswatini",
+  "178": "congo brazzaville republic of the congo republique du congo congo brazza", "180": "congo kinshasa democratic republic of the congo drc dr congo rdc rd congo zaire republique democratique du congo",
+  "624": "guinea bissau guine bissau guinee bissau", "226": "equatorial guinea guinee equatoriale guine equatorial", "140": "central african republic car rca centrafrique republica centro africana",
+  "854": "burkina faso upper volta", "204": "benin dahomey", "678": "sao tome and principe sao tome et principe", "710": "south africa afrique du sud africa do sul rsa",
+  "728": "south sudan soudan du sud sudao do sul", "729": "sudan soudan sudao", "834": "tanzania tanzanie tanzania", "800": "uganda ouganda", "818": "egypt egypte egito",
+  "504": "morocco maroc marrocos", "12": "algeria algerie argelia", "788": "tunisia tunisie tunisia", "434": "libya libye libia", "270": "gambia the gambia gambie",
+  "480": "mauritius maurice ile maurice", "690": "seychelles", "174": "comoros comores", "450": "madagascar", "148": "chad tchad", "466": "mali"
+};
+let searchIdx = null;
+function searchIndex() {
+  if (searchIdx) return searchIdx;
+  searchIdx = {};
+  Object.keys(AFRICA).forEach(id => {
+    const names = LANGS.map(l => cname(id, l.code)).concat([AFRICA[id].fr, AFRICA[id].en, AFRICA[id].a2, ALIASES[id] || ALIASES[String(+id)] || ""]);
+    const f = fold(names.join(" "));
+    searchIdx[id] = f + " " + f.replace(/ /g, "");   // aussi sans espaces : « cote divoire », « guineebissau »
+  });
+  return searchIdx;
 }
 function countryList(filter) {
   const L = t();
-  const f = (filter || "").trim().toLowerCase();
-  const ids = Object.keys(AFRICA).filter(id => !f || cname(id).toLowerCase().includes(f) || AFRICA[id].fr.toLowerCase().includes(f) || AFRICA[id].en.toLowerCase().includes(f));
+  const words = fold(filter).split(" ").filter(Boolean);
+  const idx = words.length ? searchIndex() : null;
+  const ids = Object.keys(AFRICA).filter(id => !idx || words.every(w => idx[id].indexOf(w) >= 0));
   const sort = arr => arr.sort((a, b) => cname(a).localeCompare(cname(b), locale()));
   const up = sort(ids.filter(isUp)), no = sort(ids.filter(id => !isUp(id)));
   const mark = id => {
@@ -2157,8 +2477,9 @@ function countryList(filter) {
     return cat.kind === "ed" ? ` <span aria-hidden="true">✓</span><span class="sr">${esc(L.legReady)}</span>` : ` <span aria-hidden="true">ⓘ</span><span class="sr">${esc(L.legInfo)}</span>`;
   };
   const item = id => `<li><button type="button" class="cbtn" data-place="${id}"><span class="dot ${isUp(id) ? "up" : "none"}" aria-hidden="true"></span><span><span class="cn2">${esc(cname(id))}${mark(id)}</span><span class="cs2">${esc(isUp(id) || catFor(id) ? statusLine(id) : L.legNone)}</span></span></button></li>`;
-  return `${up.length ? `<div class="clist-group"><h3>${L.legUp} · ${L.nCountries(up.length)}</h3><ul class="clist2">${up.map(item).join("")}</ul></div>` : ""}
-    ${no.length ? `<div class="clist-group"><h3>${L.legNone} · ${L.nCountries(no.length)}</h3><ul class="clist2">${no.map(item).join("")}</ul></div>` : ""}`;
+  if (!ids.length) return `<p class="muted" role="status">${esc(L.noCountry)}</p>`;
+  return `${up.length ? `<div class="clist-group"><h2>${L.legUp} · ${L.nCountries(up.length)}</h2><ul class="clist2">${up.map(item).join("")}</ul></div>` : ""}
+    ${no.length ? `<div class="clist-group"><h2>${L.legNone} · ${L.nCountries(no.length)}</h2><ul class="clist2">${no.map(item).join("")}</ul></div>` : ""}`;
 }
 function viewMap(keep) {
   state.view = "map"; state.country = null; state.place = null;
@@ -2168,7 +2489,7 @@ function viewMap(keep) {
   const nReady = inAfrica.filter(c => c.kind === "ed").length, nInfo = inAfrica.filter(c => c.kind === "info").length;
   show(`
     <div class="map-intro">
-      <p class="kicker">${L.heroKicker}</p>
+      <p class="kicker">${L.heroKicker(inAfrica.length)}</p>
       <h1 class="map-title">${L.mapTitle}</h1>
       <p class="lead">${L.mapLead}</p>
     </div>
@@ -2180,7 +2501,7 @@ function viewMap(keep) {
       <ul class="legend">
         <li><span class="sw up" aria-hidden="true"></span><span>${L.legUp}</span><span class="cnt">${nUp}</span></li>
         <li><span class="sw none" aria-hidden="true"></span><span>${L.legNone}</span><span class="cnt">${nNo}</span></li>
-        <li><span class="sw ready" aria-hidden="true"></span><span>${L.legReady}</span><span class="cnt">${nReady}</span></li>
+        <li><span class="sw ready" aria-hidden="true"><svg class="pin-key" viewBox="-13 -13 26 26">${CHECK_MARK(0, 0)}</svg></span><span>${L.legReady}</span><span class="cnt">${nReady}</span></li>
         <li class="leg-info"><span class="sw info" aria-hidden="true"><svg class="pin-info" viewBox="0 0 18 18">${INFO_MARK(9, 9, 7.6)}</svg></span><span>${L.legInfo}</span><span class="cnt">${nInfo}</span></li>
         <li><span class="sw disp" aria-hidden="true"></span><span>${L.legDisputed}</span><span class="cnt">1</span></li>
       </ul>
@@ -2196,9 +2517,13 @@ function viewMap(keep) {
   `, null, "screen map-screen", keep);
   bindMap();
 }
+let mapRO = null;
 function bindMap() {
   const wrap = $("mapWrap"), tip = $("tip");
   if (!wrap) return;
+  layoutMarkers();
+  if (mapRO) { mapRO.disconnect(); mapRO = null; }
+  if (window.ResizeObserver) { mapRO = new ResizeObserver(layoutMarkers); mapRO.observe(wrap); }
   const showTip = (el, x, y) => {
     const id = el.dataset.place;
     const k = kindLine(catFor(id), t());
@@ -2211,6 +2536,17 @@ function bindMap() {
     if (top < 0) top = y - r.top + 18;
     tip.style.left = left + "px"; tip.style.top = top + "px";
   };
+  // Le repère du pays dont la forme a le focus au clavier : la forme d'un petit pays (Gambie) est trop fine pour porter un cadre
+  const markFocus = (id, on) => { const g = wrap.querySelector(`.mk[data-place="${id}"]`); if (g) g.classList.toggle("kf", on); };
+  // Cadre de focus à deux tons autour de la forme du pays (ou du point d'une île), au clavier seulement
+  const ring = el => {
+    const g = wrap.querySelector(".fring");
+    if (!g) return;
+    let vis = !!el;
+    try { vis = !!el && el.matches(":focus-visible"); } catch (e) { /* ancien navigateur : toujours montré */ }
+    const one = c => el.tagName.toLowerCase() === "path" ? `<path class="${c}" d="${el.getAttribute("d")}"></path>` : `<circle class="${c}" cx="${el.getAttribute("cx")}" cy="${el.getAttribute("cy")}" r="${+el.getAttribute("r") + 1}"></circle>`;
+    g.innerHTML = vis ? one("fr-halo") + one("fr-ink") : "";
+  };
   wrap.addEventListener("pointermove", e => {
     const el = e.target.closest("[data-place]");
     if (!el || e.pointerType === "touch") { tip.hidden = true; return; }
@@ -2220,16 +2556,32 @@ function bindMap() {
   wrap.addEventListener("focusin", e => {
     const el = e.target.closest("[data-place]");
     if (!el) return;
+    markFocus(el.dataset.place, true);
+    ring(el);
     const b = el.getBoundingClientRect();
     showTip(el, b.left + b.width / 2, b.top + b.height / 2);
   });
-  wrap.addEventListener("focusout", () => { tip.hidden = true; });
+  wrap.addEventListener("focusout", e => {
+    const el = e.target.closest && e.target.closest("[data-place]");
+    if (el) markFocus(el.dataset.place, false);
+    ring(null);
+    tip.hidden = true;
+  });
   wrap.addEventListener("keydown", e => {
     const el = e.target.closest("[data-place]");
     if (el && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); chooseCountry(el.dataset.place); }
   });
   const s = $("csearch");
   if (s) s.addEventListener("input", () => { $("clist").innerHTML = countryList(s.value); });
+}
+/* Lien d'évitement « Aller à la liste des pays » : ouvre la liste et place le focus sur sa recherche. */
+function skipToList() {
+  const box = $("listBox");
+  if (!box) return;
+  box.open = true;
+  const f = $("csearch");
+  if (f) f.focus();
+  box.scrollIntoView({ block: "start" });
 }
 /* Un pays touché sur la carte ou dans la liste : nouvelle entrée d'historique #/<cc> (Retour referme le choix de langue). */
 function chooseCountry(id) {
@@ -2253,7 +2605,8 @@ function openLang(id) {
   const other = LANGS.filter(l => !c.langs.includes(l.code));
   const btn = l => {
     const off = !!avail && !avail.includes(l.code);
-    return `<button type="button" class="lang-btn${l.code === state.ui && !off ? " cur" : ""}" data-pick="${l.code}" lang="${l.code}" dir="${l.rtl ? "rtl" : "ltr"}"${off ? " disabled" : ""}><span><span>${l.name}</span>${off ? `<span class="lnote" lang="${state.ui}" dir="${uiDir}">${esc(note)}</span>` : ""}</span><span class="lc">${l.code.toUpperCase()}</span></button>`;
+    // Langue indisponible : reste focalisable (aria-disabled) et dit pourquoi (la note visible sert de description)
+    return `<button type="button" class="lang-btn${l.code === state.ui && !off ? " cur" : ""}" data-pick="${l.code}" lang="${l.code}" dir="${l.rtl ? "rtl" : "ltr"}"${off ? ` aria-disabled="true" aria-describedby="ln-${l.code}"` : ""}><span><span>${l.name}</span>${off ? `<span class="lnote" id="ln-${l.code}" lang="${state.ui}" dir="${uiDir}">${esc(note)}</span>` : ""}</span><span class="lc">${l.code.toUpperCase()}</span></button>`;
   };
   $("langBody").innerHTML = `
     <div><p class="eyebrow">${esc(cname(id))}</p><h2 id="langTitle">${L.chooseLang}</h2><p class="st">${esc(statusLine(id))}</p>${cat ? `<p class="st">${esc(kindLine(cat, L))}</p>` : ""}</div>
@@ -2262,7 +2615,7 @@ function openLang(id) {
     <div><button class="btn btn-ghost" type="button" id="langCancel">${L.cancel}</button></div>`;
   const dlg = $("langDlg");
   if (typeof dlg.showModal === "function") { if (!dlg.open) dlg.showModal(); } else dlg.setAttribute("open", "");
-  const first = $("langBody").querySelector(".lang-btn.cur") || $("langBody").querySelector(".lang-btn:not(:disabled)");
+  const first = $("langBody").querySelector(".lang-btn.cur") || $("langBody").querySelector('.lang-btn:not([aria-disabled="true"])');
   if (first) first.focus();
 }
 function closeLang() { const d = $("langDlg"); if (d.open) { if (typeof d.close === "function") d.close(); else d.removeAttribute("open"); } }
@@ -2343,10 +2696,10 @@ function viewInfo(id, keep) {
   const L = t(), c = AFRICA[id];
   const name = cname(id);
   const up = isUp(id);
+  // Une seule phrase d'état (le titre) ; dessous, seulement ce qui s'y ajoute : dates, précisions, dernier et prochain scrutin
   const lines = [];
   if (up) evsFor(id).forEach(ev => lines.push(`<li><span class="dot up" aria-hidden="true"></span><span>${esc(evText(ev))}</span></li>`));
   else {
-    lines.push(`<li><span class="dot none" aria-hidden="true"></span><span>${esc(L.legNone)}</span></li>`);
     if (c.note) lines.push(`<li><span class="dot none" aria-hidden="true"></span><span>${esc(L.notes[c.note])}</span></li>`);
     if (c.recent) lines.push(`<li><span class="dot none" aria-hidden="true"></span><span>${esc(L.recent(fmtDate(c.recent)))}</span></li>`);
     if (c.next) lines.push(`<li><span class="dot none" aria-hidden="true"></span><span>${esc(L.nextKnown)}${C()} ${esc(evText(c.next))}</span></li>`);
@@ -2355,18 +2708,18 @@ function viewInfo(id, keep) {
   const s = (cat && cat.evSrc) || SRC_AF[c.src];
   show(`
     <div class="strip">
-      <span><b>${esc(name)}</b><br><span class="sd">${esc(up ? L.upcoming : L.legNone)}</span></span>
+      <span><b>${esc(name)}</b>${up ? `<br><span class="sd">${esc(L.upcoming)}</span>` : ""}</span>
       <button class="link" type="button" data-go="home">${L.changeCountry}</button>
     </div>
     <div class="block">
       <h1 class="big-title">${esc(up ? L.prepTitle(name) : L.noneTitle(name))}</h1>
     </div>
-    <ul class="ev-list">${lines.join("")}</ul>
+    ${lines.length ? `<ul class="ev-list">${lines.join("")}</ul>` : ""}
     ${s ? `<p class="src muted">${L.source}${C()} ${srcA(s)}</p>` : ""}
     ${up ? `<p class="lead">${L.prepText}</p>` : ""}
     <div class="actions">
-      ${CATALOG.ng ? `<button class="btn btn-primary" type="button" data-go="nigeria">${L.tryNigeria}</button>` : ""}
-      <button class="btn btn-ghost" type="button" data-go="home">${L.backMap}</button>
+      <button class="btn btn-primary" type="button" data-go="home">${L.backMap}</button>
+      ${CATALOG.ng ? `<button class="link" type="button" data-go="nigeria">${L.tryNigeria}</button>` : ""}
     </div>
   `, null, "screen", keep);
 }
@@ -2408,12 +2761,12 @@ function viewEdInfo(keep) {
     </section>
     <section class="info-src" aria-labelledby="hSrc">
       <h2 id="hSrc">${L.mSrcTitle}</h2>
-      <ol class="src-list">${all.map(id => { const s = E.src[id]; return `<li><a href="${esc(s.u)}" target="_blank" rel="noopener">${esc(s.t)}</a> · ${esc(s.o)}, ${esc(s.d)}</li>`; }).join("")}</ol>
+      <ol class="src-list">${all.map(id => { const s = E.src[id]; return `<li><a href="${esc(s.u)}" target="_blank" rel="noopener">${esc(s.t)}</a> · ${esc(s.o)}, ${esc(srcDate(s.d))}</li>`; }).join("")}</ol>
       ${E.lang !== E.baseLang ? `<p class="caveat">${L.mTransl}</p>` : ""}
     </section>
     <div class="actions">
-      ${CATALOG.ng && E.cc !== "ng" ? `<button class="btn btn-primary" type="button" data-go="nigeria">${L.tryNigeria}</button>` : ""}
-      <button class="btn btn-ghost" type="button" data-go="home">${L.backMap}</button>
+      <button class="btn btn-primary" type="button" data-go="home">${L.backMap}</button>
+      ${CATALOG.ng && E.cc !== "ng" ? `<button class="link" type="button" data-go="nigeria">${L.tryNigeria}</button>` : ""}
     </div>
   `, null, "screen", keep);
 }
@@ -2425,7 +2778,6 @@ function viewStart(keep) {
   const full = state.priorities.length >= 3;
   const n = state.priorities.length;
   const done = answeredCount();
-  const openDetails = [...document.querySelectorAll(".about details")].map(d => d.open);
   show(`
     <div class="strip">
       <span><b>${esc(edName(E))} · ${esc(E.strip)}</b><br><span class="sd">${esc(E.stripDate)}</span></span>
@@ -2469,11 +2821,10 @@ function viewStart(keep) {
       </button>`;
     }).join("")}</div>
     <div class="sticky-go">
-      <button class="btn btn-${done && state.order.length ? "ghost" : "primary"}" type="button" data-go="startq" ${n ? "" : "disabled"}>${L.startPrio}</button>
-      <span class="mono muted" style="font-size:.85rem">${L.chosen(n)}</span>
+      <button class="btn btn-${done && state.order.length ? "ghost" : "primary"}" type="button" data-go="startq" aria-describedby="goHint" ${n ? "" : "disabled"}>${L.startPrio}</button>
+      <span class="mono muted" id="goHint" style="font-size:.85rem">${n ? L.chosen(n) : L.startHint}</span>
     </div>
   `, 0, "screen", keep);
-  if (keep) document.querySelectorAll(".about details").forEach((d, i) => { d.open = !!openDetails[i]; });
 }
 function buildOrder() {
   const E = ed();
@@ -2493,32 +2844,27 @@ function viewQuestion(keep) {
   const q = E.questions[qi];
   const th = E.themes.find(x => x.id === q.theme);
   const inPrio = state.i < state.nPrio;
-  const blockN = inPrio ? state.nPrio : state.order.length - state.nPrio;
-  const blockI = inPrio ? state.i + 1 : state.i - state.nPrio + 1;
   const v = state.answers[qi];
   const allPrioSeen = state.order.slice(0, state.nPrio).every(x => state.answers[x] !== undefined);
-  const progress = state.order.map((x, k) => {
-    const a = state.answers[x];
-    const cls = [
-      k > 0 && E.questions[state.order[k - 1]].theme !== E.questions[x].theme ? "theme-start" : "",
-      k < state.nPrio ? "prio" : "",
-      typeof a === "number" ? "done" : a === null ? "skipped" : "",
-      k === state.i ? "current" : ""
-    ].join(" ");
-    return `<button type="button" class="${cls}" data-goto="${k}" aria-label="${L.qOf(k + 1, state.order.length)}"${k === state.i ? ' aria-current="step"' : ""}></button>`;
-  }).join("");
-  // « Compte double » : bouton à bascule au-dessus des réponses, lié à CETTE question (data-dbl), jamais à state.i au moment du clic
+  const n = state.order.length, pos = state.i + 1;
+  // Une seule ligne de progression : « 12 / 38 », une fine barre (repère à la fin des sujets prioritaires) et la liste des questions
+  const tick = state.nPrio > 0 && state.nPrio < n ? `<i class="tick" style="inset-inline-start:${(state.nPrio / n * 100).toFixed(1)}%"></i>` : "";
+  // « Compte double » : bouton à bascule à côté de l'énoncé, lié à CETTE question (data-dbl), jamais à state.i au moment du clic
   show(`
-    <nav class="progress" aria-label="${L.steps[1]}">${progress}</nav>
-    <div class="q-meta">
-      <span><span class="q-theme">${esc(th.name)}</span> <span class="chip ${inPrio ? "" : "grey"}">${inPrio ? L.blockPrio : L.blockMore}</span></span>
-      <span class="mono muted">${L.qOf(nn(blockI), nn(blockN))}</span>
+    <div class="q-top">
+      <span class="q-count mono" dir="ltr">${pos} / ${n}</span>
+      <div class="qbar" role="progressbar" aria-label="${esc(L.steps[1])}" aria-valuemin="1" aria-valuemax="${n}" aria-valuenow="${pos}" aria-valuetext="${esc(L.qOf(pos, n))}"><span style="width:${(pos / n * 100).toFixed(1)}%"></span>${tick}</div>
+      <button type="button" class="qlist-btn" data-go="qlist" aria-haspopup="dialog">${L.qList}</button>
     </div>
-    <p class="q-min">${L.ministries}${C()} ${esc(th.min)}</p>
+    <div class="q-meta">
+      <span class="q-theme">${esc(th.name)}</span> <span class="chip ${inPrio ? "" : "grey"}">${inPrio ? L.blockPrio : L.blockMore}</span>
+    </div>
     <div class="slip">
       <h1>${esc(q.text)}</h1>
-      <button type="button" class="star" data-dbl="${qi}" aria-pressed="${!!state.double[qi]}"><span class="st" aria-hidden="true">★</span><span>${L.double}</span></button>
-      <details><summary>${L.background}</summary><p>${esc(q.ctx)}</p></details>
+      <div class="slip-row">
+        <button type="button" class="star" data-dbl="${qi}" aria-pressed="${!!state.double[qi]}"><span class="st" aria-hidden="true">★</span><span>${L.double}</span></button>
+        <details><summary>${L.background}</summary><p class="q-min">${L.ministries}${C()} ${esc(th.min)}</p><p>${esc(q.ctx)}</p></details>
+      </div>
     </div>
     <fieldset class="answers" data-q="${qi}"><legend class="sr">${L.yourAnswer}</legend>
       ${[2, 1, 0, -1, -2].map(val => `<button type="button" class="ans" data-val="${val}" aria-pressed="${v === val}"><span class="box" aria-hidden="true">${CHECK}</span><span>${L.ans[val]}</span></button>`).join("")}
@@ -2530,10 +2876,32 @@ function viewQuestion(keep) {
         ${allPrioSeen ? `<button class="btn btn-primary" type="button" data-go="results">${L.seeResults}</button>` : ""}
       </div>
     </div>
-  `, 1, "screen", keep);
+  `, null, "screen q-screen", keep);
   qShownAt = now();
   if (!keep) announce(L.qOf(state.i + 1, state.order.length));
 }
+/* Liste des questions : toutes, avec leur état (répondue, passée, pas encore) ; chaque ligne mesure au moins 44 px. */
+function openQList() {
+  const E = ed(), L = t();
+  const row = k => {
+    const qi = state.order[k], a = state.answers[qi], q = E.questions[qi];
+    const st = typeof a === "number" ? "done" : a === null ? "skip" : "open";
+    const label = st === "done" ? L.qStateDone : st === "skip" ? L.qStateSkip : L.qStateOpen;
+    const cur = k === state.i;
+    return `<li><button type="button" class="qrow ${st}${cur ? " cur" : ""}" data-qjump="${k}"${cur ? ' aria-current="step"' : ""}><span class="qn mono" dir="ltr">${k + 1}</span><span class="qt">${esc(q.short)}</span>${state.double[qi] ? `<span class="qd" title="${esc(L.double)}" aria-label="${esc(L.double)}">★</span>` : ""}<span class="qs">${st === "done" ? "✓ " : st === "skip" ? "↷ " : ""}${esc(label)}</span></button></li>`;
+  };
+  const ks = state.order.map((x, k) => k);
+  const prio = ks.slice(0, state.nPrio), rest = ks.slice(state.nPrio);
+  $("qBody").innerHTML = `
+    <div class="qdlg-head"><h2 id="qDlgTitle">${L.qJumpTitle}</h2><button class="close" type="button" id="qClose" aria-label="${esc(L.ficheClose)}">×</button></div>
+    ${prio.length ? `<h3 class="qgrp">${L.blockPrio}</h3><ul class="qlist">${prio.map(row).join("")}</ul>` : ""}
+    ${rest.length ? `<h3 class="qgrp">${L.blockMore}</h3><ul class="qlist">${rest.map(row).join("")}</ul>` : ""}`;
+  const dlg = $("qDlg");
+  if (typeof dlg.showModal === "function") { if (!dlg.open) dlg.showModal(); } else dlg.setAttribute("open", "");
+  const cur = dlg.querySelector(".qrow.cur");
+  if (cur) { cur.focus({ preventScroll: true }); cur.scrollIntoView({ block: "center" }); }
+}
+function closeQList() { const d = $("qDlg"); if (d && d.open) { if (typeof d.close === "function") d.close(); else d.removeAttribute("open"); } }
 function answer(val, qi) {
   if (state.view !== "question" || qi !== state.order[state.i]) return;
   state.answers[qi] = val;
@@ -2652,7 +3020,7 @@ function panelRanking(rank, a) {
       <div class="rank-main">
         <div class="rank-head"><b>${hname(r.p)}</b><span class="pct">${shown ? pctTxt(r.s) : "–"}</span></div>
         <div class="bar" style="--pc:var(${pvar(r.p.id)}, var(--accent))" role="img" aria-label="${shown ? Math.round(r.s * 100) + " " + L.pctWord : L.notRanked}"><span style="width:${shown ? (r.s * 100).toFixed(1) : 0}%"></span></div>
-        <div class="rank-sub"><span>${candLine(r.p, E, L)}</span><span>${shown ? L.compared(r.k, a) : L.notRanked}</span>${r.grp === "ok" && r.cov < 0.5 ? `<span class="chip warn">${L.partial}</span>` : ""}${r.p.chip ? `<span class="chip grey">${esc(r.p.chip)}</span>` : ""}<button class="link" type="button" data-fiche="${esc(r.p.id)}">${L.seeProfile}</button></div>
+        <div class="rank-sub"><span>${candLine(r.p, E, L, true)}</span><span>${shown ? L.compared(r.k, a) : L.notRanked}</span>${r.grp === "ok" && r.cov < 0.5 ? `<span class="chip warn">${L.partial}</span>` : ""}${r.p.chip ? `<span class="chip grey">${esc(r.p.chip)}</span>` : ""}<button class="link" type="button" data-fiche="${esc(r.p.id)}">${L.seeProfile}</button></div>
       </div>
     </li>`;
   };
@@ -2670,10 +3038,12 @@ function panelThemes() {
     const on = state.priorities.includes(th.id);
     const qIdx = E.questions.map((q, i) => q.theme === th.id ? i : -1).filter(i => i >= 0);
     const answered = qIdx.some(i => typeof state.answers[i] === "number");
-    const head = `<div class="tc-head"><h3>${esc(th.name)}</h3>${on ? `<span class="chip">${L.prio}</span>` : ""}</div>`;
+    const head = `<div class="tc-head"><h2>${esc(th.name)}</h2>${on ? `<span class="chip">${L.prio}</span>` : ""}</div>`;
     if (!answered) {
       const ks = qIdx.map(i => state.order.indexOf(i)).filter(k => k >= 0);
-      return `<article class="theme-card${on ? " prio-on" : ""}">${head}<p class="skipped-note">${L.themeNotAnswered}</p><div><button class="link" type="button" data-goto="${Math.min(...ks)}" data-until="${Math.max(...ks)}">${L.answerTheme}</button></div></article>`;
+      // toutes les questions du sujet ont été vues et passées, ou certaines n'ont pas encore été vues
+      const allSkipped = qIdx.every(i => state.answers[i] === null);
+      return `<article class="theme-card${on ? " prio-on" : ""}">${head}<p class="skipped-note">${allSkipped ? L.themeSkipped : L.themeNotAnswered}</p><div><button class="link" type="button" data-goto="${Math.min(...ks)}" data-until="${Math.max(...ks)}">${L.answerTheme}</button></div></article>`;
     }
     const r = ranking(th.id);
     const ok = r.filter(x => x.grp === "ok"), thin = r.filter(x => x.grp === "thin");
@@ -2731,22 +3101,22 @@ function panelMethod() {
   const used = uniq([...(E.factsSrc || []), ...(E.systemSrc || []), E.othersSrc, ...E.parties.map(p => p.tagSrc), ...E.questions.flatMap(q => Object.values(q.cells).map(c => c.s)), ...E.parties.flatMap(p => p.commit.map(c => c[1])), E.meta.src]).filter(id => E.src[id]);
   const coding = E.role === "leader" ? [L.mCodingLead, ...L.mCoding.slice(1)] : L.mCoding;
   return `<div class="method">
-    <h3>${L.mFormulaTitle}</h3>
+    <h2>${L.mFormulaTitle}</h2>
     <p>${L.mFormula1}</p>
-    <p class="formula" dir="ltr">${L.formula}</p>
+    <p class="formula" dir="ltr" tabindex="0">${L.formula}</p>
     <p>${L.mFormula2}</p>
-    <h3>${L.mRulesTitle}</h3>
+    <h2>${L.mRulesTitle}</h2>
     <ul class="rules">${L.mRules.map(x => `<li>${x}</li>`).join("")}</ul>
-    <h3>${L.mCodingTitle}</h3>
+    <h2>${L.mCodingTitle}</h2>
     <ul>${coding.map(x => `<li>${x}</li>`).join("")}${E.lang !== E.baseLang ? `<li class="transl">${L.mTransl}</li>` : ""}</ul>
-    <h3>${L.mCovTitle}</h3>
+    <h2>${L.mCovTitle}</h2>
     <div class="tbl-wrap"><table class="cov"><thead><tr><th>${L.mCovParty}</th><th style="text-align:end">${L.mCovN}</th></tr></thead><tbody>
       ${E.parties.map(p => ({ p, n: documented(p.id) })).sort((x, y) => y.n - x.n).map(({ p, n }) => `<tr><td>${esc(label(p))}</td><td class="num">${n} / ${E.questions.length}</td></tr>`).join("")}
     </tbody></table></div>
-    <h3>${L.mNotTitle}</h3>
+    <h2>${L.mNotTitle}</h2>
     <ul>${L.mNot.map(x => `<li>${x}</li>`).join("")}</ul>
-    <h3>${L.mSrcTitle}</h3>
-    <ol class="src-list">${used.map(id => { const s = E.src[id]; return `<li><a href="${esc(s.u)}" target="_blank" rel="noopener">${esc(s.t)}</a> · ${esc(s.o)}, ${esc(s.d)}</li>`; }).join("")}</ol>
+    <h2>${L.mSrcTitle}</h2>
+    <ol class="src-list">${used.map(id => { const s = E.src[id]; return `<li><a href="${esc(s.u)}" target="_blank" rel="noopener">${esc(s.t)}</a> · ${esc(s.o)}, ${esc(srcDate(s.d))}</li>`; }).join("")}</ol>
   </div>`;
 }
 
@@ -2832,6 +3202,7 @@ function go(where, el) {
       state.ret = null; navMode = "push";
       return viewQuestion();
     }
+    case "qlist": return openQList();
     case "prev": if (state.i > 0) { state.i--; viewQuestion(); } return;
     case "more": state.i = state.nPrio; return viewQuestion();
     case "results": state.tab = 0; return toResults();
@@ -2853,14 +3224,20 @@ function go(where, el) {
 document.addEventListener("click", e => {
   if (e.target === $("langDlg")) return closeLang();
   if (e.target === $("fiche")) return closeFiche();
-  const el = e.target.closest("[data-pick],[data-place],[data-lang],[data-go],[data-prio],[data-val],[data-dbl],[data-goto],[data-tab],[data-fiche],#ficheClose,#langCancel,#brand");
+  if (e.target === $("qDlg")) return closeQList();
+  const el = e.target.closest("[data-pick],[data-place],[data-lang],[data-go],[data-prio],[data-val],[data-dbl],[data-goto],[data-tab],[data-fiche],[data-qjump],#ficheClose,#langCancel,#qClose,#skip,#brand");
   if (!el) return;
+  if (el.id === "skip") { e.preventDefault(); return skipToList(); }
+  if (el.id === "qClose") return closeQList();
+  if (el.dataset.qjump !== undefined) { closeQList(); state.i = +el.dataset.qjump; return viewQuestion(); }
   if (el.id === "ficheClose") return closeFiche();
   if (el.id === "langCancel") return closeLang();
   if (el.id === "brand") return go("home", el);
-  if (el.dataset.pick) return pickLang(el.dataset.pick);
+  if (el.dataset.pick) return el.getAttribute("aria-disabled") === "true" ? undefined : pickLang(el.dataset.pick);
   if (el.dataset.place) return chooseCountry(el.dataset.place);
   if (el.dataset.lang) {
+    // Langue pas encore traduite : le bouton reste focalisable, un toucher explique (infobulle, 3 s) au lieu de ne rien faire
+    if (el.getAttribute("aria-disabled") === "true") { langTip(el); langTipTimer = setTimeout(() => langTip(null), 3000); return; }
     const code = el.dataset.lang;
     setUi(code, true);
     rerender();
@@ -2921,6 +3298,12 @@ document.addEventListener("keydown", e => {
   const n = e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : (k + (fwd ? 1 : tabs.length - 1)) % tabs.length;
   tabs[n].focus(); tabs[n].click();
 });
+/* Langue indisponible : infobulle au survol et au focus clavier. */
+$("langs").addEventListener("mouseover", e => { const b = e.target.closest && e.target.closest('[aria-disabled="true"]'); if (b) langTip(b); });
+$("langs").addEventListener("mouseout", () => langTip(null));
+$("langs").addEventListener("focusin", e => { const b = e.target.closest && e.target.closest('[aria-disabled="true"]'); langTip(b || null); });
+$("langs").addEventListener("focusout", () => langTip(null));
+document.addEventListener("keydown", e => { if (e.key === "Escape") langTip(null); });
 window.addEventListener("popstate", () => route(location.hash));
 window.addEventListener("hashchange", () => { if (location.hash !== curHash) route(location.hash); });
 try { history.scrollRestoration = "manual"; } catch (e) { }

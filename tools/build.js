@@ -187,6 +187,27 @@ for (const [cc, { file, i18n }] of [...sources.entries()].sort((a, b) => a[0].lo
   console.log(`ok    ${cc}: ${kind === "ed" ? "questionnaire" : "information page"}, ${what}, langs ${langs.join(",")}${EXEMPT.has(cc) ? " (validation exempt)" : ""}`);
 }
 
+/* ---------- Cohérence : calendrier d'src/africa.js ↔ éditions (META) ---------- */
+// L'application affiche les dates de l'édition (META.ev) quand il y en a une ; la liste générale doit dire la même chose.
+const SRC_AF = runFile(path.join(SRC, "africa.js"), ["SRC_AF"]).SRC_AF;
+const UP_FROM = "2026-10", UP_TO = "2027-12-31";   // fenêtre « élection d'ici fin 2027 » (même valeur que src/app.js)
+const evUp = ev => (ev || []).some(e => e.d <= UP_TO && (e.d2 || e.d) >= UP_FROM);
+const evKey = ev => (ev || []).map(e => [e.t, e.d, e.d2 || "", e.q].join("|")).sort().join(" ; ");
+for (const { cc, data, cat } of built) {
+  const row = data.a3 ? AFRICA[data.a3] : null;
+  if (!row) continue;
+  const metaUp = evUp(cat.ev);
+  if (!!row.up !== metaUp) warn(`${cc}: africa.js says up:${!!row.up} but META.ev ${metaUp ? "falls" : "does not fall"} between ${UP_FROM} and ${UP_TO}`);
+  else if (metaUp && evKey(row.ev) !== evKey(cat.ev)) warn(`${cc}: africa.js election dates differ from META.ev (${evKey(row.ev)} ≠ ${evKey(cat.ev)})`);
+  else if (!metaUp && cat.ev.length && row.next && !cat.ev.some(e => e.t === row.next.t && e.d === row.next.d)) warn(`${cc}: africa.js "next" (${row.next.t} ${row.next.d}) differs from META.ev (${evKey(cat.ev)})`);
+}
+for (const [num, row] of Object.entries(AFRICA)) {
+  const b = built.find(x => x.data.a3 === num);
+  const own = b && b.data.src ? b.data.src : {};
+  if (row.src && !SRC_AF[row.src] && !own[row.src]) warn(`africa.js ${row.a2}: source key “${row.src}” is missing (neither in SRC_AF nor in the edition)`);
+  if (row.up && !row.src && !(b && b.cat.evSrc)) warn(`africa.js ${row.a2}: election announced but no source`);
+}
+
 /* ---------- Écriture : data/<cc>.json ---------- */
 const dataDir = path.join(OUT, "data");
 fs.mkdirSync(dataDir, { recursive: true });
@@ -204,7 +225,25 @@ for (const f of fs.readdirSync(dataDir)) {
 }
 
 /* ---------- Écriture : index.html et artifact.html ---------- */
-const shell = read(path.join(SRC, "shell.html"));
+/* Sans JavaScript : une phrase (5 langues) et les pays qui ont un questionnaire ou une fiche d'information. */
+function noscriptHTML(built) {
+  const name = b => (b.data.a3 && AFRICA[b.data.a3]) ? `${AFRICA[b.data.a3].en} · ${AFRICA[b.data.a3].fr}` : `${(b.data.ed || b.data.info).name} (prototype)`;
+  const list = kind => built.filter(b => b.cat.kind === kind).map(name).sort((x, y) => x.localeCompare(y, "en")).map(x => `<li>${x}</li>`).join("");
+  const say = {
+    fr: "Ce site a besoin de JavaScript pour afficher la carte et les questionnaires. Active-le dans ton navigateur, puis recharge la page.",
+    en: "This site needs JavaScript to show the map and the questionnaires. Turn it on in your browser, then reload the page.",
+    pt: "Este site precisa de JavaScript para mostrar o mapa e os questionários. Ativa-o no teu navegador e recarrega a página.",
+    sw: "Tovuti hii inahitaji JavaScript ili kuonyesha ramani na maswali. Iwashe kwenye kivinjari chako, kisha pakia ukurasa upya.",
+    ar: "يحتاج هذا الموقع إلى جافاسكريبت لعرض الخريطة والاستبيانات. فعّله في متصفحك ثم أعد تحميل الصفحة."
+  };
+  return `<noscript><section class="screen">
+<h1 class="big-title">Éclaire ton vote</h1>
+${Object.entries(say).map(([l, t]) => `<p lang="${l}"${l === "ar" ? ' dir="rtl"' : ""}>${t}</p>`).join("\n")}
+<h2>Questionnaires · Questionnaires</h2><ul>${list("ed")}</ul>
+<h2>Information pages · Fiches d’information</h2><ul>${list("info")}</ul>
+</section></noscript>`;
+}
+const shell = read(path.join(SRC, "shell.html")).replace("<!--NOSCRIPT-->", noscriptHTML(built));
 const cut = shell.indexOf("</style>");
 if (!shell.startsWith("<title>") || cut < 0) throw new Error("src/shell.html must start with <title> and contain the main <style> block");
 const shellHead = shell.slice(0, cut + "</style>".length);
@@ -212,12 +251,59 @@ const shellBody = shell.slice(cut + "</style>".length).replace(/^\n+/, "");
 const app = read(path.join(SRC, "app.js"));
 if (!app.trimEnd().endsWith("</script>")) throw new Error("src/app.js must end with </script> (it closes the script tag opened in shell.html)");
 
+/* Le script livré ne doit pas contenir de syntaxe postérieure à ES2019 (« ?? » et « ?. » : erreur de syntaxe, donc page blanche,
+   avant Chrome 80 et sur KaiOS 2.5). Parcours simplifié : on saute chaînes, commentaires, expressions rationnelles et textes de gabarits. */
+function lateSyntax(code) {
+  const hits = [];
+  const n = code.length, tpl = [];
+  let i = 0, line = 1, depth = 0, prev = "";
+  const REGEX_AFTER = "(,=:[!&|?{};+-*%<>~^";
+  while (i < n) {
+    const ch = code[i], nx = code[i + 1];
+    if (ch === "\n") { line++; i++; continue; }
+    if (ch === "/" && nx === "/") { while (i < n && code[i] !== "\n") i++; continue; }
+    if (ch === "/" && nx === "*") { i += 2; while (i < n && !(code[i] === "*" && code[i + 1] === "/")) { if (code[i] === "\n") line++; i++; } i += 2; continue; }
+    if (ch === '"' || ch === "'") { i++; while (i < n && code[i] !== ch) { if (code[i] === "\\") i++; i++; } i++; prev = "a"; continue; }
+    if (ch === "`" || (ch === "}" && tpl.length && tpl[tpl.length - 1] === depth - 1)) {
+      if (ch === "}") { tpl.pop(); depth--; }
+      i++;
+      while (i < n) {   // texte d'un gabarit, jusqu'à « ` » ou « ${ »
+        if (code[i] === "\\") { i += 2; continue; }
+        if (code[i] === "\n") line++;
+        if (code[i] === "`") { i++; prev = "a"; break; }
+        if (code[i] === "$" && code[i + 1] === "{") { tpl.push(depth); depth++; i += 2; prev = "{"; break; }
+        i++;
+      }
+      continue;
+    }
+    if (ch === "/" && (prev === "" || REGEX_AFTER.includes(prev) || /(?:^|[^\w$])(?:return|typeof|case|in|of|else|do|void|delete|throw|new)$/.test(code.slice(Math.max(0, i - 8), i).trimEnd()))) {
+      i++;
+      let cls = false;
+      while (i < n && (cls || code[i] !== "/") && code[i] !== "\n") { if (code[i] === "\\") i++; else if (code[i] === "[") cls = true; else if (code[i] === "]") cls = false; i++; }
+      i++;
+      while (/[a-z]/.test(code[i] || "")) i++;
+      prev = "a";
+      continue;
+    }
+    if (ch === "?" && nx === "?") hits.push(`line ${line}: “??”`);
+    else if (ch === "?" && nx === "." && !/[0-9]/.test(code[i + 2] || "")) hits.push(`line ${line}: “?.”`);
+    if (ch === "{") depth++;
+    else if (ch === "}") depth--;
+    if (!/\s/.test(ch)) prev = /[A-Za-z0-9_$)\]]/.test(ch) ? "a" : ch;
+    i++;
+  }
+  return hits;
+}
+
 const catalog = {};
 built.forEach(({ cc, cat }) => { catalog[cc] = cat; });
 const scripts = [...UI_FILES, "africa.js", "mapdata.js"].map(f => read(path.join(SRC, f)).replace(/\s+$/, "") + "\n").join("")
   + "\n/* ================== Catalogue des éditions (généré par tools/build.js) ================== */\n"
   + `const CATALOG = ${JSON.stringify(catalog)};\n`
   + app.replace(/\s+$/, "") + "\n";
+
+const late = lateSyntax(shellBody.slice(shellBody.indexOf("<script>") + 8) + scripts);
+if (late.length) warn(`the bundled script uses syntax newer than ES2019: ${late.slice(0, 5).join(", ")}${late.length > 5 ? ` … ${late.length} in all` : ""}`);
 
 const index = `<!doctype html>
 <html lang="fr">

@@ -182,3 +182,92 @@ Object.assign(T.ar, {
   resSummary: (a, n, pr) => `محسوبة على ${arN(a, AR_ANS_GEN)} (من أصل ${arN(n, AR_Q_GEN)}). القضايا ذات الأولوية: ${pr}.`,
   themeVerdict: (t, p, pct, k) => `إذا كانت «${t}» مهمة لك، فالأقرب هو <b>${p}</b> (${pct}، على ${arN(k, AR_Q_GEN)}).`
 });
+
+/* ================== Version 2, suite : carte, écran de question d'une main, libellés, recherche ==================
+   Lien d'évitement, accroche et slogan, légende, liste des questions, réponses « ni d'accord ni pas d'accord »,
+   états des sujets, langues non traduites. */
+Object.assign(T.fr, {
+  skipList: "Aller à la liste des pays",
+  heroKicker: n => `Élections en Afrique · ${n} pays à explorer`,
+  tagline: "Anonyme · Sources publiques · On ne te dit pas pour qui voter",
+  legNone: "Pas d’élection nationale avant fin 2027",
+  noCountry: "Aucun pays ne correspond.",
+  qList: "Questions",
+  qJumpTitle: "Aller à une question",
+  qStateDone: "répondue",
+  qStateSkip: "passée",
+  qStateOpen: "pas encore répondue",
+  startHint: "Choisis au moins un sujet",
+  ans: { "2": "Tout à fait d’accord", "1": "Plutôt d’accord", "0": "Ni d’accord ni pas d’accord", "-1": "Plutôt pas d’accord", "-2": "Pas du tout d’accord" },
+  ansShort: { "2": "D’accord ++", "1": "D’accord", "0": "Ni l’un ni l’autre", "-1": "Pas d’accord", "-2": "Pas d’accord ++" },
+  themeSkipped: "Tu as passé les questions de ce sujet.",
+  langWhy: "Pas encore traduit"
+});
+Object.assign(T.en, {
+  skipList: "Skip to the list of countries",
+  heroKicker: n => `Elections in Africa · ${n} countries to explore`,
+  tagline: "Anonymous · Public sources · We don’t tell you who to vote for",
+  legNone: "No national election before end of 2027",
+  noCountry: "No country matches.",
+  qList: "Questions",
+  qJumpTitle: "Jump to a question",
+  qStateDone: "answered",
+  qStateSkip: "skipped",
+  qStateOpen: "not answered yet",
+  startHint: "Choose at least one issue",
+  ans: { "2": "Strongly agree", "1": "Agree", "0": "Neither agree nor disagree", "-1": "Disagree", "-2": "Strongly disagree" },
+  ansShort: { "2": "Strongly agree", "1": "Agree", "0": "Neither", "-1": "Disagree", "-2": "Strongly disagree" },
+  themeSkipped: "You skipped this issue’s questions.",
+  langWhy: "Not translated yet"
+});
+Object.assign(T.pt, {
+  skipList: "Ir para a lista de países",
+  heroKicker: n => `Eleições em África · ${n} países para explorar`,
+  tagline: "Anónimo · Fontes públicas · Não te dizemos em quem votar",
+  legNone: "Sem eleição nacional antes do fim de 2027",
+  noCountry: "Nenhum país corresponde.",
+  qList: "Perguntas",
+  qJumpTitle: "Ir para uma pergunta",
+  qStateDone: "respondida",
+  qStateSkip: "saltada",
+  qStateOpen: "ainda por responder",
+  startHint: "Escolhe pelo menos um tema",
+  ans: { "2": "Concordo totalmente", "1": "Concordo", "0": "Nem concordo nem discordo", "-1": "Discordo", "-2": "Discordo totalmente" },
+  ansShort: { "2": "Concordo muito", "1": "Concordo", "0": "Nem um nem outro", "-1": "Discordo", "-2": "Discordo muito" },
+  themeSkipped: "Saltaste as perguntas deste tema.",
+  langWhy: "Ainda não traduzido"
+});
+Object.assign(T.sw, {
+  skipList: "Nenda kwenye orodha ya nchi",
+  heroKicker: n => `Uchaguzi barani Afrika · nchi ${n} za kuchunguza`,
+  tagline: "Bila kujulikana · Vyanzo vya umma · Hatukuambii umpigie nani kura",
+  legNone: "Hakuna uchaguzi wa kitaifa kabla ya mwisho wa 2027",
+  noCountry: "Hakuna nchi inayolingana.",
+  qList: "Maswali",
+  qJumpTitle: "Nenda kwenye swali",
+  qStateDone: "imejibiwa",
+  qStateSkip: "imerukwa",
+  qStateOpen: "bado haijajibiwa",
+  startHint: "Chagua angalau suala moja",
+  ans: { "2": "Nakubali kabisa", "1": "Nakubali", "0": "Sikubali wala sikatai", "-1": "Sikubali", "-2": "Sikubali kabisa" },
+  ansShort: { "2": "Nakubali sana", "1": "Nakubali", "0": "Kati na kati", "-1": "Sikubali", "-2": "Sikubali kabisa" },
+  themeSkipped: "Umeruka maswali ya suala hili.",
+  langWhy: "Bado haijatafsiriwa"
+});
+Object.assign(T.ar, {
+  skipList: "انتقل إلى قائمة البلدان",
+  heroKicker: n => `انتخابات في أفريقيا · ${arN(n, AR_COUNTRY)} للاستكشاف`,
+  tagline: "مجهول الهوية · مصادر عامة · لا نقول لك لمن تصوّت",
+  legNone: "لا انتخابات وطنية قبل نهاية 2027",
+  noCountry: "لا يوجد بلد مطابق.",
+  qList: "الأسئلة",
+  qJumpTitle: "انتقل إلى سؤال",
+  qStateDone: "تمت الإجابة",
+  qStateSkip: "تم التخطي",
+  qStateOpen: "لم تتم الإجابة بعد",
+  startHint: "اختر قضية واحدة على الأقل",
+  ans: { "2": "موافق تمامًا", "1": "موافق", "0": "لا أوافق ولا أعارض", "-1": "غير موافق", "-2": "غير موافق إطلاقًا" },
+  ansShort: { "2": "موافق بشدة", "1": "موافق", "0": "لا هذا ولا ذاك", "-1": "غير موافق", "-2": "غير موافق بشدة" },
+  themeSkipped: "تخطّيت أسئلة هذه القضية.",
+  langWhy: "لم تُترجم بعد"
+});

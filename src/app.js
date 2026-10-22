@@ -88,16 +88,73 @@ function localizeEdition(D, lang) {
   return E;
 }
 
-/* Couleurs des partis : --c-<édition>-<parti>, clair et sombre, injectées au chargement de l'édition. */
+/* Couleurs des partis : --c-<édition>-<parti>, clair et sombre, injectées au chargement de l'édition.
+   Dans une édition, deux partis doivent se distinguer (ΔE CIE76 ≥ MIN_DE, dans chaque thème) et le sigle doit rester lisible
+   sur le badge (contraste ≥ 4,5:1 avec --on-party). Les couleurs de l'édition sont gardées quand elles conviennent ; sinon on
+   essaie la même teinte plus claire ou plus foncée, puis une palette fixe d'une dizaine de teintes (aussi utilisée quand
+   l'édition ne donne aucune couleur). Les partis sont traités dans l'ordre de l'édition : les premiers gardent leur couleur. */
 const cssId = s => String(s).toLowerCase().replace(/[^a-z0-9_-]/g, "-");
 const pvar = pid => `--c-${cssId(state.country)}-${cssId(pid)}`;
 const hex = c => (/^#[0-9a-f]{3,8}$/i.test(c || "") ? c : "");
+const MIN_DE = 20, MIN_TEXT = 4.6, ON_PARTY = ["#FFFFFF", "#110F19"];
+const PALETTE = [["#B3261E", "#FF8A80"], ["#1D5FA8", "#7FB6F5"], ["#2D7D46", "#7BD389"], ["#7B3FA0", "#C792EA"], ["#B85C00", "#FFB070"],
+  ["#00796B", "#5CD3C2"], ["#B0236B", "#F78DB8"], ["#7A6A00", "#E6D25A"], ["#455A64", "#9FB4BF"], ["#6D4C41", "#C9A28F"]];
+const rgbOf = h => { h = h.replace("#", ""); if (h.length < 6) h = h.replace(/./g, "$&$&"); return [0, 2, 4].map(i => parseInt(h.substr(i, 2), 16)); };
+const hexOf = c => "#" + c.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join("");
+const lin = v => { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+const unlin = v => 255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055);
+const lumOf = c => 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
+const contrastOf = (a, b) => { const x = lumOf(a), y = lumOf(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+function toLab(c) {
+  const r = lin(c[0]), g = lin(c[1]), b = lin(c[2]);
+  const f = t => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  const x = f((0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047), y = f(0.2126 * r + 0.7152 * g + 0.0722 * b), z = f((0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883);
+  return [116 * y - 16, 500 * (x - y), 200 * (y - z)];
+}
+function fromLab(l) {
+  const fy = (l[0] + 16) / 116, fx = fy + l[1] / 500, fz = fy - l[2] / 200;
+  const g = t => (t * t * t > 0.008856 ? t * t * t : (t - 16 / 116) / 7.787);
+  const x = g(fx) * 0.95047, y = g(fy), z = g(fz) * 1.08883;
+  return [unlin(3.2406 * x - 1.5372 * y - 0.4986 * z), unlin(-0.9689 * x + 1.8758 * y + 0.0415 * z), unlin(0.0557 * x - 0.204 * y + 1.057 * z)];
+}
+const deltaE = (a, b) => Math.sqrt(Math.pow(a[0] - b[0], 2) + Math.pow(a[1] - b[1], 2) + Math.pow(a[2] - b[2], 2));
+/* Éclaircit (thème sombre, texte foncé) ou assombrit (thème clair, texte blanc) jusqu'à un sigle lisible ; renvoie la couleur en Lab. */
+function fitLab(lab, k) {
+  const on = rgbOf(ON_PARTY[k]);
+  let l = lab.slice();
+  for (let i = 0; i < 60 && contrastOf(fromLab(l), on) < MIN_TEXT; i++) l[0] += k ? 1.5 : -1.5;
+  return toLab(fromLab(l).map(v => Math.max(0, Math.min(255, v))));
+}
+/* [clair, sombre] : { identifiant du parti : "#rrggbb" } */
+function partyColours(parties) {
+  return [0, 1].map(k => {
+    const chosen = [], out = {}, on = rgbOf(ON_PARTY[k]);
+    parties.forEach((p, i) => {
+      const given = hex((p.col || [])[k]) || hex((p.col || [])[0]) || PALETTE[i % PALETTE.length][k];
+      const base = toLab(rgbOf(given));
+      const cands = [{ lab: base, hex: given.length < 7 ? hexOf(rgbOf(given)) : given.slice(0, 7) }];
+      [-1, 1, -2, 2, -3, 3].forEach(m => cands.push({ lab: [base[0] + m * 9, base[1], base[2]] }));
+      PALETTE.forEach(pc => cands.push({ lab: toLab(rgbOf(pc[k])) }));
+      let best = null, bestD = -1;
+      for (let j = 0; j < cands.length; j++) {
+        const c = cands[j];
+        // la couleur de l'édition est gardée telle quelle quand le sigle y est déjà lisible
+        const asIs = c.hex && contrastOf(rgbOf(c.hex), on) >= MIN_TEXT;
+        const lab = asIs ? c.lab : fitLab(c.lab, k);
+        const d = chosen.length ? Math.min.apply(null, chosen.map(x => deltaE(x, lab))) : 999;
+        if (d > bestD) { best = { lab: lab, hex: asIs ? c.hex : hexOf(fromLab(lab)) }; bestD = d; }
+        if (d >= MIN_DE) break;
+      }
+      chosen.push(best.lab);
+      out[p.id] = best.hex;
+    });
+    return out;
+  });
+}
 function injectColours(D) {
   if (D.kind !== "ed" || !D.ed || $("pc-" + cssId(D.id))) return;
-  const vars = k => D.ed.parties.map(p => {
-    const c = hex((p.col || [])[k]) || hex((p.col || [])[0]);
-    return c ? `--c-${cssId(D.id)}-${cssId(p.id)}:${c}` : "";
-  }).filter(Boolean).join(";");
+  const cols = partyColours(D.ed.parties);
+  const vars = k => D.ed.parties.map(p => `--c-${cssId(D.id)}-${cssId(p.id)}:${cols[k][p.id]}`).join(";");
   const st = document.createElement("style");
   st.id = "pc-" + cssId(D.id);
   st.textContent = `:root{${vars(0)}}@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){${vars(1)}}}:root[data-theme="dark"]{${vars(1)}}`;
@@ -134,8 +191,10 @@ function srcObj(id) {
   const D = state.country && DATA[state.country];
   return (D && D.src && D.src[id]) || SRC_AF[id] || null;
 }
+/* Date d'une source : ISO (AAAA, AAAA-MM, AAAA-MM-JJ) mise en forme dans la langue de l'interface ; un texte libre reste tel quel. */
+const srcDate = d => (/^\d{4}(-\d\d){0,2}$/.test(d || "") ? fmtDate(d) : d);
 function srcA(s) {
-  return s ? `<a href="${esc(s.u)}" target="_blank" rel="noopener">${esc(s.o)}, ${esc(s.d)}</a>` : "";
+  return s ? `<a href="${esc(s.u)}" target="_blank" rel="noopener">${esc(s.o)}, ${esc(srcDate(s.d))}</a>` : "";
 }
 const srcLink = id => srcA(srcObj(id));
 const srcLine = (ids, L, style) => {
@@ -143,9 +202,9 @@ const srcLine = (ids, L, style) => {
   return links.length ? `<p class="src muted"${style ? ` style="${style}"` : ""}>${L.source}${C()} ${links.join(" · ")}</p>` : "";
 };
 /* Candidat·e à la présidentielle, ou dirigeant·e du parti (élection sans présidentielle, candidat·e pas encore désigné·e). */
-function candLine(p, E, L) {
+function candLine(p, E, L, short) {
   const lead = E.role === "leader" || !!p.candNote;
-  return `${lead ? L.partyLeader : L.presCand}${C()} ${esc(p.cand)}${p.candNote ? ` <span class="cand-note">(${esc(p.candNote)})</span>` : ""}`;
+  return `${lead ? L.partyLeader : L.presCand}${C()} ${esc(p.cand)}${p.candNote && !short ? ` <span class="cand-note">(${esc(p.candNote)})</span>` : ""}`;
 }
 function noteHTML(E, L) {
   return E.note ? `<p class="caveat"><b>${L.noteLabel}${C()}</b> <span lang="${esc(E.noteLang)}" dir="auto">${esc(E.note)}</span></p>` : "";
@@ -179,7 +238,7 @@ function catName(cc) {
 function fmtDate(iso) {
   const parts = iso.split("-").map(Number);
   const d = new Date(Date.UTC(parts[0], (parts[1] || 1) - 1, parts[2] || 15, 12));
-  const opts = parts.length === 3 ? { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" } : { month: "long", year: "numeric", timeZone: "UTC" };
+  const opts = parts.length === 3 ? { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" } : parts.length === 2 ? { month: "long", year: "numeric", timeZone: "UTC" } : { year: "numeric", timeZone: "UTC" };
   try { return new Intl.DateTimeFormat(locale(), opts).format(d); } catch (e) { return iso; }
 }
 function evText(ev) {
@@ -202,7 +261,7 @@ function isUp(id) {
 function statusLine(id) {
   const c = AFRICA[id];
   if (!c) return t().legDisputed;
-  if (isUp(id) || catFor(id)) return evsFor(id).map(evText).join(" ; ") || t().legNone;
+  if (isUp(id) || catFor(id)) return evsFor(id).map(evText).join(state.ui === "ar" ? " ؛ " : " ; ") || t().legNone;
   return t().legNone;
 }
 function kindLine(cat, L) { return cat ? (cat.kind === "ed" ? "✓ " + L.legReady : "ⓘ " + L.legInfo) : ""; }
@@ -330,7 +389,7 @@ function route(h) {
   navMode = "replace";
   loadSeq++;
   clearTimeout(advanceTimer); clearTimeout(backTimer);
-  closeFiche();
+  closeFiche(); closeQList();
   curHash = location.hash;
   const cat = r.cc ? CATALOG[r.cc] : null;
   const id = cat ? cat.a3 : r.cc ? A2ID[r.cc] : null;
@@ -441,12 +500,32 @@ function renderChrome() {
   document.documentElement.lang = state.ui;
   document.documentElement.dir = (langOf(state.ui) || {}).rtl ? "rtl" : "ltr";
   $("protoTag").textContent = L.proto;
-  // Pendant le chargement d'un pays, seules ses langues sont proposées (les autres restent visibles mais désactivées)
+  // Pendant le chargement d'un pays, seules ses langues sont proposées. Une langue indisponible reste focalisable
+  // (aria-disabled, pas disabled) : on entend et on voit pourquoi (infobulle), au lieu d'un bouton muet.
   const loadCat = (state.view === "loading" || state.view === "loaderror") && CATALOG[state.loadCc];
   const list = state.country && DATA[state.country] ? ed().langs : LANGS.map(l => ({ code: l.code, label: l.code.toUpperCase(), name: l.name, ready: !loadCat || loadCat.langs.includes(l.code) }));
-  $("langs").innerHTML = list.map(l => `<button type="button" data-lang="${l.code}" aria-pressed="${state.ui === l.code}" ${l.ready ? "" : "disabled"} title="${l.name}${l.ready ? "" : " · " + L.soonLang}" lang="${l.code}">${l.label}</button>`).join("");
+  $("langs").innerHTML = list.map(l => `<button type="button" data-lang="${l.code}" aria-pressed="${state.ui === l.code}" ${l.ready ? "" : 'aria-disabled="true" aria-describedby="langTip"'} title="${l.name}${l.ready ? "" : " · " + L.langWhy}" lang="${l.code}">${l.label}</button>`).join("");
   $("langs").setAttribute("aria-label", L.langLabel);
-  $("footer").innerHTML = `<span>${L.footer1}</span><span>${L.footer2}</span>`;
+  $("langTip").textContent = L.langWhy;
+  // Le slogan de prudence sur les positions codées n'a de sens que là où des positions de partis sont affichées
+  const pos = ["start", "question", "checkpoint", "results"].includes(state.view);
+  $("footer").innerHTML = `${pos ? `<span>${L.footer1}</span>` : ""}<span>${L.footer2}</span>`;
+  // Lien d'évitement : seulement sur la carte (premier élément focalisable de la page)
+  const sk = $("skip");
+  sk.textContent = L.skipList;
+  sk.hidden = state.view !== "map";
+  document.body.classList.toggle("qv", state.view === "question");
+}
+/* Infobulle d'une langue indisponible : au survol, au focus ou au toucher ; placée sous le bouton, sans déborder de l'écran. */
+let langTipTimer = null;
+function langTip(btn) {
+  const tip = $("langTip");
+  clearTimeout(langTipTimer);
+  if (!btn) { tip.hidden = true; return; }
+  tip.hidden = false;
+  const r = btn.getBoundingClientRect(), w = tip.offsetWidth;
+  tip.style.top = Math.round(r.bottom + 6) + "px";
+  tip.style.left = Math.round(Math.max(8, Math.min(r.left + r.width / 2 - w / 2, document.documentElement.clientWidth - w - 8))) + "px";
 }
 function renderSteps(active) {
   const el = $("steps");
@@ -473,16 +552,23 @@ function titleOf(h) {
 let booted = false;
 function land(h) {
   let y = 0;
-  if (state.view === "question") {
-    const meta = $("app").querySelector(".q-meta"), ans = $("app").querySelectorAll(".ans");
+  if (state.view === "question") {   // la carte de la question (et non le haut de la fenêtre) reste en vue, si les réponses ne tiennent pas dans l'écran
+    const meta = $("app").querySelector(".q-top"), ans = $("app").querySelectorAll(".ans");
     const last = ans[ans.length - 1];
     if (meta && last && last.getBoundingClientRect().bottom + window.scrollY > window.innerHeight) y = Math.max(0, meta.getBoundingClientRect().top + window.scrollY - 8);
   }
   window.scrollTo({ top: y });
   if (h && booted) { try { h.focus({ preventScroll: true }); } catch (e) { h.focus(); } }
 }
+let lastView = null;
 function show(html, step, cls, keep) {
-  $("app").innerHTML = `<section class="${cls || "screen"}">${html}</section>`;
+  // Réaffichage de la même page (changement de langue, sujet coché) : les sections ouvertes (<details>) le restent
+  const open = keep ? [].map.call($("app").querySelectorAll("details"), d => d.open) : [];
+  // Fondu d'entrée seulement quand l'écran change vraiment (pas d'une question à la suivante, ni au réaffichage)
+  const enter = !keep && state.view !== lastView;
+  lastView = state.view;
+  $("app").innerHTML = `<section class="${cls || "screen"}${enter ? " enter" : ""}">${html}</section>`;
+  if (open.length) [].forEach.call($("app").querySelectorAll("details"), (d, i) => { if (open[i]) d.open = true; });
   renderChrome();
   renderSteps(step);
   syncUrl();
@@ -509,37 +595,112 @@ function rerender() {
   window.scrollTo({ top: y });
 }
 
-/* ================== Carte ================== */
+/* ================== Carte ==================
+   Chaque pays qui a un questionnaire ou une fiche, et chaque île, a un marqueur : une zone tactile invisible d'au moins
+   12 px de rayon à l'écran (quelle que soit la largeur de la carte), avec son repère (✓ ou ⓘ) par-dessus. Les marqueurs
+   qui se chevauchent (Gambie et Guinée-Bissau, Cap-Vert…) sont écartés les uns des autres, un trait les relie à leur vrai
+   emplacement : toucher un marqueur ouvre toujours son propre pays. Au clavier, seuls les pays avec une élection ou un
+   contenu sont dans l'ordre de tabulation (par nom), les autres restent accessibles par la liste. */
 const INFO_MARK = (x, y, r) => `<circle class="ring" cx="${x}" cy="${y}" r="${r}"></circle><path class="stem" d="M${x} ${y - r * .1}v${r * .55}"></path><circle class="dot" cx="${x}" cy="${y - r * .5}" r="${r * .17}"></circle>`;
+const CHECK_MARK = (x, y) => `<circle class="pin" cx="${x}" cy="${y}" r="11"></circle><path class="pin-check" d="M${x - 5} ${y}l3.5 3.5L${x + 6} ${y - 5}"></path>`;
+const MK_R = 18;   // rayon de la zone tactile, en unités locales du marqueur (anneau : 11)
+function markerIds() {
+  const ids = Object.values(CATALOG).filter(c => c.a3 && AFRICA[c.a3] && (MAP.isl[c.a3] || MAP.cent[c.a3])).map(c => c.a3);
+  Object.keys(MAP.isl).forEach(id => { if (ids.indexOf(id) < 0) ids.push(id); });
+  return ids.sort();
+}
 function mapSVG() {
   const L = t();
-  const ids = Object.keys(MAP.c);
   const aria = id => {
     const k = kindLine(catFor(id), L);
     return esc(`${cname(id)} · ${statusLine(id)}${k ? " · " + k.slice(2) : ""}`);
   };
-  const paths = ids.map(id => {
-    const d = MAP.c[id];
-    if (id === "732") return `<path class="disp" d="${d}"><title>${esc(cname("732"))} · ${esc(L.legDisputed)}</title></path>`;
-    return `<path class="ctry ${isUp(id) ? "up" : "none"}" data-place="${id}" d="${d}" tabindex="0" role="button" aria-label="${aria(id)}"></path>`;
-  }).join("");
-  const isl = Object.entries(MAP.isl).map(([id, [x, y]]) => {
-    return `<circle class="isl-hit" data-place="${id}" cx="${x}" cy="${y}" r="22" aria-hidden="true"></circle><circle class="isl ${isUp(id) ? "up" : "none"}" data-place="${id}" cx="${x}" cy="${y}" r="9" tabindex="0" role="button" aria-label="${aria(id)}"></circle>`;
-  }).join("");
-  const pins = Object.values(CATALOG).filter(c => c.a3 && AFRICA[c.a3] && (MAP.isl[c.a3] || MAP.cent[c.a3])).map(c => {
-    const [x, y] = MAP.isl[c.a3] || MAP.cent[c.a3];
-    if (c.kind === "info") return `<g class="pin-info">${INFO_MARK(x, y, 9)}</g>`;
-    return `<circle class="pin" cx="${x}" cy="${y}" r="11"></circle><path class="pin-check" d="M${x - 5} ${y}l3.5 3.5L${x + 6} ${y - 5}"></path>`;
+  const foc = id => isUp(id) || !!catFor(id);
+  // Une île a sa forme (minuscule) et son point : seul le point est dans l'ordre de tabulation
+  const shape = id => {
+    const tab = foc(id) ? 0 : -1;
+    let h = MAP.c[id] ? `<path class="ctry ${isUp(id) ? "up" : "none"}" data-place="${id}" d="${MAP.c[id]}" tabindex="${MAP.isl[id] ? -1 : tab}" role="button" aria-label="${aria(id)}"${MAP.isl[id] ? ' aria-hidden="true"' : ""}></path>` : "";
+    if (MAP.isl[id]) h += `<circle class="isl ${isUp(id) ? "up" : "none"}" data-place="${id}" cx="${MAP.isl[id][0]}" cy="${MAP.isl[id][1]}" r="9" tabindex="${tab}" role="button" aria-label="${aria(id)}"></circle>`;
+    return h;
+  };
+  const all = Object.keys(MAP.c).filter(id => id !== "732").concat(Object.keys(MAP.isl).filter(id => !MAP.c[id]));
+  const sorted = all.filter(foc).sort((a, b) => cname(a).localeCompare(cname(b), locale()));
+  const shapes = (MAP.c["732"] ? `<path class="disp" d="${MAP.c["732"]}"><title>${esc(cname("732"))} · ${esc(L.legDisputed)}</title></path>` : "")
+    + all.filter(id => !foc(id)).map(shape).join("") + sorted.map(shape).join("");
+  const marks = markerIds().map(id => {
+    const [x, y] = MAP.isl[id] || MAP.cent[id];
+    const cat = catFor(id);
+    const sym = !cat ? "" : cat.kind === "info" ? `<g class="pin-info">${INFO_MARK(0, 0, 9)}</g>` : CHECK_MARK(0, 0);
+    return `<g class="mk" data-place="${id}" data-x="${x}" data-y="${y}" transform="translate(${x} ${y})" aria-hidden="true"><circle class="mk-halo" r="16"></circle><circle class="mk-focus" r="16"></circle><circle class="mk-hit" r="${MK_R}"></circle>${sym}</g>`;
   }).join("");
   return `<svg viewBox="${MAP.vb.join(" ")}" role="group" aria-label="${esc(L.mapAria)}" dir="ltr">
-    <defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="var(--none)"></rect><rect width="1.6" height="6" fill="var(--none-hatch)"></rect></pattern></defs>
-    <path class="nb" d="${MAP.nb}"></path>${paths}${isl}${pins}
+    <defs><pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" fill="var(--none)"></rect><rect width="1.8" height="5" fill="var(--none-hatch)"></rect></pattern></defs>
+    <path class="nb" d="${MAP.nb}"></path>${shapes}<g class="leads"></g><g class="marks">${marks}</g><g class="fring"></g>
   </svg><div class="tip" id="tip" hidden></div>`;
+}
+/* Place les marqueurs : taille d'écran constante (zone tactile ≥ 12 px de rayon), écartés quand ils se touchent. */
+function layoutMarkers() {
+  const wrap = $("mapWrap"), svg = wrap && wrap.querySelector("svg");
+  if (!svg) return;
+  const w = svg.getBoundingClientRect().width;
+  if (!w) return;
+  const k = w / MAP.vb[2];                       // pixels d'écran par unité de la carte
+  const S = Math.max(1, 12 / (MK_R * k));         // échelle d'un marqueur
+  const gap = 2 * MK_R * S;                       // distance minimale entre deux centres, en unités de la carte
+  const m = [].map.call(svg.querySelectorAll(".mk"), el => ({ el: el, ax: +el.dataset.x, ay: +el.dataset.y, x: +el.dataset.x, y: +el.dataset.y }));
+  const x0 = MAP.vb[0] + gap / 2, x1 = MAP.vb[0] + MAP.vb[2] - gap / 2, y0 = MAP.vb[1] + gap / 2, y1 = MAP.vb[1] + MAP.vb[3] - gap / 2;
+  for (let it = 0; it < 120; it++) {
+    let moved = false;
+    for (let i = 0; i < m.length; i++) for (let j = i + 1; j < m.length; j++) {
+      let dx = m[j].x - m[i].x, dy = m[j].y - m[i].y, d = Math.sqrt(dx * dx + dy * dy);
+      if (d >= gap) continue;
+      if (d < 0.01) { dx = Math.cos(i * 2.4 + j); dy = Math.sin(i * 2.4 + j); d = 1; }
+      const push = (gap - d) / 2 + 0.05, ux = dx / d, uy = dy / d;
+      m[i].x -= ux * push; m[i].y -= uy * push; m[j].x += ux * push; m[j].y += uy * push;
+      moved = true;
+    }
+    for (let i = 0; i < m.length; i++) {
+      if (it < 90) { m[i].x += (m[i].ax - m[i].x) * 0.03; m[i].y += (m[i].ay - m[i].y) * 0.03; }   // rappel léger vers l'emplacement réel
+      m[i].x = Math.max(x0, Math.min(x1, m[i].x)); m[i].y = Math.max(y0, Math.min(y1, m[i].y));
+    }
+    if (!moved && it >= 90) break;
+  }
+  let leads = "";
+  m.forEach(o => {
+    o.el.setAttribute("transform", `translate(${o.x.toFixed(1)} ${o.y.toFixed(1)}) scale(${S.toFixed(3)})`);
+    const far = Math.sqrt(Math.pow(o.x - o.ax, 2) + Math.pow(o.y - o.ay, 2));
+    if (far > 11 * S * 0.9) leads += `<line class="lead" x1="${o.ax}" y1="${o.ay}" x2="${o.x.toFixed(1)}" y2="${o.y.toFixed(1)}"></line><circle class="lead-dot" cx="${o.ax}" cy="${o.ay}" r="${(2.6 / k).toFixed(1)}"></circle>`;
+  });
+  svg.querySelector(".leads").innerHTML = leads;
+}
+/* Recherche d'un pays : sans accents ni majuscules, tous les mots doivent se retrouver ; noms dans les 5 langues de l'interface
+   et appellations courantes (anglais, français, portugais) qui ne sont pas le nom officiel. */
+const fold = x => String(x == null ? "" : x).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[\u2019'`\u00b4.\-_,]/g, " ").replace(/\s+/g, " ").trim();
+const ALIASES = {
+  "384": "ivory coast cote d ivoire costa do marfim civ", "132": "cape verde cabo verde cap vert", "748": "swaziland eswatini",
+  "178": "congo brazzaville republic of the congo republique du congo congo brazza", "180": "congo kinshasa democratic republic of the congo drc dr congo rdc rd congo zaire republique democratique du congo",
+  "624": "guinea bissau guine bissau guinee bissau", "226": "equatorial guinea guinee equatoriale guine equatorial", "140": "central african republic car rca centrafrique republica centro africana",
+  "854": "burkina faso upper volta", "204": "benin dahomey", "678": "sao tome and principe sao tome et principe", "710": "south africa afrique du sud africa do sul rsa",
+  "728": "south sudan soudan du sud sudao do sul", "729": "sudan soudan sudao", "834": "tanzania tanzanie tanzania", "800": "uganda ouganda", "818": "egypt egypte egito",
+  "504": "morocco maroc marrocos", "12": "algeria algerie argelia", "788": "tunisia tunisie tunisia", "434": "libya libye libia", "270": "gambia the gambia gambie",
+  "480": "mauritius maurice ile maurice", "690": "seychelles", "174": "comoros comores", "450": "madagascar", "148": "chad tchad", "466": "mali"
+};
+let searchIdx = null;
+function searchIndex() {
+  if (searchIdx) return searchIdx;
+  searchIdx = {};
+  Object.keys(AFRICA).forEach(id => {
+    const names = LANGS.map(l => cname(id, l.code)).concat([AFRICA[id].fr, AFRICA[id].en, AFRICA[id].a2, ALIASES[id] || ALIASES[String(+id)] || ""]);
+    const f = fold(names.join(" "));
+    searchIdx[id] = f + " " + f.replace(/ /g, "");   // aussi sans espaces : « cote divoire », « guineebissau »
+  });
+  return searchIdx;
 }
 function countryList(filter) {
   const L = t();
-  const f = (filter || "").trim().toLowerCase();
-  const ids = Object.keys(AFRICA).filter(id => !f || cname(id).toLowerCase().includes(f) || AFRICA[id].fr.toLowerCase().includes(f) || AFRICA[id].en.toLowerCase().includes(f));
+  const words = fold(filter).split(" ").filter(Boolean);
+  const idx = words.length ? searchIndex() : null;
+  const ids = Object.keys(AFRICA).filter(id => !idx || words.every(w => idx[id].indexOf(w) >= 0));
   const sort = arr => arr.sort((a, b) => cname(a).localeCompare(cname(b), locale()));
   const up = sort(ids.filter(isUp)), no = sort(ids.filter(id => !isUp(id)));
   const mark = id => {
@@ -548,8 +709,9 @@ function countryList(filter) {
     return cat.kind === "ed" ? ` <span aria-hidden="true">✓</span><span class="sr">${esc(L.legReady)}</span>` : ` <span aria-hidden="true">ⓘ</span><span class="sr">${esc(L.legInfo)}</span>`;
   };
   const item = id => `<li><button type="button" class="cbtn" data-place="${id}"><span class="dot ${isUp(id) ? "up" : "none"}" aria-hidden="true"></span><span><span class="cn2">${esc(cname(id))}${mark(id)}</span><span class="cs2">${esc(isUp(id) || catFor(id) ? statusLine(id) : L.legNone)}</span></span></button></li>`;
-  return `${up.length ? `<div class="clist-group"><h3>${L.legUp} · ${L.nCountries(up.length)}</h3><ul class="clist2">${up.map(item).join("")}</ul></div>` : ""}
-    ${no.length ? `<div class="clist-group"><h3>${L.legNone} · ${L.nCountries(no.length)}</h3><ul class="clist2">${no.map(item).join("")}</ul></div>` : ""}`;
+  if (!ids.length) return `<p class="muted" role="status">${esc(L.noCountry)}</p>`;
+  return `${up.length ? `<div class="clist-group"><h2>${L.legUp} · ${L.nCountries(up.length)}</h2><ul class="clist2">${up.map(item).join("")}</ul></div>` : ""}
+    ${no.length ? `<div class="clist-group"><h2>${L.legNone} · ${L.nCountries(no.length)}</h2><ul class="clist2">${no.map(item).join("")}</ul></div>` : ""}`;
 }
 function viewMap(keep) {
   state.view = "map"; state.country = null; state.place = null;
@@ -559,7 +721,7 @@ function viewMap(keep) {
   const nReady = inAfrica.filter(c => c.kind === "ed").length, nInfo = inAfrica.filter(c => c.kind === "info").length;
   show(`
     <div class="map-intro">
-      <p class="kicker">${L.heroKicker}</p>
+      <p class="kicker">${L.heroKicker(inAfrica.length)}</p>
       <h1 class="map-title">${L.mapTitle}</h1>
       <p class="lead">${L.mapLead}</p>
     </div>
@@ -571,7 +733,7 @@ function viewMap(keep) {
       <ul class="legend">
         <li><span class="sw up" aria-hidden="true"></span><span>${L.legUp}</span><span class="cnt">${nUp}</span></li>
         <li><span class="sw none" aria-hidden="true"></span><span>${L.legNone}</span><span class="cnt">${nNo}</span></li>
-        <li><span class="sw ready" aria-hidden="true"></span><span>${L.legReady}</span><span class="cnt">${nReady}</span></li>
+        <li><span class="sw ready" aria-hidden="true"><svg class="pin-key" viewBox="-13 -13 26 26">${CHECK_MARK(0, 0)}</svg></span><span>${L.legReady}</span><span class="cnt">${nReady}</span></li>
         <li class="leg-info"><span class="sw info" aria-hidden="true"><svg class="pin-info" viewBox="0 0 18 18">${INFO_MARK(9, 9, 7.6)}</svg></span><span>${L.legInfo}</span><span class="cnt">${nInfo}</span></li>
         <li><span class="sw disp" aria-hidden="true"></span><span>${L.legDisputed}</span><span class="cnt">1</span></li>
       </ul>
@@ -587,9 +749,13 @@ function viewMap(keep) {
   `, null, "screen map-screen", keep);
   bindMap();
 }
+let mapRO = null;
 function bindMap() {
   const wrap = $("mapWrap"), tip = $("tip");
   if (!wrap) return;
+  layoutMarkers();
+  if (mapRO) { mapRO.disconnect(); mapRO = null; }
+  if (window.ResizeObserver) { mapRO = new ResizeObserver(layoutMarkers); mapRO.observe(wrap); }
   const showTip = (el, x, y) => {
     const id = el.dataset.place;
     const k = kindLine(catFor(id), t());
@@ -602,6 +768,17 @@ function bindMap() {
     if (top < 0) top = y - r.top + 18;
     tip.style.left = left + "px"; tip.style.top = top + "px";
   };
+  // Le repère du pays dont la forme a le focus au clavier : la forme d'un petit pays (Gambie) est trop fine pour porter un cadre
+  const markFocus = (id, on) => { const g = wrap.querySelector(`.mk[data-place="${id}"]`); if (g) g.classList.toggle("kf", on); };
+  // Cadre de focus à deux tons autour de la forme du pays (ou du point d'une île), au clavier seulement
+  const ring = el => {
+    const g = wrap.querySelector(".fring");
+    if (!g) return;
+    let vis = !!el;
+    try { vis = !!el && el.matches(":focus-visible"); } catch (e) { /* ancien navigateur : toujours montré */ }
+    const one = c => el.tagName.toLowerCase() === "path" ? `<path class="${c}" d="${el.getAttribute("d")}"></path>` : `<circle class="${c}" cx="${el.getAttribute("cx")}" cy="${el.getAttribute("cy")}" r="${+el.getAttribute("r") + 1}"></circle>`;
+    g.innerHTML = vis ? one("fr-halo") + one("fr-ink") : "";
+  };
   wrap.addEventListener("pointermove", e => {
     const el = e.target.closest("[data-place]");
     if (!el || e.pointerType === "touch") { tip.hidden = true; return; }
@@ -611,16 +788,32 @@ function bindMap() {
   wrap.addEventListener("focusin", e => {
     const el = e.target.closest("[data-place]");
     if (!el) return;
+    markFocus(el.dataset.place, true);
+    ring(el);
     const b = el.getBoundingClientRect();
     showTip(el, b.left + b.width / 2, b.top + b.height / 2);
   });
-  wrap.addEventListener("focusout", () => { tip.hidden = true; });
+  wrap.addEventListener("focusout", e => {
+    const el = e.target.closest && e.target.closest("[data-place]");
+    if (el) markFocus(el.dataset.place, false);
+    ring(null);
+    tip.hidden = true;
+  });
   wrap.addEventListener("keydown", e => {
     const el = e.target.closest("[data-place]");
     if (el && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); chooseCountry(el.dataset.place); }
   });
   const s = $("csearch");
   if (s) s.addEventListener("input", () => { $("clist").innerHTML = countryList(s.value); });
+}
+/* Lien d'évitement « Aller à la liste des pays » : ouvre la liste et place le focus sur sa recherche. */
+function skipToList() {
+  const box = $("listBox");
+  if (!box) return;
+  box.open = true;
+  const f = $("csearch");
+  if (f) f.focus();
+  box.scrollIntoView({ block: "start" });
 }
 /* Un pays touché sur la carte ou dans la liste : nouvelle entrée d'historique #/<cc> (Retour referme le choix de langue). */
 function chooseCountry(id) {
@@ -644,7 +837,8 @@ function openLang(id) {
   const other = LANGS.filter(l => !c.langs.includes(l.code));
   const btn = l => {
     const off = !!avail && !avail.includes(l.code);
-    return `<button type="button" class="lang-btn${l.code === state.ui && !off ? " cur" : ""}" data-pick="${l.code}" lang="${l.code}" dir="${l.rtl ? "rtl" : "ltr"}"${off ? " disabled" : ""}><span><span>${l.name}</span>${off ? `<span class="lnote" lang="${state.ui}" dir="${uiDir}">${esc(note)}</span>` : ""}</span><span class="lc">${l.code.toUpperCase()}</span></button>`;
+    // Langue indisponible : reste focalisable (aria-disabled) et dit pourquoi (la note visible sert de description)
+    return `<button type="button" class="lang-btn${l.code === state.ui && !off ? " cur" : ""}" data-pick="${l.code}" lang="${l.code}" dir="${l.rtl ? "rtl" : "ltr"}"${off ? ` aria-disabled="true" aria-describedby="ln-${l.code}"` : ""}><span><span>${l.name}</span>${off ? `<span class="lnote" id="ln-${l.code}" lang="${state.ui}" dir="${uiDir}">${esc(note)}</span>` : ""}</span><span class="lc">${l.code.toUpperCase()}</span></button>`;
   };
   $("langBody").innerHTML = `
     <div><p class="eyebrow">${esc(cname(id))}</p><h2 id="langTitle">${L.chooseLang}</h2><p class="st">${esc(statusLine(id))}</p>${cat ? `<p class="st">${esc(kindLine(cat, L))}</p>` : ""}</div>
@@ -653,7 +847,7 @@ function openLang(id) {
     <div><button class="btn btn-ghost" type="button" id="langCancel">${L.cancel}</button></div>`;
   const dlg = $("langDlg");
   if (typeof dlg.showModal === "function") { if (!dlg.open) dlg.showModal(); } else dlg.setAttribute("open", "");
-  const first = $("langBody").querySelector(".lang-btn.cur") || $("langBody").querySelector(".lang-btn:not(:disabled)");
+  const first = $("langBody").querySelector(".lang-btn.cur") || $("langBody").querySelector('.lang-btn:not([aria-disabled="true"])');
   if (first) first.focus();
 }
 function closeLang() { const d = $("langDlg"); if (d.open) { if (typeof d.close === "function") d.close(); else d.removeAttribute("open"); } }
@@ -734,10 +928,10 @@ function viewInfo(id, keep) {
   const L = t(), c = AFRICA[id];
   const name = cname(id);
   const up = isUp(id);
+  // Une seule phrase d'état (le titre) ; dessous, seulement ce qui s'y ajoute : dates, précisions, dernier et prochain scrutin
   const lines = [];
   if (up) evsFor(id).forEach(ev => lines.push(`<li><span class="dot up" aria-hidden="true"></span><span>${esc(evText(ev))}</span></li>`));
   else {
-    lines.push(`<li><span class="dot none" aria-hidden="true"></span><span>${esc(L.legNone)}</span></li>`);
     if (c.note) lines.push(`<li><span class="dot none" aria-hidden="true"></span><span>${esc(L.notes[c.note])}</span></li>`);
     if (c.recent) lines.push(`<li><span class="dot none" aria-hidden="true"></span><span>${esc(L.recent(fmtDate(c.recent)))}</span></li>`);
     if (c.next) lines.push(`<li><span class="dot none" aria-hidden="true"></span><span>${esc(L.nextKnown)}${C()} ${esc(evText(c.next))}</span></li>`);
@@ -746,18 +940,18 @@ function viewInfo(id, keep) {
   const s = (cat && cat.evSrc) || SRC_AF[c.src];
   show(`
     <div class="strip">
-      <span><b>${esc(name)}</b><br><span class="sd">${esc(up ? L.upcoming : L.legNone)}</span></span>
+      <span><b>${esc(name)}</b>${up ? `<br><span class="sd">${esc(L.upcoming)}</span>` : ""}</span>
       <button class="link" type="button" data-go="home">${L.changeCountry}</button>
     </div>
     <div class="block">
       <h1 class="big-title">${esc(up ? L.prepTitle(name) : L.noneTitle(name))}</h1>
     </div>
-    <ul class="ev-list">${lines.join("")}</ul>
+    ${lines.length ? `<ul class="ev-list">${lines.join("")}</ul>` : ""}
     ${s ? `<p class="src muted">${L.source}${C()} ${srcA(s)}</p>` : ""}
     ${up ? `<p class="lead">${L.prepText}</p>` : ""}
     <div class="actions">
-      ${CATALOG.ng ? `<button class="btn btn-primary" type="button" data-go="nigeria">${L.tryNigeria}</button>` : ""}
-      <button class="btn btn-ghost" type="button" data-go="home">${L.backMap}</button>
+      <button class="btn btn-primary" type="button" data-go="home">${L.backMap}</button>
+      ${CATALOG.ng ? `<button class="link" type="button" data-go="nigeria">${L.tryNigeria}</button>` : ""}
     </div>
   `, null, "screen", keep);
 }
@@ -799,12 +993,12 @@ function viewEdInfo(keep) {
     </section>
     <section class="info-src" aria-labelledby="hSrc">
       <h2 id="hSrc">${L.mSrcTitle}</h2>
-      <ol class="src-list">${all.map(id => { const s = E.src[id]; return `<li><a href="${esc(s.u)}" target="_blank" rel="noopener">${esc(s.t)}</a> · ${esc(s.o)}, ${esc(s.d)}</li>`; }).join("")}</ol>
+      <ol class="src-list">${all.map(id => { const s = E.src[id]; return `<li><a href="${esc(s.u)}" target="_blank" rel="noopener">${esc(s.t)}</a> · ${esc(s.o)}, ${esc(srcDate(s.d))}</li>`; }).join("")}</ol>
       ${E.lang !== E.baseLang ? `<p class="caveat">${L.mTransl}</p>` : ""}
     </section>
     <div class="actions">
-      ${CATALOG.ng && E.cc !== "ng" ? `<button class="btn btn-primary" type="button" data-go="nigeria">${L.tryNigeria}</button>` : ""}
-      <button class="btn btn-ghost" type="button" data-go="home">${L.backMap}</button>
+      <button class="btn btn-primary" type="button" data-go="home">${L.backMap}</button>
+      ${CATALOG.ng && E.cc !== "ng" ? `<button class="link" type="button" data-go="nigeria">${L.tryNigeria}</button>` : ""}
     </div>
   `, null, "screen", keep);
 }
@@ -816,7 +1010,6 @@ function viewStart(keep) {
   const full = state.priorities.length >= 3;
   const n = state.priorities.length;
   const done = answeredCount();
-  const openDetails = [...document.querySelectorAll(".about details")].map(d => d.open);
   show(`
     <div class="strip">
       <span><b>${esc(edName(E))} · ${esc(E.strip)}</b><br><span class="sd">${esc(E.stripDate)}</span></span>
@@ -860,11 +1053,10 @@ function viewStart(keep) {
       </button>`;
     }).join("")}</div>
     <div class="sticky-go">
-      <button class="btn btn-${done && state.order.length ? "ghost" : "primary"}" type="button" data-go="startq" ${n ? "" : "disabled"}>${L.startPrio}</button>
-      <span class="mono muted" style="font-size:.85rem">${L.chosen(n)}</span>
+      <button class="btn btn-${done && state.order.length ? "ghost" : "primary"}" type="button" data-go="startq" aria-describedby="goHint" ${n ? "" : "disabled"}>${L.startPrio}</button>
+      <span class="mono muted" id="goHint" style="font-size:.85rem">${n ? L.chosen(n) : L.startHint}</span>
     </div>
   `, 0, "screen", keep);
-  if (keep) document.querySelectorAll(".about details").forEach((d, i) => { d.open = !!openDetails[i]; });
 }
 function buildOrder() {
   const E = ed();
@@ -884,32 +1076,27 @@ function viewQuestion(keep) {
   const q = E.questions[qi];
   const th = E.themes.find(x => x.id === q.theme);
   const inPrio = state.i < state.nPrio;
-  const blockN = inPrio ? state.nPrio : state.order.length - state.nPrio;
-  const blockI = inPrio ? state.i + 1 : state.i - state.nPrio + 1;
   const v = state.answers[qi];
   const allPrioSeen = state.order.slice(0, state.nPrio).every(x => state.answers[x] !== undefined);
-  const progress = state.order.map((x, k) => {
-    const a = state.answers[x];
-    const cls = [
-      k > 0 && E.questions[state.order[k - 1]].theme !== E.questions[x].theme ? "theme-start" : "",
-      k < state.nPrio ? "prio" : "",
-      typeof a === "number" ? "done" : a === null ? "skipped" : "",
-      k === state.i ? "current" : ""
-    ].join(" ");
-    return `<button type="button" class="${cls}" data-goto="${k}" aria-label="${L.qOf(k + 1, state.order.length)}"${k === state.i ? ' aria-current="step"' : ""}></button>`;
-  }).join("");
-  // « Compte double » : bouton à bascule au-dessus des réponses, lié à CETTE question (data-dbl), jamais à state.i au moment du clic
+  const n = state.order.length, pos = state.i + 1;
+  // Une seule ligne de progression : « 12 / 38 », une fine barre (repère à la fin des sujets prioritaires) et la liste des questions
+  const tick = state.nPrio > 0 && state.nPrio < n ? `<i class="tick" style="inset-inline-start:${(state.nPrio / n * 100).toFixed(1)}%"></i>` : "";
+  // « Compte double » : bouton à bascule à côté de l'énoncé, lié à CETTE question (data-dbl), jamais à state.i au moment du clic
   show(`
-    <nav class="progress" aria-label="${L.steps[1]}">${progress}</nav>
-    <div class="q-meta">
-      <span><span class="q-theme">${esc(th.name)}</span> <span class="chip ${inPrio ? "" : "grey"}">${inPrio ? L.blockPrio : L.blockMore}</span></span>
-      <span class="mono muted">${L.qOf(nn(blockI), nn(blockN))}</span>
+    <div class="q-top">
+      <span class="q-count mono" dir="ltr">${pos} / ${n}</span>
+      <div class="qbar" role="progressbar" aria-label="${esc(L.steps[1])}" aria-valuemin="1" aria-valuemax="${n}" aria-valuenow="${pos}" aria-valuetext="${esc(L.qOf(pos, n))}"><span style="width:${(pos / n * 100).toFixed(1)}%"></span>${tick}</div>
+      <button type="button" class="qlist-btn" data-go="qlist" aria-haspopup="dialog">${L.qList}</button>
     </div>
-    <p class="q-min">${L.ministries}${C()} ${esc(th.min)}</p>
+    <div class="q-meta">
+      <span class="q-theme">${esc(th.name)}</span> <span class="chip ${inPrio ? "" : "grey"}">${inPrio ? L.blockPrio : L.blockMore}</span>
+    </div>
     <div class="slip">
       <h1>${esc(q.text)}</h1>
-      <button type="button" class="star" data-dbl="${qi}" aria-pressed="${!!state.double[qi]}"><span class="st" aria-hidden="true">★</span><span>${L.double}</span></button>
-      <details><summary>${L.background}</summary><p>${esc(q.ctx)}</p></details>
+      <div class="slip-row">
+        <button type="button" class="star" data-dbl="${qi}" aria-pressed="${!!state.double[qi]}"><span class="st" aria-hidden="true">★</span><span>${L.double}</span></button>
+        <details><summary>${L.background}</summary><p class="q-min">${L.ministries}${C()} ${esc(th.min)}</p><p>${esc(q.ctx)}</p></details>
+      </div>
     </div>
     <fieldset class="answers" data-q="${qi}"><legend class="sr">${L.yourAnswer}</legend>
       ${[2, 1, 0, -1, -2].map(val => `<button type="button" class="ans" data-val="${val}" aria-pressed="${v === val}"><span class="box" aria-hidden="true">${CHECK}</span><span>${L.ans[val]}</span></button>`).join("")}
@@ -921,10 +1108,32 @@ function viewQuestion(keep) {
         ${allPrioSeen ? `<button class="btn btn-primary" type="button" data-go="results">${L.seeResults}</button>` : ""}
       </div>
     </div>
-  `, 1, "screen", keep);
+  `, null, "screen q-screen", keep);
   qShownAt = now();
   if (!keep) announce(L.qOf(state.i + 1, state.order.length));
 }
+/* Liste des questions : toutes, avec leur état (répondue, passée, pas encore) ; chaque ligne mesure au moins 44 px. */
+function openQList() {
+  const E = ed(), L = t();
+  const row = k => {
+    const qi = state.order[k], a = state.answers[qi], q = E.questions[qi];
+    const st = typeof a === "number" ? "done" : a === null ? "skip" : "open";
+    const label = st === "done" ? L.qStateDone : st === "skip" ? L.qStateSkip : L.qStateOpen;
+    const cur = k === state.i;
+    return `<li><button type="button" class="qrow ${st}${cur ? " cur" : ""}" data-qjump="${k}"${cur ? ' aria-current="step"' : ""}><span class="qn mono" dir="ltr">${k + 1}</span><span class="qt">${esc(q.short)}</span>${state.double[qi] ? `<span class="qd" title="${esc(L.double)}" aria-label="${esc(L.double)}">★</span>` : ""}<span class="qs">${st === "done" ? "✓ " : st === "skip" ? "↷ " : ""}${esc(label)}</span></button></li>`;
+  };
+  const ks = state.order.map((x, k) => k);
+  const prio = ks.slice(0, state.nPrio), rest = ks.slice(state.nPrio);
+  $("qBody").innerHTML = `
+    <div class="qdlg-head"><h2 id="qDlgTitle">${L.qJumpTitle}</h2><button class="close" type="button" id="qClose" aria-label="${esc(L.ficheClose)}">×</button></div>
+    ${prio.length ? `<h3 class="qgrp">${L.blockPrio}</h3><ul class="qlist">${prio.map(row).join("")}</ul>` : ""}
+    ${rest.length ? `<h3 class="qgrp">${L.blockMore}</h3><ul class="qlist">${rest.map(row).join("")}</ul>` : ""}`;
+  const dlg = $("qDlg");
+  if (typeof dlg.showModal === "function") { if (!dlg.open) dlg.showModal(); } else dlg.setAttribute("open", "");
+  const cur = dlg.querySelector(".qrow.cur");
+  if (cur) { cur.focus({ preventScroll: true }); cur.scrollIntoView({ block: "center" }); }
+}
+function closeQList() { const d = $("qDlg"); if (d && d.open) { if (typeof d.close === "function") d.close(); else d.removeAttribute("open"); } }
 function answer(val, qi) {
   if (state.view !== "question" || qi !== state.order[state.i]) return;
   state.answers[qi] = val;
@@ -1043,7 +1252,7 @@ function panelRanking(rank, a) {
       <div class="rank-main">
         <div class="rank-head"><b>${hname(r.p)}</b><span class="pct">${shown ? pctTxt(r.s) : "–"}</span></div>
         <div class="bar" style="--pc:var(${pvar(r.p.id)}, var(--accent))" role="img" aria-label="${shown ? Math.round(r.s * 100) + " " + L.pctWord : L.notRanked}"><span style="width:${shown ? (r.s * 100).toFixed(1) : 0}%"></span></div>
-        <div class="rank-sub"><span>${candLine(r.p, E, L)}</span><span>${shown ? L.compared(r.k, a) : L.notRanked}</span>${r.grp === "ok" && r.cov < 0.5 ? `<span class="chip warn">${L.partial}</span>` : ""}${r.p.chip ? `<span class="chip grey">${esc(r.p.chip)}</span>` : ""}<button class="link" type="button" data-fiche="${esc(r.p.id)}">${L.seeProfile}</button></div>
+        <div class="rank-sub"><span>${candLine(r.p, E, L, true)}</span><span>${shown ? L.compared(r.k, a) : L.notRanked}</span>${r.grp === "ok" && r.cov < 0.5 ? `<span class="chip warn">${L.partial}</span>` : ""}${r.p.chip ? `<span class="chip grey">${esc(r.p.chip)}</span>` : ""}<button class="link" type="button" data-fiche="${esc(r.p.id)}">${L.seeProfile}</button></div>
       </div>
     </li>`;
   };
@@ -1061,10 +1270,12 @@ function panelThemes() {
     const on = state.priorities.includes(th.id);
     const qIdx = E.questions.map((q, i) => q.theme === th.id ? i : -1).filter(i => i >= 0);
     const answered = qIdx.some(i => typeof state.answers[i] === "number");
-    const head = `<div class="tc-head"><h3>${esc(th.name)}</h3>${on ? `<span class="chip">${L.prio}</span>` : ""}</div>`;
+    const head = `<div class="tc-head"><h2>${esc(th.name)}</h2>${on ? `<span class="chip">${L.prio}</span>` : ""}</div>`;
     if (!answered) {
       const ks = qIdx.map(i => state.order.indexOf(i)).filter(k => k >= 0);
-      return `<article class="theme-card${on ? " prio-on" : ""}">${head}<p class="skipped-note">${L.themeNotAnswered}</p><div><button class="link" type="button" data-goto="${Math.min(...ks)}" data-until="${Math.max(...ks)}">${L.answerTheme}</button></div></article>`;
+      // toutes les questions du sujet ont été vues et passées, ou certaines n'ont pas encore été vues
+      const allSkipped = qIdx.every(i => state.answers[i] === null);
+      return `<article class="theme-card${on ? " prio-on" : ""}">${head}<p class="skipped-note">${allSkipped ? L.themeSkipped : L.themeNotAnswered}</p><div><button class="link" type="button" data-goto="${Math.min(...ks)}" data-until="${Math.max(...ks)}">${L.answerTheme}</button></div></article>`;
     }
     const r = ranking(th.id);
     const ok = r.filter(x => x.grp === "ok"), thin = r.filter(x => x.grp === "thin");
@@ -1122,22 +1333,22 @@ function panelMethod() {
   const used = uniq([...(E.factsSrc || []), ...(E.systemSrc || []), E.othersSrc, ...E.parties.map(p => p.tagSrc), ...E.questions.flatMap(q => Object.values(q.cells).map(c => c.s)), ...E.parties.flatMap(p => p.commit.map(c => c[1])), E.meta.src]).filter(id => E.src[id]);
   const coding = E.role === "leader" ? [L.mCodingLead, ...L.mCoding.slice(1)] : L.mCoding;
   return `<div class="method">
-    <h3>${L.mFormulaTitle}</h3>
+    <h2>${L.mFormulaTitle}</h2>
     <p>${L.mFormula1}</p>
-    <p class="formula" dir="ltr">${L.formula}</p>
+    <p class="formula" dir="ltr" tabindex="0">${L.formula}</p>
     <p>${L.mFormula2}</p>
-    <h3>${L.mRulesTitle}</h3>
+    <h2>${L.mRulesTitle}</h2>
     <ul class="rules">${L.mRules.map(x => `<li>${x}</li>`).join("")}</ul>
-    <h3>${L.mCodingTitle}</h3>
+    <h2>${L.mCodingTitle}</h2>
     <ul>${coding.map(x => `<li>${x}</li>`).join("")}${E.lang !== E.baseLang ? `<li class="transl">${L.mTransl}</li>` : ""}</ul>
-    <h3>${L.mCovTitle}</h3>
+    <h2>${L.mCovTitle}</h2>
     <div class="tbl-wrap"><table class="cov"><thead><tr><th>${L.mCovParty}</th><th style="text-align:end">${L.mCovN}</th></tr></thead><tbody>
       ${E.parties.map(p => ({ p, n: documented(p.id) })).sort((x, y) => y.n - x.n).map(({ p, n }) => `<tr><td>${esc(label(p))}</td><td class="num">${n} / ${E.questions.length}</td></tr>`).join("")}
     </tbody></table></div>
-    <h3>${L.mNotTitle}</h3>
+    <h2>${L.mNotTitle}</h2>
     <ul>${L.mNot.map(x => `<li>${x}</li>`).join("")}</ul>
-    <h3>${L.mSrcTitle}</h3>
-    <ol class="src-list">${used.map(id => { const s = E.src[id]; return `<li><a href="${esc(s.u)}" target="_blank" rel="noopener">${esc(s.t)}</a> · ${esc(s.o)}, ${esc(s.d)}</li>`; }).join("")}</ol>
+    <h2>${L.mSrcTitle}</h2>
+    <ol class="src-list">${used.map(id => { const s = E.src[id]; return `<li><a href="${esc(s.u)}" target="_blank" rel="noopener">${esc(s.t)}</a> · ${esc(s.o)}, ${esc(srcDate(s.d))}</li>`; }).join("")}</ol>
   </div>`;
 }
 
@@ -1223,6 +1434,7 @@ function go(where, el) {
       state.ret = null; navMode = "push";
       return viewQuestion();
     }
+    case "qlist": return openQList();
     case "prev": if (state.i > 0) { state.i--; viewQuestion(); } return;
     case "more": state.i = state.nPrio; return viewQuestion();
     case "results": state.tab = 0; return toResults();
@@ -1244,14 +1456,20 @@ function go(where, el) {
 document.addEventListener("click", e => {
   if (e.target === $("langDlg")) return closeLang();
   if (e.target === $("fiche")) return closeFiche();
-  const el = e.target.closest("[data-pick],[data-place],[data-lang],[data-go],[data-prio],[data-val],[data-dbl],[data-goto],[data-tab],[data-fiche],#ficheClose,#langCancel,#brand");
+  if (e.target === $("qDlg")) return closeQList();
+  const el = e.target.closest("[data-pick],[data-place],[data-lang],[data-go],[data-prio],[data-val],[data-dbl],[data-goto],[data-tab],[data-fiche],[data-qjump],#ficheClose,#langCancel,#qClose,#skip,#brand");
   if (!el) return;
+  if (el.id === "skip") { e.preventDefault(); return skipToList(); }
+  if (el.id === "qClose") return closeQList();
+  if (el.dataset.qjump !== undefined) { closeQList(); state.i = +el.dataset.qjump; return viewQuestion(); }
   if (el.id === "ficheClose") return closeFiche();
   if (el.id === "langCancel") return closeLang();
   if (el.id === "brand") return go("home", el);
-  if (el.dataset.pick) return pickLang(el.dataset.pick);
+  if (el.dataset.pick) return el.getAttribute("aria-disabled") === "true" ? undefined : pickLang(el.dataset.pick);
   if (el.dataset.place) return chooseCountry(el.dataset.place);
   if (el.dataset.lang) {
+    // Langue pas encore traduite : le bouton reste focalisable, un toucher explique (infobulle, 3 s) au lieu de ne rien faire
+    if (el.getAttribute("aria-disabled") === "true") { langTip(el); langTipTimer = setTimeout(() => langTip(null), 3000); return; }
     const code = el.dataset.lang;
     setUi(code, true);
     rerender();
@@ -1312,6 +1530,12 @@ document.addEventListener("keydown", e => {
   const n = e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : (k + (fwd ? 1 : tabs.length - 1)) % tabs.length;
   tabs[n].focus(); tabs[n].click();
 });
+/* Langue indisponible : infobulle au survol et au focus clavier. */
+$("langs").addEventListener("mouseover", e => { const b = e.target.closest && e.target.closest('[aria-disabled="true"]'); if (b) langTip(b); });
+$("langs").addEventListener("mouseout", () => langTip(null));
+$("langs").addEventListener("focusin", e => { const b = e.target.closest && e.target.closest('[aria-disabled="true"]'); langTip(b || null); });
+$("langs").addEventListener("focusout", () => langTip(null));
+document.addEventListener("keydown", e => { if (e.key === "Escape") langTip(null); });
 window.addEventListener("popstate", () => route(location.hash));
 window.addEventListener("hashchange", () => { if (location.hash !== curHash) route(location.hash); });
 try { history.scrollRestoration = "manual"; } catch (e) { }
