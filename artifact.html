@@ -1,9 +1,15 @@
 <title>Vote — Elections in Africa</title>
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=Readex+Pro:wght@300..700&display=swap">
+<link rel="preload" href="fonts/readex-pro-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+/* Polices : fichiers de fonts/ (jamais de serveur tiers) ; variables ; chaque sous-ensemble ne se charge que si la page contient un de ses caractères.
+   Seul le latin du texte courant est préchargé (<link rel="preload"> ci-dessus). Refaire les fichiers : node tools/fonts.js */
+@font-face { font-family: "Bricolage Grotesque"; font-style: normal; font-weight: 200 800; font-stretch: 75% 100%; font-display: swap; src: url("fonts/bricolage-grotesque-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "Bricolage Grotesque"; font-style: normal; font-weight: 200 800; font-stretch: 75% 100%; font-display: swap; src: url("fonts/bricolage-grotesque-latin.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Readex Pro"; font-style: normal; font-weight: 160 700; font-display: swap; src: url("fonts/readex-pro-arabic.woff2") format("woff2"); unicode-range: U+0600-06FF,U+0750-077F,U+0870-088E,U+0890-0891,U+0897-08E1,U+08E3-08FF,U+200C-200E,U+2010-2011,U+204F,U+2E41,U+FB50-FDFF,U+FE70-FE74,U+FE76-FEFC,U+102E0-102FB,U+10E60-10E7E,U+10EC2-10EC4,U+10EFC-10EFF,U+1EE00-1EE03,U+1EE05-1EE1F,U+1EE21-1EE22,U+1EE24,U+1EE27,U+1EE29-1EE32,U+1EE34-1EE37,U+1EE39,U+1EE3B,U+1EE42,U+1EE47,U+1EE49,U+1EE4B,U+1EE4D-1EE4F,U+1EE51-1EE52,U+1EE54,U+1EE57,U+1EE59,U+1EE5B,U+1EE5D,U+1EE5F,U+1EE61-1EE62,U+1EE64,U+1EE67-1EE6A,U+1EE6C-1EE72,U+1EE74-1EE77,U+1EE79-1EE7C,U+1EE7E,U+1EE80-1EE89,U+1EE8B-1EE9B,U+1EEA1-1EEA3,U+1EEA5-1EEA9,U+1EEAB-1EEBB,U+1EEF0-1EEF1; }
+@font-face { font-family: "Readex Pro"; font-style: normal; font-weight: 160 700; font-display: swap; src: url("fonts/readex-pro-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "Readex Pro"; font-style: normal; font-weight: 160 700; font-display: swap; src: url("fonts/readex-pro-latin.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+
 /* Mise en page : un bureau de vote. Sur grand écran, l'accueil pose la carte de l'Afrique à côté du texte ; ensuite, une seule colonne de lecture (760 px) pour les priorités, les questions et les résultats.
    Couleurs : l'encre électorale violette (celle qui marque le doigt des votants) pour l'action, une lumière ambrée pour « éclairer » ce qui est choisi, le vert et le rouge réservés à la carte. */
 :root {
@@ -429,6 +435,8 @@ dialog::backdrop { background: rgba(14, 10, 28, .58); }
 .lang-grid h3 { font-family: var(--f-body); font-size: .74rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-top: 4px; }
 .lang-btn { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; text-align: start; padding: 13px 18px; border: 1.5px solid var(--ctl); border-radius: var(--r); background: var(--sheet); cursor: pointer; font-size: 1.1rem; font-weight: 600; }
 .lang-btn:hover, .lang-btn.cur { border-color: var(--accent); background: var(--accent-soft); }
+/* Le nom « العربية » s'affiche aussi pour qui lit une autre langue : police du système, pour ne pas télécharger la police arabe (23 Ko) avant qu'elle serve */
+html:not([lang="ar"]) .lang-btn[lang="ar"] { font-family: system-ui, "Segoe UI", Tahoma, "Noto Sans Arabic", sans-serif; }
 .lang-btn .lc { font-size: .74rem; color: var(--muted); font-weight: 600; letter-spacing: .06em; }
 .lang-btn[aria-disabled="true"] { cursor: not-allowed; border-style: dashed; background: transparent; color: var(--muted); }
 .lang-btn[aria-disabled="true"]:hover { border-color: var(--ctl); background: transparent; }
@@ -449,6 +457,54 @@ dialog::backdrop { background: rgba(14, 10, 28, .58); }
 .info-src { display: grid; gap: 10px; }
 .load-box { display: flex; align-items: center; gap: 14px; }
 .spinner { width: 26px; height: 26px; flex: none; border-radius: 50%; border: 3px solid var(--line-strong); border-top-color: var(--accent); }
+
+/* ============ Prépare ton vote, « Pourquoi ce score ? », partage, signaler une erreur ============ */
+.ico { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.prep { display: grid; gap: 10px; min-width: 0; padding: 16px 18px; background: var(--sheet); border: 1.5px solid var(--lamp); border-radius: var(--r); }
+.prep-title { font-family: var(--f-display); font-weight: 750; font-size: 1.3rem; letter-spacing: -.01em; line-height: 1.2; }
+.prep-count { font-size: 1rem; }
+.prep-count b { font-family: var(--f-display); font-size: 1.2rem; font-weight: 750; }
+.prep-emb { font-size: .95rem; }
+.prep-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.prep-item { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; padding: 10px 0; border-top: 1px solid var(--line); font-size: .95rem; }
+.prep-d { display: inline-flex; align-items: center; gap: 8px; flex: none; min-width: 9.5rem; font-size: .86rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.prep-t { flex: 1 1 16rem; min-width: 0; overflow-wrap: anywhere; }
+.prep-item.past { color: var(--muted); }
+.prep-item.past .prep-d { font-weight: 500; }
+.prep-item.past .prep-t { opacity: .92; }
+.prep-tag { text-transform: uppercase; }
+.prep-check { font-size: .95rem; }
+.prep-ics { text-decoration: none; }
+.prep-cav { font-size: .84rem; }
+@media (max-width: 480px) { .prep-d { min-width: 0; } }
+
+.xm { margin-top: 2px; }
+.xm > summary { min-height: 32px; display: flex; align-items: center; font-size: .9rem; }
+.xm-cov { font-size: .84rem; margin: 4px 0 2px; }
+.xm-block { display: grid; gap: 8px; margin-top: 10px; }
+.xm-h { font-weight: 700; font-size: .92rem; }
+.xm-list { display: grid; gap: 8px; }
+.xm-item { display: grid; gap: 4px; padding: 10px 12px; background: var(--paper); border-radius: var(--r-s); font-size: .9rem; }
+.xm-q { font-weight: 600; overflow-wrap: anywhere; }
+.xm-pos { display: flex; flex-wrap: wrap; gap: 2px 16px; color: var(--muted); }
+.xm-pos b { color: var(--ink); font-weight: 600; }
+.xm-item .link { justify-self: start; padding-block: 6px; font-size: .88rem; }
+.xm-none { font-size: .88rem; }
+.xm-fiche .xm-item { background: var(--sheet); }
+.fs-cov { flex-basis: 100%; font-size: .84rem; }
+.cov-sub { display: block; font-size: .76rem; color: var(--muted); font-weight: 400; }
+.qa { scroll-margin-top: 12px; }
+.qa.hl { outline: 3px solid var(--accent); outline-offset: 2px; }
+.report { font-size: .82rem; }
+
+.share { display: grid; gap: 8px; justify-items: start; width: 100%; }
+.share .actions { align-items: center; }
+.share-status { font-weight: 700; color: var(--accent-ink); }
+.share-note { font-size: .86rem; max-width: 60ch; }
+.share-manual { display: grid; gap: 6px; width: 100%; max-width: 66ch; }
+.share-manual label { font-weight: 600; font-size: .92rem; }
+.share-field { width: 100%; font: inherit; padding: 10px 12px; border: 1.5px solid var(--ctl); border-radius: var(--r-s); background: var(--paper); color: var(--ink); resize: vertical; }
+.toast { position: fixed; z-index: 40; inset-inline: 0; margin-inline: auto; width: fit-content; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); max-width: min(92vw, 420px); background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: var(--r-s); box-shadow: var(--shadow); font-size: .92rem; }
 
 /* Arabe : pas d'espacement entre lettres, interligne plus généreux */
 [dir="rtl"] body * { letter-spacing: 0 !important; }
@@ -572,6 +628,7 @@ html[dir="rtl"] .mfill.con { transform-origin: right center; }
 <dialog id="langDlg" aria-labelledby="langTitle"><div class="lang-box" id="langBody"></div></dialog>
 <dialog id="qDlg" aria-labelledby="qDlgTitle"><div class="lang-box" id="qBody"></div></dialog>
 <div id="langTip" class="tip lang-tip" role="tooltip" hidden></div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script>
 const CHECK = '<svg viewBox="0 0 28 24"><path d="M5 13l6 6L26 1"/></svg>';
@@ -2016,6 +2073,189 @@ Object.assign(T.ar, {
     "تركنا عمدًا الأسئلة المتعلقة بالميول الجنسية: ففي عدة بلدان قد تعرّض الإجابة عنها أشخاصًا للخطر."
   ]
 });
+/* ================== « Pourquoi ce score ? », « Prépare ton vote », partage, signaler une erreur : textes (fr, en, pt, sw, ar) ==================
+   Registre : « tu » en français, portugais européen, swahili standard, arabe standard. Chargé après t-meter.js. */
+const arDays = n => n === 0 ? "التصويت اليوم" : n === 1 ? "التصويت غدًا" : n === 2 ? "التصويت بعد يومين" : n <= 10 ? `التصويت بعد ${n} أيام` : `التصويت بعد ${n} يومًا`;
+
+Object.assign(T.fr, {
+  whyScore: "Pourquoi ce score ?",
+  whyAgree: "Là où tu es le plus proche",
+  whyDisagree: "Là où tu es le plus loin",
+  whyNoAgree: "Aucune de tes réponses n’est proche de ses positions connues.",
+  whyNoDisagree: "Aucune de tes réponses n’est à l’opposé de ses positions connues.",
+  whyNone: "Aucune de tes réponses ne porte sur une question où ce parti a une position documentée.",
+  whyTheirs: p => `Position de ${p}`,
+  whySeeQ: "Voir la question",
+  prepTitle2: "Prépare ton vote",
+  prepBody: "Organisme électoral officiel",
+  prepDaysIn: n => n === 0 ? "Le vote a lieu aujourd’hui" : n === 1 ? "Vote demain" : `Vote dans ${n} jours`,
+  prepPlanned: "Vote prévu",
+  prepInMonth: m => `en ${m} (date à confirmer)`,
+  prepPast: "passé",
+  prepCheck: "Vérifier mon inscription sur les listes",
+  prepAdd: "Ajouter à mon agenda",
+  prepCaveat: "Ces informations viennent de sources publiques datées. Une date peut changer : vérifie auprès de l’organisme électoral.",
+  prepAria: "Prépare ton vote : dates et démarches",
+  shareBtn: "Partager",
+  shareText: (name, who, pct, n) => `${n > 1 ? "Mes partis les plus proches" : "Mon parti le plus proche"} pour ${name} : ${who} (${pct}) — et toi ?`,
+  shareNote: "Seul le nom du parti est partagé, jamais tes réponses.",
+  shareCopied: "Copié",
+  shareManual: "Copie ce texte et ce lien :",
+  shareImgBtn: "Partager en image",
+  shareImgSaved: "Image enregistrée",
+  shareImgLead: (name, n) => `${n > 1 ? "Mes partis les plus proches" : "Mon parti le plus proche"} pour ${name}`,
+  shareImgAsk: "Et toi ?",
+  shareLabel: "Texte à partager",
+  reportErr: "Signaler une erreur",
+  reportAria: p => `Signaler une erreur sur la position de ${p}`,
+  whatsNew: "Quoi de neuf",
+  langLoadFail: "Impossible de charger cette langue pour le moment. Réessaie.",
+  newTab: "s’ouvre dans un nouvel onglet"
+});
+
+Object.assign(T.en, {
+  whyScore: "Why this score?",
+  whyAgree: "Where you agree most",
+  whyDisagree: "Where you disagree most",
+  whyNoAgree: "None of your answers is close to its known positions.",
+  whyNoDisagree: "None of your answers is the opposite of its known positions.",
+  whyNone: "None of your answers is on a question where this party has a documented position.",
+  whyTheirs: p => `${p}’s position`,
+  whySeeQ: "See the question",
+  prepTitle2: "Get ready to vote",
+  prepBody: "Official electoral body",
+  prepDaysIn: n => n === 0 ? "Voting is today" : n === 1 ? "Vote tomorrow" : `Vote in ${n} days`,
+  prepPlanned: "Vote expected",
+  prepInMonth: m => `in ${m} (date to be confirmed)`,
+  prepPast: "past",
+  prepCheck: "Check that you are registered",
+  prepAdd: "Add to my calendar",
+  prepCaveat: "This comes from dated public sources. A date can change: check with the electoral body.",
+  prepAria: "Get ready to vote: dates and steps",
+  shareBtn: "Share",
+  shareText: (name, who, pct, n) => `${n > 1 ? "My closest parties" : "My closest party"} for ${name}: ${who} (${pct}) — and you?`,
+  shareNote: "Only the party name is shared, never your answers.",
+  shareCopied: "Copied",
+  shareManual: "Copy this text and link:",
+  shareImgBtn: "Share as an image",
+  shareImgSaved: "Image saved",
+  shareImgLead: (name, n) => `${n > 1 ? "My closest parties" : "My closest party"} for ${name}`,
+  shareImgAsk: "And you?",
+  shareLabel: "Text to share",
+  reportErr: "Report a mistake",
+  reportAria: p => `Report a mistake in ${p}’s position`,
+  whatsNew: "What’s new",
+  langLoadFail: "Couldn’t load that language right now. Try again.",
+  newTab: "opens in a new tab"
+});
+
+Object.assign(T.pt, {
+  whyScore: "Porquê esta pontuação?",
+  whyAgree: "Onde estás mais próximo",
+  whyDisagree: "Onde estás mais afastado",
+  whyNoAgree: "Nenhuma das tuas respostas está perto das posições conhecidas deste partido.",
+  whyNoDisagree: "Nenhuma das tuas respostas é o oposto das posições conhecidas deste partido.",
+  whyNone: "Nenhuma das tuas respostas é sobre uma pergunta em que este partido tenha uma posição documentada.",
+  whyTheirs: p => `Posição de ${p}`,
+  whySeeQ: "Ver a pergunta",
+  prepTitle2: "Prepara o teu voto",
+  prepBody: "Organismo eleitoral oficial",
+  prepDaysIn: n => n === 0 ? "A votação é hoje" : n === 1 ? "Votas amanhã" : `Votas daqui a ${n} dias`,
+  prepPlanned: "Votação prevista",
+  prepInMonth: m => `para ${m} (data a confirmar)`,
+  prepPast: "passado",
+  prepCheck: "Verificar o meu recenseamento",
+  prepAdd: "Adicionar à minha agenda",
+  prepCaveat: "Estas informações vêm de fontes públicas datadas. Uma data pode mudar: confirma junto do organismo eleitoral.",
+  prepAria: "Prepara o teu voto: datas e passos",
+  shareBtn: "Partilhar",
+  shareText: (name, who, pct, n) => `${n > 1 ? "Os meus partidos mais próximos" : "O meu partido mais próximo"} para ${name}: ${who} (${pct}) — e tu?`,
+  shareNote: "Só o nome do partido é partilhado, nunca as tuas respostas.",
+  shareCopied: "Copiado",
+  shareManual: "Copia este texto e esta ligação:",
+  shareImgBtn: "Partilhar como imagem",
+  shareImgSaved: "Imagem guardada",
+  shareImgLead: (name, n) => `${n > 1 ? "Os meus partidos mais próximos" : "O meu partido mais próximo"} para ${name}`,
+  shareImgAsk: "E tu?",
+  shareLabel: "Texto a partilhar",
+  reportErr: "Assinalar um erro",
+  reportAria: p => `Assinalar um erro na posição de ${p}`,
+  whatsNew: "Novidades",
+  langLoadFail: "Não foi possível carregar esta língua agora. Tenta de novo.",
+  newTab: "abre num novo separador"
+});
+
+Object.assign(T.sw, {
+  whyScore: "Kwa nini alama hii?",
+  whyAgree: "Mahali mnapokubaliana zaidi",
+  whyDisagree: "Mahali mnapotofautiana zaidi",
+  whyNoAgree: "Hakuna jibu lako lililo karibu na misimamo inayojulikana ya chama hiki.",
+  whyNoDisagree: "Hakuna jibu lako lililo kinyume na misimamo inayojulikana ya chama hiki.",
+  whyNone: "Hakuna jibu lako kuhusu swali ambalo chama hiki kina msimamo uliorekodiwa.",
+  whyTheirs: p => `Msimamo wa ${p}`,
+  whySeeQ: "Ona swali",
+  prepTitle2: "Jiandae kupiga kura",
+  prepBody: "Chombo rasmi cha uchaguzi",
+  prepDaysIn: n => n === 0 ? "Kura inapigwa leo" : n === 1 ? "Kura kesho" : `Kura baada ya siku ${n}`,
+  prepPlanned: "Kura imepangwa",
+  prepInMonth: m => `${m} (tarehe itathibitishwa)`,
+  prepPast: "imepita",
+  prepCheck: "Angalia kama umesajiliwa",
+  prepAdd: "Ongeza kwenye kalenda yangu",
+  prepCaveat: "Taarifa hizi zinatoka kwenye vyanzo vya umma vyenye tarehe. Tarehe inaweza kubadilika: thibitisha kwa chombo cha uchaguzi.",
+  prepAria: "Jiandae kupiga kura: tarehe na hatua",
+  shareBtn: "Shiriki",
+  shareText: (name, who, pct, n) => `${n > 1 ? "Vyama vyangu vilivyo karibu zaidi" : "Chama changu kilicho karibu zaidi"} kwa ${name}: ${who} (${pct}) — na wewe?`,
+  shareNote: "Ni jina la chama pekee linaloshirikiwa, kamwe si majibu yako.",
+  shareCopied: "Imenakiliwa",
+  shareManual: "Nakili maandishi haya na kiungo:",
+  shareImgBtn: "Shiriki kama picha",
+  shareImgSaved: "Picha imehifadhiwa",
+  shareImgLead: (name, n) => `${n > 1 ? "Vyama vyangu vilivyo karibu zaidi" : "Chama changu kilicho karibu zaidi"} kwa ${name}`,
+  shareImgAsk: "Na wewe?",
+  shareLabel: "Maandishi ya kushiriki",
+  reportErr: "Ripoti kosa",
+  reportAria: p => `Ripoti kosa katika msimamo wa ${p}`,
+  whatsNew: "Kuna nini kipya",
+  langLoadFail: "Imeshindikana kupakia lugha hii sasa. Jaribu tena.",
+  newTab: "hufunguka kwenye kichupo kipya"
+});
+
+Object.assign(T.ar, {
+  whyScore: "لماذا هذه النسبة؟",
+  whyAgree: "حيث تتفقان أكثر",
+  whyDisagree: "حيث تختلفان أكثر",
+  whyNoAgree: "لا توجد إجابة لك قريبة من مواقف هذا الحزب المعروفة.",
+  whyNoDisagree: "لا توجد إجابة لك مناقضة لمواقف هذا الحزب المعروفة.",
+  whyNone: "لا توجد إجابة لك عن سؤال له فيه موقف موثّق.",
+  whyTheirs: p => `موقف ${p}`,
+  whySeeQ: "عرض السؤال",
+  prepTitle2: "استعد للتصويت",
+  prepBody: "الهيئة الانتخابية الرسمية",
+  prepDaysIn: arDays,
+  prepPlanned: "التصويت متوقع",
+  prepInMonth: m => `في ${m} (موعد غير مؤكد)`,
+  prepPast: "منتهٍ",
+  prepCheck: "تحقق من تسجيلك في القوائم",
+  prepAdd: "أضِف إلى تقويمي",
+  prepCaveat: "هذه المعلومات من مصادر عامة مؤرخة. قد يتغير الموعد: تحقق لدى الهيئة الانتخابية.",
+  prepAria: "استعد للتصويت: المواعيد والخطوات",
+  shareBtn: "مشاركة",
+  shareText: (name, who, pct, n) => `${n > 1 ? "أقرب أحزابي" : "أقرب حزب إليّ"} في ${name}: ${who} (${pct}) — وأنت؟`,
+  shareNote: "لا يُشارَك إلا اسم الحزب، ولا تُشارَك إجاباتك أبدًا.",
+  shareCopied: "تم النسخ",
+  shareManual: "انسخ هذا النص والرابط:",
+  shareImgBtn: "مشاركة كصورة",
+  shareImgSaved: "تم حفظ الصورة",
+  shareImgLead: (name, n) => `${n > 1 ? "أقرب أحزابي" : "أقرب حزب إليّ"} في ${name}`,
+  shareImgAsk: "وأنت؟",
+  shareLabel: "النص المراد مشاركته",
+  reportErr: "الإبلاغ عن خطأ",
+  reportAria: p => `الإبلاغ عن خطأ في موقف ${p}`,
+  whatsNew: "ما الجديد",
+  langLoadFail: "تعذّر تحميل هذه اللغة الآن. حاول مرة أخرى.",
+  newTab: "يُفتح في علامة تبويب جديدة"
+});
 /* ================== Module « valeurs » : 10 énoncés identiques dans tous les pays ==================
    Ne sert pas à comparer les partis. Chaque réponse (échelle à 5 points, d’accord / pas d’accord) alimente
    uniquement le compteur anonyme « où se situent les électeurs sur les valeurs » (libéral–progressiste vs conservateur–nationaliste).
@@ -2190,6 +2430,8 @@ const MAP = {"w":800,"h":770,"vb":[-2,17,804,736],"c":{"108":"M542.3,421.8L541,4
 /* ================== Catalogue des éditions (généré par tools/build.js) ================== */
 const CATALOG = {"ao":{"kind":"info","a3":"024","langs":["en","fr","pt"],"ev":[{"t":"general","d":"2027-08","q":"month"}],"evSrc":{"o":"Plataforma Media","t":"Angola vai a eleições em 2027 e prepara sucessão de João Lourenço","d":"24 Aug 2026","u":"https://www.plataformamedia.com/2026/08/24/angola-vai-a-eleicoes-em-2027-e-prepara-sucessao-de-joao-lourenco/"}},"bi":{"kind":"ed","a3":"108","langs":["en","fr"],"ev":[{"t":"presidential","d":"2027-05-03","q":"exact"}],"evSrc":{"o":"Ecofin Agency","t":"Burundi Sets May 2027 Presidential Vote With $38.9 Million Budget","d":"12 May 2026","u":"https://www.ecofinagency.com/news/1205-55485-burundi-sets-may-2027-presidential-vote-with-38-9-million-budget"}},"cg":{"kind":"ed","a3":"178","langs":["en","fr"],"ev":[{"t":"legislative","d":"2027-07","q":"by"}],"evSrc":{"o":"Wikipedia (background only)","t":"2027 Republic of the Congo parliamentary election","d":"2026","u":"https://en.wikipedia.org/wiki/2027_Republic_of_the_Congo_parliamentary_election"}},"cm":{"kind":"ed","a3":"120","langs":["en","fr"],"ev":[{"t":"legislative","d":"2027-01-29","d2":"2027-04-19","q":"range"}],"evSrc":{"o":"Investir au Cameroun","t":"Cameroon’s CRM Prepares for 2027 Elections with Candidate Endorsements at Risk","d":"1 Sep 2026","u":"https://m.investiraucameroun.com/stopblabla/i/16747/cameroons-crm-prepares-2027-elections-candidate-endorsements-risk"},"note":"The legislative elections have been postponed twice; no decree setting the date had been reported by September 2026."},"cv":{"kind":"ed","a3":"132","langs":["en","fr","pt"],"ev":[{"t":"presidential","d":"2026-11-15","q":"exact"}],"evSrc":{"o":"Forbes África Lusófona","t":"Eleições presidenciais em Cabo Verde marcadas para 15 de Novembro deste ano","d":"31 Jul 2026","u":"https://forbesafricalusofona.com/?p=174758"}},"fr":{"kind":"ed","a3":null,"langs":["fr"],"ev":[{"t":"presidential","d":"2027-04-18","q":"exact"}],"evSrc":{"o":"Public Sénat","t":"La prochaine élection présidentielle aura lieu les 18 avril et 2 mai 2027","d":"1er juil. 2026","u":"https://www.publicsenat.fr/actualites/politique/la-prochaine-election-presidentielle-aura-lieu-les-18-avril-et-2-mai-2027"}},"gm":{"kind":"ed","a3":"270","langs":["en","fr"],"ev":[{"t":"presidential","d":"2026-12-05","q":"exact"},{"t":"legislative","d":"2027-04-10","q":"exact"}],"evSrc":{"o":"Independent Electoral Commission (IEC)","t":"Electoral Calendar 2026–2027","d":"Oct 2025","u":"https://iec.gm/wp-content/uploads/2025/10/ELECTORALCALENDAR2026-2027.pdf"}},"gq":{"kind":"info","a3":"226","langs":["en","fr","pt"],"ev":[{"t":"legislative","d":"2027-11","q":"by"}],"evSrc":{"o":"IPU Parline","t":"Equatorial Guinea: Senate, 20 November 2022 election","d":"2023","u":"https://data.ipu.org/parliament/GQ/GQ-UC01/election/GQ-UC01-E20221120"}},"gw":{"kind":"info","a3":"624","langs":["en","fr","pt"],"ev":[{"t":"general","d":"2026-12-06","q":"exact"}],"evSrc":{"o":"Reuters (via Internazionale)","t":"Guinea-Bissau to delay elections following last year’s coup","d":"8 Oct 2026","u":"https://www.internazionale.it/ultime-notizie-reuters/2026/10/08/guinea-bissau-to-delay-elections-following-last-year-s-coup"},"note":"On 8 Oct 2026 the transitional Prime Minister said the 6 December vote must be postponed; no new date had been set by 11 Oct 2026."},"ke":{"kind":"ed","a3":"404","langs":["en","fr","sw"],"ev":[{"t":"general","d":"2027-08-10","q":"exact"}],"evSrc":{"o":"Kenyans.co.ke","t":"IEBC Sets August 10, 2027 Election Date, Orders Public Officers to Resign by February 9","d":"24 Jun 2026","u":"https://www.kenyans.co.ke/news/124581-iebc-sets-august-10-2027-election-date-orders-public-officers-resign-february-9"}},"ls":{"kind":"ed","a3":"426","langs":["en"],"ev":[{"t":"legislative","d":"2027-10","q":"by"}],"evSrc":{"o":"Wikipedia","t":"Next Lesotho general election","d":"2026","u":"https://en.wikipedia.org/wiki/Next_Lesotho_general_election"},"note":"No polling day has been announced; the IEC is preparing for “the 2027 general elections”."},"ly":{"kind":"info","a3":"434","langs":["en","ar","fr"],"ev":[{"t":"pres_leg","d":"2028-08","q":"by"}],"evSrc":{"o":"Al Jazeera","t":"Libya’s parliament removes Speaker Saleh after 12 years as discontent grows","d":"7 Oct 2026","u":"https://www.aljazeera.com/news/2026/10/7/libyas-parliament-removes-speaker-aguila-saleh-after-12-years"},"note":"No date set: the UN-facilitated 4+4 agreement of 30 Aug 2026 only requires elections within 24 months; the High Council of State and the Presidential Council contest it, and the elections commission’s leadership is disputed."},"mg":{"kind":"ed","a3":"450","langs":["en","fr"],"ev":[{"t":"referendum","d":"2027-05","d2":"2027-07","q":"range"},{"t":"presidential","d":"2027-09","d2":"2027-12","q":"range"}],"evSrc":{"o":"L’Express de Madagascar (via AllAfrica)","t":"Madagascar: Préparation des élections - La Présidence lance une concertation multi-acteurs","d":"31 Aug 2026","u":"https://fr.allafrica.com/stories/202608310147.html"},"note":"Transition after the October 2025 military takeover. As of 16 Oct 2026 no decree fixes the dates: the CENI proposed June (referendum) and October 2027 (presidential), the head of state spoke of a first vote in July 2027, and the order of the votes is still debated."},"ng":{"kind":"ed","a3":"566","langs":["en","fr","pt","sw","ar"],"ev":[{"t":"general","d":"2027-01-16","q":"exact"}],"evSrc":{"o":"News Agency of Nigeria","t":"INEC reschedules 2027 general election","d":"27 Feb 2026","u":"https://nannews.ng/election-15/"}},"so":{"kind":"ed","a3":"706","langs":["en","ar"],"ev":[{"t":"legislative","d":"2027-04-15","q":"exact"},{"t":"presidential","d":"2027-05-15","q":"exact"}],"evSrc":{"o":"The Somali Digest","t":"The Electoral Commission Sets Somalia’s Vote for 15 May 2027 and the Opposition Rejects It","d":"15 Oct 2026","u":"https://thesomalidigest.com/electoral-commission-2027-election-timetable/"},"note":"Dates set by the electoral commission on 15 October 2026 without political agreement; the opposition, Puntland and Jubaland reject the process, so whether and where the vote takes place is uncertain."},"ss":{"kind":"info","a3":"728","langs":["en","ar","fr"],"ev":[{"t":"general","d":"2026-12-22","q":"exact"}],"evSrc":{"o":"Radio Tamazuj","t":"Kiir’s envoy says December polls are non-negotiable","d":"9 Oct 2026","u":"https://www.radiotamazuj.org/en/news/article/kiirs-envoy-says-december-polls-are-non-negotiable"},"note":"Vote in serious doubt: transitional government dissolved on 22 Sep 2026, main opposition rejects the polls, and no voter had been registered by 7 Oct 2026."},"tn":{"kind":"ed","a3":"788","langs":["en","ar","fr"],"ev":[{"t":"legislative","d":"2027-11","q":"range","d2":"2028-03"}],"evSrc":{"o":"Webdo","t":"Municipales : Un scrutin possible avant fin 2026, sinon d’ici mars 2027","d":"13 Oct 2026","u":"https://www.webdo.tn/fr/actualite/national/municipales-un-scrutin-possible-avant-fin-2026-sinon-dici-mars-2027/405501/"}}};
 const METER_ENDPOINT = "";   // meter.config.json : vide = fonctions collectives éteintes
+const SITE_URL = "https://excellence2035.github.io/eclaire-ton-vote/", REPO_URL = "https://github.com/excellence2035/eclaire-ton-vote";   // adresses publiques : tools/build.js
+const EMBEDDED = true;   // true dans artifact.html
 
 /* ================== Éditions ==================
    Chaque pays a son fichier data/<cc>.json (questionnaire « ed » ou page d'information « info »), chargé à la demande.
@@ -2221,8 +2463,11 @@ const t = () => T[state.ui] || T.en;
 const edCache = {};
 const ed = () => {
   const key = state.country + ":" + state.ui;
-  if (!edCache[key]) edCache[key] = localizeEdition(DATA[state.country], state.ui);
-  return edCache[key];
+  if (edCache[key]) return edCache[key];
+  const E = localizeEdition(DATA[state.country], state.ui);
+  // Pas de mémoire tant que la traduction de cette langue n'est pas arrivée (sinon le texte de base resterait en mémoire à sa place)
+  if (hasLang(state.country, state.ui) || !DATA[state.country].langs.includes(state.ui)) edCache[key] = E;
+  return E;
 };
 const nn = n => String(n).padStart(2, "0");
 const C = () => state.ui === "fr" ? " :" : ":";
@@ -2251,7 +2496,7 @@ function localizeEdition(D, lang) {
   const E = JSON.parse(JSON.stringify(base));
   E.kind = D.kind; E.cc = D.id; E.a3 = D.a3; E.baseLang = D.lang; E.meta = D.meta || {}; E.src = D.src || {};
   E.langs = LANGS.map(l => ({ code: l.code, label: l.code.toUpperCase(), name: l.name, ready: D.langs.includes(l.code) }));
-  const L = lang !== D.lang && D.i18n && D.i18n[lang];
+  const L = lang !== D.lang && TRANS[D.id + ":" + lang];
   E.lang = L ? lang : D.lang;
   // Note de l'édition (report, doute sur la date…) : traduite quand la traduction fournit « note »
   E.note = E.meta.note || ""; E.noteLang = D.lang;
@@ -2352,28 +2597,46 @@ function injectColours(D) {
   st.textContent = `:root{${vars(0)}}@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){${vars(1)}}}:root[data-theme="dark"]{${vars(1)}}`;
   (document.head || document.documentElement).appendChild(st);
 }
-/* Un seul téléchargement par pays à la fois (pays rouvert pendant le chargement) ; abandon au bout de LOAD_TIMEOUT. */
+/* Données d'un pays : data/<cc>.json (langue de base, META, sources, « Prépare ton vote ») et, si la langue de l'interface n'est pas la
+   langue de base, data/<cc>.<langue>.json (cette traduction seulement). Une autre langue n'est téléchargée que si on la choisit.
+   Un seul téléchargement par fichier à la fois ; abandon au bout de LOAD_TIMEOUT. */
+const TRANS = {};   // « cc:langue » → traduction
 const inflight = {};
-function loadEdition(cc) {
-  if (DATA[cc]) return Promise.resolve(DATA[cc]);
-  if (inflight[cc]) return inflight[cc];
+function fetchJson(name, valid) {
+  if (inflight[name]) return inflight[name];
   const ac = typeof AbortController === "function" ? new AbortController() : null;
   const p = new Promise((resolve, reject) => {
     const timer = setTimeout(() => { if (ac) ac.abort(); reject(new Error("timeout")); }, LOAD_TIMEOUT);
-    fetch(`data/${encodeURIComponent(cc)}.json`, ac ? { signal: ac.signal } : {})
+    fetch(`data/${encodeURIComponent(name)}.json`, ac ? { signal: ac.signal } : {})
       .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-      .then(D => {
-        if (!D || D.id !== cc || !(D.ed || D.info)) throw new Error("bad data");
-        DATA[cc] = D;
-        injectColours(D);
-        return D;
-      })
-      .then(D => { clearTimeout(timer); resolve(D); }, e => { clearTimeout(timer); reject(e); });
+      .then(J => { if (!valid(J)) throw new Error("bad data"); return J; })
+      .then(J => { clearTimeout(timer); resolve(J); }, e => { clearTimeout(timer); reject(e); });
   });
-  inflight[cc] = p;
-  const done = () => { delete inflight[cc]; };
+  inflight[name] = p;
+  const done = () => { delete inflight[name]; };
   p.then(done, done);
   return p;
+}
+const baseLang = cc => CATALOG[cc].langs[0];
+/* La langue demandée si ce pays l'a, sinon sa langue de base */
+const wantLang = (cc, lang) => CATALOG[cc].langs.includes(lang) ? lang : baseLang(cc);
+/* Tout ce qu'il faut pour afficher ce pays dans cette langue est-il là ? */
+const hasLang = (cc, lang) => !!DATA[cc] && (lang === DATA[cc].lang || !CATALOG[cc].langs.includes(lang) || !!TRANS[cc + ":" + lang]);
+function loadBase(cc) {
+  if (DATA[cc]) return Promise.resolve(DATA[cc]);
+  return fetchJson(cc, D => !!D && D.id === cc && !!(D.ed || D.info)).then(D => {
+    if (!DATA[cc]) { DATA[cc] = D; injectColours(D); }
+    return DATA[cc];
+  });
+}
+function loadLang(cc, lang) {
+  if (lang === baseLang(cc) || !CATALOG[cc].langs.includes(lang) || TRANS[cc + ":" + lang]) return Promise.resolve();
+  return fetchJson(`${cc}.${lang}`, J => !!J && J.id === cc && J.lang === lang && !!J.t && typeof J.t === "object").then(J => { TRANS[cc + ":" + lang] = J.t; });
+}
+function loadEdition(cc, lang) {
+  lang = wantLang(cc, lang || state.ui);
+  if (hasLang(cc, lang)) return Promise.resolve(DATA[cc]);
+  return Promise.all([loadBase(cc), loadLang(cc, lang)]).then(r => r[0]);
 }
 
 function badge(p, size) {
@@ -2775,7 +3038,7 @@ function renderChrome() {
   $("langTip").textContent = L.langWhy;
   // Le slogan de prudence sur les positions codées n'a de sens que là où des positions de partis sont affichées
   const pos = ["start", "question", "checkpoint", "results"].includes(state.view);
-  $("footer").innerHTML = `${pos ? `<span>${L.footer1}</span>` : ""}<span>${METER_ENDPOINT ? L.footerMeter : L.footer2}</span>`;
+  $("footer").innerHTML = `${pos ? `<span>${L.footer1}</span>` : ""}<span>${METER_ENDPOINT ? L.footerMeter : L.footer2}</span><span><a href="${esc(REPO_URL)}/blob/main/CHANGELOG.md" target="_blank" rel="noopener" aria-label="${esc(L.whatsNew + " (" + L.newTab + ")")}">${L.whatsNew}</a></span>`;
   // Lien d'évitement : seulement sur la carte (premier élément focalisable de la page)
   const sk = $("skip");
   sk.textContent = L.skipList;
@@ -3166,9 +3429,9 @@ function openEdition(cc, after) {
     if (after) after();
     else if (D.kind === "info") viewEdInfo(); else viewStart();
   };
-  if (DATA[cc]) { ready(); return; }
+  if (hasLang(cc, state.ui)) { ready(); return; }
   const timer = setTimeout(() => { if (seq === loadSeq) viewLoading(); }, 120);
-  loadEdition(cc).then(() => { clearTimeout(timer); ready(); }, () => {
+  loadEdition(cc, state.ui).then(() => { clearTimeout(timer); ready(); }, () => {
     clearTimeout(timer);
     if (seq !== loadSeq) return;
     viewLoadError();
@@ -3251,6 +3514,7 @@ function viewEdInfo(keep) {
       <p class="lead">${L.infoLead}</p>
     </div>
     ${noteHTML(E, L)}
+    ${prepCardHTML(DATA[state.country], L)}
     <section class="info-card" aria-labelledby="hFacts">
       <h2 id="hFacts">${L.infoFacts}</h2>
       <dl class="facts">${(E.facts || []).map(([a, b]) => `<div><dt>${esc(a)}</dt><dd>${esc(b)}</dd></div>`).join("")}</dl>
@@ -3295,6 +3559,7 @@ function viewStart(keep) {
       <button class="link" type="button" data-go="home">${L.changeCountry}</button>
     </div>
     ${noteHTML(E, L)}
+    ${prepCardHTML(DATA[state.country], L)}
     <div class="about">
       <details>
         <summary>${L.aboutElection}</summary>
@@ -3511,6 +3776,7 @@ function viewResults(keep) {
       ${H.straight ? `<p class="notice">${L.straight}</p>` : ""}
       <p>${esc(H.summary)}</p>
       ${H.early && H.more ? `<div class="early"><p>${L.earlyText(EARLY)}</p><button class="btn btn-primary" type="button" data-go="continue">${L.earlyBtn}</button></div>` : ""}
+      ${shareHTML()}
     </div>
     <div class="tabs" role="tablist">${L.tabs.map((x, k) => `<button class="tab" role="tab" id="tab${k}" aria-controls="pan${k}" aria-selected="${state.tab === k}" tabindex="${state.tab === k ? 0 : -1}" type="button" data-tab="${k}">${x}</button>`).join("")}</div>
     <div class="panel" role="tabpanel" id="pan0" aria-labelledby="tab0" ${state.tab === 0 ? "" : "hidden"}>${panelRanking(rank, a)}</div>
@@ -3540,6 +3806,7 @@ function panelRanking(rank, a) {
         <div class="rank-head"><b>${hname(r.p)}</b><span class="pct">${shown ? pctTxt(r.s) : "–"}</span></div>
         <div class="bar" style="--pc:var(${pvar(r.p.id)}, var(--accent))" role="img" aria-label="${shown ? Math.round(r.s * 100) + " " + L.pctWord : L.notRanked}"><span style="width:${shown ? (r.s * 100).toFixed(1) : 0}%"></span></div>
         <div class="rank-sub"><span>${candLine(r.p, E, L, true)}</span><span>${shown ? L.compared(r.k, a) : L.notRanked}</span>${r.grp === "ok" && r.cov < 0.5 ? `<span class="chip warn">${L.partial}</span>` : ""}${r.p.chip ? `<span class="chip grey">${esc(r.p.chip)}</span>` : ""}<button class="link" type="button" data-fiche="${esc(r.p.id)}">${L.seeProfile}</button></div>
+        ${r.k ? `<details class="xm"><summary>${L.whyScore}</summary>${whyBodyHTML(r.p)}</details>` : ""}
       </div>
     </li>`;
   };
@@ -3577,7 +3844,7 @@ function panelThemes() {
     return `<article class="theme-card${on ? " prio-on" : ""}">${head}
       <p class="verdict-line">${phrase}</p>
       <div class="mini">${r.map(x => x.grp !== "out"
-        ? `<div class="mini-row${x.grp === "thin" ? " thin" : ""}">${badge(x.p, "sm")}<span class="name">${hname(x.p)}${x.grp === "thin" ? ` <span class="chip warn">${L.partial}</span>` : ""}</span><div class="bar" style="--pc:var(${pvar(x.p.id)}, var(--accent))"><span style="width:${(x.s * 100).toFixed(1)}%"></span></div><span class="pct">${pctTxt(x.s)}</span></div>`
+        ? `<div class="mini-row${x.grp === "thin" ? " thin" : ""}">${badge(x.p, "sm")}<span class="name">${hname(x.p)}${x.grp === "thin" ? ` <span class="chip warn">${L.partial}</span>` : ""}<span class="cov-sub">${L.compared(x.k, answeredIn(th.id))}</span></span><div class="bar" style="--pc:var(${pvar(x.p.id)}, var(--accent))"><span style="width:${(x.s * 100).toFixed(1)}%"></span></div><span class="pct">${pctTxt(x.s)}</span></div>`
         : `<div class="mini-row nd">${badge(x.p, "sm")}<span class="name">${hname(x.p)}</span><span class="ndt" style="font-size:.82rem;font-style:italic">${L.notDoc}</span><span></span></div>`).join("")}
       </div>
     </article>`;
@@ -3597,7 +3864,7 @@ function panelQuestions() {
     const yours = typeof v === "number"
       ? `<p style="font-size:.92rem">${L.yourAnswer}${C()} <b>${L.ans[v]}</b></p>`
       : `<p class="skipped-note">${v === null ? L.youSkipped : L.youNotYet}</p>`;
-    return `<article class="qa">
+    return `<article class="qa" id="qa-${qi}" tabindex="-1">
       <div class="qa-meta"><span class="mono">${nn(k + 1)}</span><span>${esc(th.name)}</span>${state.priorities.includes(q.theme) ? `<span class="chip">${L.prio}</span>` : ""}${state.double[qi] ? `<span class="chip grey">×2</span>` : ""}</div>
       <p class="qa-text">${esc(q.text)}</p>
       ${yours}
@@ -3606,7 +3873,7 @@ function panelQuestions() {
       <details><summary>${L.whatTheySay}</summary>
         <ul class="why-list">${E.parties.map(p => {
           const c = q.cells[p.id];
-          if (c) return `<li>${badge(p, "sm")}<div><span class="pos-label">${hname(p)} · ${L.ans[c.p]}</span> <span class="kind">· ${L.kinds[c.k] || esc(c.k)}</span><p>${esc(c.n)}</p>${srcLine([c.s], L)}</div></li>`;
+          if (c) return `<li>${badge(p, "sm")}<div><span class="pos-label">${hname(p)} · ${L.ans[c.p]}</span> <span class="kind">· ${L.kinds[c.k] || esc(c.k)}</span><p>${esc(c.n)}</p>${srcLine([c.s], L)}<p class="src"><a class="report" href="${esc(reportHref(p, q, qi, c))}" target="_blank" rel="noopener" aria-label="${esc(L.reportAria(plabel(p)) + " (" + L.newTab + ")")}">${L.reportErr}</a></p></div></li>`;
           const note = q.nd && q.nd[p.id];
           return `<li>${badge(p, "sm")}<div><span class="pos-label" style="font-weight:400;font-style:italic">${hname(p)} · ${L.notDoc}</span>${note ? `<p>${esc(note)}</p>` : ""}</div></li>`;
         }).join("")}</ul>
@@ -3921,6 +4188,333 @@ function viewValuesDone(keep) {
   `, null, "screen", keep);
 }
 
+/* ================== « Pourquoi ce score ? » ==================
+   Pour un parti : parmi les questions auxquelles tu as répondu ET où il a une position documentée, jusqu'à 3 questions où l'écart
+   |ta réponse − sa position| est le plus petit (écart ≤ 1 : vous êtes du même côté) et jusqu'à 3 où il est le plus grand (écart ≥ 2).
+   Égalité : l'ordre des questions de l'édition. Seules tes réponses chiffrées comptent (une question passée n'est jamais citée). */
+function explainMatch(pid) {
+  const rows = [];
+  ed().questions.forEach((q, qi) => {
+    const v = state.answers[qi], c = q.cells[pid];
+    if (typeof v !== "number" || !c) return;
+    rows.push({ qi: qi, q: q, you: v, they: c.p, gap: Math.abs(v - c.p) });
+  });
+  return {
+    k: rows.length,
+    agree: rows.filter(r => r.gap <= 1).sort((a, b) => a.gap - b.gap || a.qi - b.qi).slice(0, 3),
+    disagree: rows.filter(r => r.gap >= 2).sort((a, b) => b.gap - a.gap || a.qi - b.qi).slice(0, 3)
+  };
+}
+function whyBodyHTML(p) {
+  const L = t(), X = explainMatch(p.id);
+  if (!X.k) return `<p class="muted">${L.whyNone}</p>`;
+  const item = r => `<div class="xm-item" role="listitem"><p class="xm-q">${esc(r.q.text)}</p><p class="xm-pos"><span>${L.whyTheirs(esc(psig(p)))}${C()} <b>${L.ans[r.they]}</b></span><span>${L.yourAnswer}${C()} <b>${L.ans[r.you]}</b></span></p><button class="link" type="button" data-qlink="${r.qi}">${L.whySeeQ}</button></div>`;
+  const part = (title, list, none) => `<div class="xm-block"><p class="xm-h">${title}</p>${list.length ? `<div class="xm-list" role="list">${list.map(item).join("")}</div>` : `<p class="muted xm-none">${none}</p>`}</div>`;
+  return `${part(L.whyAgree, X.agree, L.whyNoAgree)}${part(L.whyDisagree, X.disagree, L.whyNoDisagree)}`;
+}
+/* Un clic sur « Voir la question » : l'onglet « Par question », la question en vue et prise par le focus */
+function showQuestion(qi) {
+  closeFiche();
+  if (state.view !== "results") return;
+  selectTab(TABS.indexOf("questions"));
+  const a = $("qa-" + qi);
+  if (!a) return;
+  a.scrollIntoView({ block: "start" });
+  a.focus({ preventScroll: true });
+  a.classList.add("hl");
+  a.addEventListener("blur", () => a.classList.remove("hl"), { once: true });
+}
+function selectTab(k) {
+  state.tab = k;
+  document.querySelectorAll('[role="tab"]').forEach((b, i) => { b.setAttribute("aria-selected", String(i === k)); b.tabIndex = i === k ? 0 : -1; });
+  document.querySelectorAll('[role="tabpanel"]').forEach((pn, i) => { pn.hidden = i !== k; });
+  setHash(hashFor(), false);
+  save();
+}
+
+/* ================== « Prépare ton vote » ==================
+   Données : PREP (src/prep.js) par pays, dans data/<cc>.json (clé « prep »). Un pays sans données n'a pas de carte. Un élément dont la
+   date (d) est antérieure à aujourd'hui est montré en retrait avec « passé » et placé après les autres (l'ordre du fichier est gardé
+   dans chaque groupe). « Aujourd'hui » est la date du jour de l'appareil, jamais une date écrite en dur. */
+let todayISO = () => { const d = new Date(); return d.getFullYear() + "-" + nn(d.getMonth() + 1) + "-" + nn(d.getDate()); };
+const isoDay = d => /^\d{4}-\d\d-\d\d$/.test(d || "");
+const endOf = d => d.length === 4 ? d + "-12-31" : d.length === 7 ? d + "-31" : d;   // fin de la période que désigne une date AAAA ou AAAA-MM
+function daysBetween(a, b) {
+  const f = x => { const q = x.split("-").map(Number); return Date.UTC(q[0], q[1] - 1, q[2]); };
+  return Math.round((f(b) - f(a)) / 864e5);
+}
+function prepItems(P) {
+  const today = todayISO();
+  return P.items.map((it, i) => ({ it: it, i: i, past: isoDay(it.d) && it.d < today })).sort((a, b) => (a.past - b.past) || (a.i - b.i));
+}
+/* Ligne du haut : compte à rebours pour une date exacte, « prévu en… » pour un mois ou une période ; rien si le scrutin est passé */
+function voteLine(D, L) {
+  const today = todayISO();
+  const evs = (D.meta.ev || []).filter(e => endOf(e.d2 || e.d) >= today);
+  const ex = evs.filter(e => e.q === "exact" && isoDay(e.d)).sort((a, b) => a.d < b.d ? -1 : a.d > b.d ? 1 : 0)[0];
+  if (ex) return `<b>${esc(L.prepDaysIn(daysBetween(today, ex.d)))}</b> <span class="muted">· ${esc(L.types[ex.t] || ex.t)} · ${esc(fmtDate(ex.d))}</span>`;
+  const ev = evs[0];
+  if (!ev) return "";
+  const w = ev.q === "range" ? L.when.range(fmtDate(ev.d), fmtDate(ev.d2)) : ev.q === "by" ? L.when.by(fmtDate(ev.d)) : ev.q === "before" ? L.when.before(fmtDate(ev.d)) : L.prepInMonth(fmtDate(ev.d));
+  return `<b>${esc(L.prepPlanned + " " + w)}</b> <span class="muted">· ${esc(L.types[ev.t] || ev.t)}</span>`;
+}
+/* Fichier .ics (journée entière, rappel la veille) pour une date exacte : lien data: avec « download » */
+const icsEsc = x => String(x).replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+const icsFold = line => { const out = []; while (line.length > 72) { out.push(line.slice(0, 72)); line = " " + line.slice(72); } out.push(line); return out.join("\r\n"); };
+function icsLink(D, ev, L) {
+  const cc = D.id, d0 = ev.d.split("-").map(Number);
+  const ymd = x => x.getUTCFullYear() + nn(x.getUTCMonth() + 1) + nn(x.getUTCDate());
+  const start = new Date(Date.UTC(d0[0], d0[1] - 1, d0[2])), end = new Date(Date.UTC(d0[0], d0[1] - 1, d0[2] + 1));
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
+  const host = (/^https:\/\/([^/]+)/.exec(SITE_URL) || [])[1] || "vote";
+  const url = `${SITE_URL}${cc}/`;
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", `PRODID:-//${BRAND}//EN`, "CALSCALE:GREGORIAN", "BEGIN:VEVENT",
+    `UID:${cc}-${ev.t}-${ev.d}@${host}`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${ymd(start)}`, `DTEND;VALUE=DATE:${ymd(end)}`,
+    `SUMMARY:${icsEsc(`${edName(ed())} — ${L.types[ev.t] || ev.t}`)}`, `DESCRIPTION:${icsEsc(`${BRAND}. ${L.prepCaveat}`)}`, `URL:${url}`,
+    "BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${icsEsc(`${edName(ed())} — ${L.types[ev.t] || ev.t}`)}`, "TRIGGER:-P1D", "END:VALARM", "END:VEVENT", "END:VCALENDAR"];
+  return { href: "data:text/calendar;charset=utf-8," + encodeURIComponent(lines.map(icsFold).join("\r\n") + "\r\n"), file: `vote-${cc}-${ev.d}.ics`, type: ev.t };
+}
+function prepCardHTML(D, L) {
+  const P = D.prep;
+  if (!P || !P.items || !P.items.length) return "";
+  const lang = state.ui, today = todayISO();
+  const name = `<bdi>${esc(P.emb.name)}${P.emb.short && P.emb.short !== P.emb.name ? ` (${esc(P.emb.short)})` : ""}</bdi>`;
+  const emb = P.emb.url ? `<a href="${esc(P.emb.url)}" target="_blank" rel="noopener" aria-label="${esc(P.emb.name + " (" + L.newTab + ")")}">${name}</a>` : name;
+  const items = prepItems(P).map(x => {
+    const it = x.it, own = it.t && it.t[lang], text = own || (it.t && it.t.en) || "";
+    const s = P.src[it.src], src = s ? ` <span class="src muted">(${L.source}${C()} ${srcA(s)})</span>` : "";
+    const meta = (it.d ? `<time datetime="${esc(it.d)}">${esc(fmtDate(it.d))}</time>` : "") + (x.past ? `<span class="chip grey prep-tag">${L.prepPast}</span>` : "");
+    return `<li class="prep-item${x.past ? " past" : ""}">${meta ? `<span class="prep-d">${meta}</span>` : ""}<span class="prep-t"><span${own ? "" : ' lang="en" dir="ltr"'}>${esc(text)}</span>${src}</span></li>`;
+  }).join("");
+  const check = P.check ? `<p class="prep-check"><a href="${esc(P.check.url)}" target="_blank" rel="noopener">${L.prepCheck}</a>${P.src[P.check.src] ? ` <span class="src muted">(${L.source}${C()} ${srcA(P.src[P.check.src])})</span>` : ""}</p>` : "";
+  const exact = EMBEDDED ? [] : (D.meta.ev || []).filter(e => e.q === "exact" && isoDay(e.d) && e.d >= today);
+  const cal = exact.map(e => { const c = icsLink(D, e, L); return `<a class="btn btn-ghost prep-ics" href="${c.href}" download="${esc(c.file)}">${L.prepAdd}${exact.length > 1 ? ` (${esc(L.types[c.type] || c.type)})` : ""}</a>`; }).join("");
+  const line = voteLine(D, L);
+  return `<section class="prep" aria-labelledby="hPrep">
+    <div class="prep-title" id="hPrep" role="heading" aria-level="2">${L.prepTitle2}</div>
+    ${line ? `<p class="prep-count">${line}</p>` : ""}
+    <p class="prep-emb">${L.prepBody}${C()} ${emb}</p>
+    <ul class="prep-list">${items}</ul>
+    ${check}
+    ${cal ? `<div class="actions">${cal}</div>` : ""}
+    <p class="caveat prep-cav">${L.prepCaveat}</p>
+  </section>`;
+}
+
+/* ================== Partager ==================
+   Ce qui part : « Mon parti le plus proche pour Nigeria 2027 : NDC (61 %) — et toi ? » et l'adresse du pays (#/<cc>/<langue>), jamais les réponses.
+   Partage natif (navigator.share) quand la page est servie en contexte sécurisé et hors cadre isolé ; sinon copie dans le presse-papiers,
+   lancée dans le clic ; si elle est refusée, un champ de texte visible, déjà sélectionné. */
+function shareParts() {
+  const E = ed(), L = t();
+  const ranked = ranking().filter(r => r.grp === "ok");
+  if (!ranked.length) return null;
+  const lead = topGroup(ranked);
+  const ar = state.ui === "ar";
+  const who = listFmt(lead.map(r => ar ? psig(r.p) : r.p.sigle));
+  const ev = (E.meta.ev || [])[0], year = ev && ev.d ? ev.d.slice(0, 4) : "";
+  const name = edName(E) + (year ? " " + year : "");
+  const cc = state.country;
+  return { text: L.shareText(ar ? ISO[0] + name + ISO[1] : name, who, pctPlain(ranked[0].s), lead.length), url: `${SITE_URL}${cc}/#/${cc}/${state.ui}` };
+}
+function shareHTML() {
+  if (!shareParts()) return "";
+  const L = t();
+  return `<div class="share">
+    <div class="actions"><button class="btn btn-ghost" type="button" data-go="share" aria-describedby="shareNote"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5M5 12v7h14v-7"/></svg>${L.shareBtn}</button>${canShareImage() ? `<button class="btn btn-ghost" type="button" data-go="shareimg" aria-describedby="shareNote">${L.shareImgBtn}</button>` : ""}<span class="share-status" id="shareStatus" role="status" aria-live="polite"></span></div>
+    <p class="muted share-note" id="shareNote">${L.shareNote}</p>
+    <div class="share-manual" id="shareManual" hidden><label for="shareField">${L.shareManual}</label><textarea id="shareField" class="share-field" readonly rows="3" dir="auto"></textarea></div>
+  </div>`;
+}
+function shareStatus(msg) {
+  const el = $("shareStatus");
+  if (!el) return;
+  el.textContent = msg;
+  clearTimeout(shareStatus.t);
+  if (msg) shareStatus.t = setTimeout(() => { const e2 = $("shareStatus"); if (e2) e2.textContent = ""; }, 4000);
+}
+function shareManual(full) {
+  const box = $("shareManual"), f = $("shareField");
+  if (!box || !f) return;
+  box.hidden = false;
+  f.value = full;
+  f.style.height = "auto";
+  f.style.height = (f.scrollHeight + 4) + "px";   // tout le texte et l'adresse visibles, sans défiler dans le champ
+  f.focus({ preventScroll: true });
+  f.select();
+  let ok = false;
+  try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+  if (ok) shareStatus(t().shareCopied);
+}
+function copyShare(full) {
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+    let r = null;
+    try { r = navigator.clipboard.writeText(full); } catch (e) { r = null; }
+    if (r && typeof r.then === "function") { r.then(() => shareStatus(t().shareCopied), () => shareManual(full)); return; }
+  }
+  shareManual(full);
+}
+function doShare() {
+  const P = shareParts();
+  if (!P) return;
+  const full = P.text + "\n" + P.url;
+  if (!EMBEDDED && window.isSecureContext && typeof navigator.share === "function") {
+    let r = null;
+    try { r = navigator.share({ title: BRAND, text: P.text, url: P.url }); } catch (e) { r = null; }
+    if (r && typeof r.then === "function") { r.then(() => { }, e => { if (!e || e.name !== "AbortError") copyShare(full); }); return; }
+  }
+  copyShare(full);
+}
+
+/* Image à partager (1080 × 1350, dessinée dans un canvas) : le parti le plus proche et son pourcentage, l'adresse du pays, jamais les réponses.
+   Partage du fichier quand le navigateur le permet (navigator.canShare({ files })), sinon enregistrement du PNG ; absente d'artifact.html
+   (cadre isolé : ni partage ni téléchargement). */
+const IMG_W = 1080, IMG_H = 1350;
+function canShareImage() {
+  if (EMBEDDED) return false;
+  try { const c = document.createElement("canvas"); return !!(c.getContext && c.getContext("2d") && c.toBlob); } catch (e) { return false; }
+}
+function drawShareImage(P) {
+  const L = t(), ar = state.ui === "ar";
+  const ranked = ranking().filter(r => r.grp === "ok"), lead = topGroup(ranked);
+  const who = listFmt(lead.map(r => r.p.sigle));
+  const E = ed(), ev = (E.meta.ev || [])[0], year = ev && ev.d ? ev.d.slice(0, 4) : "";
+  const name = edName(E) + (year ? " " + year : "");
+  const pct = pctPlain(ranked[0].s), url = P.url.replace(/^https?:\/\//, "");
+  const loadFonts = () => {
+    if (!document.fonts || typeof document.fonts.load !== "function") return Promise.resolve();
+    const sample = L.shareImgLead(name, lead.length) + L.shareImgAsk + who + pct;
+    return Promise.all([document.fonts.load('800 100px "Bricolage Grotesque"', "Aa"), document.fonts.load('600 52px "Readex Pro"', sample), document.fonts.load('800 100px "Readex Pro"', sample)]).catch(() => { });
+  };
+  return loadFonts().then(() => new Promise(resolve => {
+    const cv = document.createElement("canvas");
+    cv.width = IMG_W; cv.height = IMG_H;
+    const x = cv.getContext("2d"), M = 84, W = IMG_W - 2 * M, X0 = ar ? IMG_W - M : M;
+    x.fillStyle = "#5A2DB8"; x.fillRect(0, 0, IMG_W, IMG_H);       // aplats : un PNG léger (un dégradé pèserait plus d'un Mo)
+    x.fillStyle = "#37186F"; x.fillRect(0, IMG_H - 340, IMG_W, 340);
+    x.direction = ar ? "rtl" : "ltr"; x.textAlign = "start"; x.textBaseline = "alphabetic";
+    const font = (w, px, fam) => `${w} ${px}px ${fam === "body" ? '"Readex Pro"' : '"Bricolage Grotesque", "Readex Pro"'}, "Segoe UI", system-ui, sans-serif`;
+    // marque : coche ambre dans un carré arrondi, puis le nom du site
+    const mx = ar ? IMG_W - M - 96 : M;
+    x.fillStyle = "rgba(255,255,255,.14)"; x.strokeStyle = "rgba(255,255,255,.35)"; x.lineWidth = 3;
+    x.beginPath(); (x.roundRect ? x.roundRect(mx, 84, 96, 96, 26) : x.rect(mx, 84, 96, 96)); x.fill(); x.stroke();
+    x.save(); x.translate(mx + 20, 84 + 20); x.scale(1.9, 1.9);
+    x.strokeStyle = "#F2B42C"; x.lineWidth = 4; x.lineCap = "round"; x.lineJoin = "round";
+    x.beginPath(); x.moveTo(8, 17); x.lineTo(14, 23); x.lineTo(27, 7); x.stroke(); x.restore();
+    x.fillStyle = "#fff"; x.font = font(800, 64); x.textAlign = ar ? "right" : "left";
+    x.fillText(BRAND, ar ? mx - 28 : mx + 96 + 28, 150);
+    x.textAlign = "start";
+    // phrase d'introduction, à la ligne si besoin
+    const lines = (text, fnt, maxW) => {
+      x.font = fnt;
+      const out = []; let cur = "";
+      text.split(" ").forEach(w => { const t2 = cur ? cur + " " + w : w; if (cur && x.measureText(t2).width > maxW) { out.push(cur); cur = w; } else cur = t2; });
+      if (cur) out.push(cur);
+      return out;
+    };
+    let y = 380;
+    x.fillStyle = "#EDE6FB";
+    lines(L.shareImgLead(name, lead.length), font(600, 56, "body"), W).forEach(l => { x.font = font(600, 56, "body"); x.fillText(l, X0, y); y += 76; });
+    // le(s) parti(s) : taille réduite jusqu'à tenir dans la largeur
+    let px = 220;
+    x.font = font(800, px);
+    while (px > 70 && x.measureText(who).width > W) { px -= 8; x.font = font(800, px); }
+    y += px * 0.82;
+    x.fillStyle = "#F2B42C"; x.fillText(who, X0, y);
+    y += 70;
+    x.fillStyle = "#fff"; x.font = font(800, 150); x.fillText(pct, X0, y + 120);
+    y += 170;
+    // barre
+    x.fillStyle = "rgba(255,255,255,.2)"; x.beginPath(); (x.roundRect ? x.roundRect(M, y, W, 28, 14) : x.rect(M, y, W, 28)); x.fill();
+    const fw = Math.max(28, Math.round(W * ranked[0].s));
+    x.fillStyle = "#F2B42C"; x.beginPath(); (x.roundRect ? x.roundRect(ar ? IMG_W - M - fw : M, y, fw, 28, 14) : x.rect(ar ? IMG_W - M - fw : M, y, fw, 28)); x.fill();
+    // la question, puis l'adresse
+    x.fillStyle = "#fff"; x.font = font(800, 92); x.fillText(L.shareImgAsk, X0, IMG_H - 220);
+    x.direction = "ltr"; x.textAlign = ar ? "right" : "left"; x.fillStyle = "#F2B42C";
+    let up = 40;
+    x.font = font(600, up, "body");
+    while (up > 22 && x.measureText(url).width > W) { up -= 2; x.font = font(600, up, "body"); }
+    x.fillText(url, ar ? IMG_W - M : M, IMG_H - 120);
+    cv.toBlob(b => resolve(b), "image/png");
+  }));
+}
+function saveBlob(blob, file) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = file; a.hidden = true;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+function doShareImage() {
+  const P = shareParts();
+  if (!P || !canShareImage()) return;
+  const file = "vote-" + state.country + ".png";
+  drawShareImage(P).then(blob => {
+    if (!blob) return;
+    let f = null;
+    try { f = typeof File === "function" ? new File([blob], file, { type: "image/png" }) : null; } catch (e) { f = null; }
+    const nav = window.isSecureContext && f && typeof navigator.canShare === "function" && typeof navigator.share === "function";
+    let can = false;
+    try { can = !!nav && navigator.canShare({ files: [f] }); } catch (e) { can = false; }
+    const save = () => { saveBlob(blob, file); shareStatus(t().shareImgSaved); };
+    if (!can) { save(); return; }
+    let r = null;
+    try { r = navigator.share({ files: [f], text: P.text, url: P.url }); } catch (e) { r = null; }
+    if (r && typeof r.then === "function") r.then(() => { }, e => { if (!e || e.name !== "AbortError") save(); });
+    else save();
+  });
+}
+
+/* ================== Signaler une erreur ==================
+   Un lien vers un nouveau ticket GitHub, déjà rempli (pays, question, parti, position codée, source) ; rien ne part tant que la personne ne l'envoie pas. */
+function reportHref(p, q, qi, c) {
+  const D = DATA[state.country], B = D.ed, cc = D.id;
+  const en = T.en.ans, fr = T.fr.ans;
+  const src = srcObj(c.s);
+  const qText = B.questions[qi].text, shown = q.text !== qText ? `\n> ${q.text}` : "";
+  const body = [
+    `**Country / Pays:** ${edName(ed())} (${cc})`,
+    `**Question ${qi + 1} / ${B.questions.length}:** ${qText}${shown}`,
+    `**Party / Parti:** ${p.nom} (${p.sigle})`,
+    `**Coded position / Position codée:** ${en[c.p]} (${c.p > 0 ? "+" : ""}${c.p}) / ${fr[c.p]}`,
+    `**Source:** ${src ? src.u : "-"}`,
+    `**Interface language / Langue de l’interface:** ${state.ui}`,
+    "",
+    "---",
+    "What is wrong, and what should it say? A link to a better source helps.",
+    "Qu’est-ce qui est faux, et que faudrait-il dire ? Un lien vers une meilleure source aide."
+  ].join("\n");
+  const title = `Position error: ${cc.toUpperCase()} Q${qi + 1} ${p.sigle}`;
+  return `${REPO_URL}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
+}
+
+/* ================== Changement de langue ==================
+   Si la traduction de cette langue n'est pas encore là (un pays déjà ouvert dans une autre langue), on la télécharge d'abord : l'écran
+   reste tel quel pendant ce temps (bouton en attente) et ne change qu'à l'arrivée ; en cas d'échec, la langue reste l'ancienne et un
+   message le dit. */
+let switchSeq = 0;
+function switchLang(code) {
+  const cc = state.country, seq = ++switchSeq, nav = loadSeq;
+  const focusBtn = () => { const b = document.querySelector(`#langs [data-lang="${code}"]`); if (b) b.focus({ preventScroll: true }); };
+  if (!cc || !DATA[cc] || hasLang(cc, code)) { setUi(code, true); rerender(); focusBtn(); return; }
+  const btn = document.querySelector(`#langs [data-lang="${code}"]`);
+  if (btn) btn.setAttribute("aria-busy", "true");
+  loadLang(cc, code).then(() => {
+    if (seq !== switchSeq || nav !== loadSeq) return;   // l'utilisateur est reparti ailleurs, ou a choisi une autre langue
+    setUi(code, true); rerender(); focusBtn();
+  }, () => {
+    if (btn) btn.removeAttribute("aria-busy");
+    if (seq === switchSeq && nav === loadSeq) toast(t().langLoadFail);
+  });
+}
+let toastTimer = null;
+function toast(msg) {
+  const el = $("toast");
+  if (!el) return;
+  el.textContent = msg; el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.hidden = true; }, 5000);
+}
+
 /* ================== Fiche parti ================== */
 function openFiche(pid) {
   const E = ed(), L = t();
@@ -3935,8 +4529,9 @@ function openFiche(pid) {
     </div>
     ${p.chip ? `<p><span class="chip warn">${esc(p.chip)}</span></p>` : ""}
     <p style="font-size:.95rem">${esc(p.tag)}${p.tagSrc && srcLink(p.tagSrc) ? ` <span class="src muted">(${srcLink(p.tagSrc)})</span>` : ""}</p>
-    ${sc.k >= 2 ? `<div class="fiche-score"><span class="pct">${pctTxt(sc.s)}</span><span>${L.ficheScore}</span></div>` : ""}
+    ${sc.k >= 2 ? `<div class="fiche-score"><span class="pct">${pctTxt(sc.s)}</span><span>${L.ficheScore}</span><span class="mono muted fs-cov">${L.compared(sc.k, answeredCount())}</span></div>` : ""}
     <p class="mono muted" style="font-size:.85rem">${L.ficheDoc(documented(pid), E.questions.length)}</p>
+    ${state.view === "results" && sc.k ? `<section class="xm-fiche"><h3>${L.whyScore}</h3>${whyBodyHTML(p)}</section>` : ""}
     <section><h3>${L.ficheCommit}</h3><ul class="commit">${p.commit.map(([c, s]) => `<li><span>${esc(c)}</span>${srcLink(s) ? `<span class="src muted">${L.source}${C()} ${srcLink(s)}</span>` : ""}</li>`).join("")}</ul></section>
     <section><h3>${L.fichePos}</h3><ul class="pos-table">${E.questions.map(q => {
       const c = q.cells[pid];
@@ -4004,6 +4599,8 @@ function go(where, el) {
       return viewQuestion();
     }
     case "qlist": return openQList();
+    case "share": return doShare();
+    case "shareimg": return doShareImage();
     case "vstart": state.vi = 0; navMode = "push"; return viewValuesQ();
     case "vopen": { const k = VALUES.findIndex(v => state.vals[v.id] === undefined); state.vi = k >= 0 ? k : 0; navMode = "push"; return viewValuesQ(); }
     case "vprev": if (state.vi > 0) { state.vi--; viewValuesQ(); } return;
@@ -4034,7 +4631,7 @@ document.addEventListener("click", e => {
   if (e.target === $("langDlg")) return closeLang();
   if (e.target === $("fiche")) return closeFiche();
   if (e.target === $("qDlg")) return closeQList();
-  const el = e.target.closest("[data-pick],[data-place],[data-lang],[data-go],[data-prio],[data-val],[data-vv],[data-dbl],[data-goto],[data-tab],[data-fiche],[data-qjump],#ficheClose,#langCancel,#qClose,#skip,#brand");
+  const el = e.target.closest("[data-pick],[data-place],[data-lang],[data-go],[data-prio],[data-val],[data-vv],[data-dbl],[data-goto],[data-tab],[data-fiche],[data-qjump],[data-qlink],#ficheClose,#langCancel,#qClose,#skip,#brand");
   if (!el) return;
   if (el.id === "skip") { e.preventDefault(); return skipToList(); }
   if (el.id === "qClose") return closeQList();
@@ -4047,14 +4644,11 @@ document.addEventListener("click", e => {
   if (el.dataset.lang) {
     // Langue pas encore traduite : le bouton reste focalisable, un toucher explique (infobulle, 3 s) au lieu de ne rien faire
     if (el.getAttribute("aria-disabled") === "true") { langTip(el); langTipTimer = setTimeout(() => langTip(null), 3000); return; }
-    const code = el.dataset.lang;
-    setUi(code, true);
-    rerender();
-    const b = document.querySelector(`#langs [data-lang="${code}"]`); if (b) b.focus({ preventScroll: true });
-    return;
+    return switchLang(el.dataset.lang);
   }
   if (el.dataset.go) return go(el.dataset.go, el);
   if (el.dataset.fiche) return openFiche(el.dataset.fiche);
+  if (el.dataset.qlink !== undefined) return showQuestion(+el.dataset.qlink);
   if (el.dataset.prio) {
     const id = el.dataset.prio;
     const k = state.priorities.indexOf(id);
@@ -4093,11 +4687,7 @@ document.addEventListener("click", e => {
     state.i = k; return viewQuestion();
   }
   if (el.dataset.tab) {
-    state.tab = +el.dataset.tab;
-    document.querySelectorAll('[role="tab"]').forEach((b, k) => { b.setAttribute("aria-selected", String(k === state.tab)); b.tabIndex = k === state.tab ? 0 : -1; });
-    document.querySelectorAll('[role="tabpanel"]').forEach((p, k) => { p.hidden = k !== state.tab; });
-    setHash(hashFor(), false);
-    save();
+    selectTab(+el.dataset.tab);
   }
 });
 /* Onglets : tabindex mobile, flèches (inversées de droite à gauche), Début et Fin. */
@@ -4123,7 +4713,7 @@ window.addEventListener("hashchange", () => { if (location.hash !== curHash) rou
 try { history.scrollRestoration = "manual"; } catch (e) { }
 
 /* Pour les tests : le calcul de la position et les parts du compteur sont des fonctions pures */
-window.__etv = { valuesLevel: valuesLevel, meterShares: meterShares, VALUES: VALUES, METER_ENDPOINT: METER_ENDPOINT, METER_MIN: METER_MIN, VAL_MIN: VAL_MIN };
+window.__etv = { explainMatch: explainMatch, prepItems: prepItems, voteLine: voteLine, hasLang: hasLang, valuesLevel: valuesLevel, meterShares: meterShares, VALUES: VALUES, METER_ENDPOINT: METER_ENDPOINT, METER_MIN: METER_MIN, VAL_MIN: VAL_MIN };
 
 /* Démarrage : langue (appareil → navigateur → anglais), session de cet onglet, puis l'écran que décrit l'adresse. */
 state.ui = initialUi();

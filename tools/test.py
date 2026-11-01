@@ -8,9 +8,9 @@ puis construit dans un dossier temporaire un second site avec des éditions de t
 (`node tools/build.js --extra <fixtures> --out <tmp>/site`) : page d'information, édition « leader »,
 traductions incomplètes et éditions cassées. Rien n'est écrit dans src/.
 Le dépôt est servi avec `python3 -m http.server` sur un port libre. Aucune requête externe n'est
-autorisée, sauf Google Fonts (remplacé par une feuille vide pendant les tests).
+autorisée (les polices sont dans fonts/ : toute requête vers googleapis ou gstatic est une erreur).
 """
-import argparse, functools, json, math, os, random, re, shutil, socket, subprocess, sys, tempfile, time, traceback, urllib.request, zlib
+import argparse, functools, json, math, os, random, re, shutil, socket, struct, subprocess, sys, tempfile, time, traceback, urllib.parse, urllib.request, zlib
 
 from playwright.sync_api import sync_playwright
 
@@ -83,12 +83,8 @@ class Session:
         self.errors, self.console, self.external, self.dialogs = [], [], [], []
 
         def outside(route):
-            url = route.request.url
-            if re.match(r"https://fonts\.(googleapis|gstatic)\.com/", url):
-                route.fulfill(status=200, content_type="text/css", body="")
-            else:
-                self.external.append(url)
-                route.abort()
+            self.external.append(route.request.url)
+            route.abort()
 
         self.ctx.route(re.compile(r"^https?://(?!127\.0\.0\.1[:/])"), outside)
         self.page = self.new_page()
@@ -149,6 +145,7 @@ def open_country(page, a3, lang, from_list=False):
     if page.evaluate("state.ui") != lang:
         page.wait_for_function("() => state.view !== 'loading'")
         page.click(f'#langs [data-lang="{lang}"]')
+        page.wait_for_function("l => state.ui === l", arg=lang)   # la traduction du pays est téléchargée avant que l'écran change
 
 
 def fresh_tab(page):
@@ -366,6 +363,7 @@ def run_nigeria(browser, base, lang, width, c, switch_to=None, screenshot=None):
     if switch_to:
         before = displayed_ranking(page)
         page.click(f'#langs [data-lang="{switch_to}"]')
+        page.wait_for_function("l => document.documentElement.lang === l", arg=switch_to)
         L2 = strings(page, switch_to)
         c(page.evaluate("document.documentElement.lang") == switch_to, f"ng-{lang}→{switch_to}: html lang")
         c(page.evaluate("state.view") == "results", f"ng-{lang}→{switch_to}: still on results")
@@ -459,6 +457,22 @@ def write_js(path, **consts):
             f.write(f"const {k} = {json.dumps(v, ensure_ascii=False, indent=1)};\n")
 
 
+def fixture_prep():
+    def item(d, key, tag):
+        return {"d": d, "src": key, "t": {l: f"[{l}] Fixture step {tag}" for l in LANGS}}
+
+    def src(cc):
+        return {f"{cc}p1": {"o": "Fixture Electoral Body", "t": "Voter guide", "d": "1 Oct 2026", "u": "https://example.org/fixture/guide"}}
+    emb = lambda name, short, url: {"name": name, "short": short, "url": url}
+    return {
+        "cg": {"emb": emb("Fixture Electoral Commission", "FEC", "https://example.org/fixture/fec"), "check": {"url": "https://example.org/fixture/check", "src": "cgp1"},
+               "items": [item("2000-01-15", "cgp1", "old"), item("2099-12-31", "cgp1", "future"), item(None, "cgp1", "nodate"), item("2000-02-01", "cgp1", "old2")], "src": src("cg")},
+        "km": {"emb": emb("Fixture Islands Commission", "FIC", None), "items": [item("2099-01-01", "kmp1", "km")], "src": src("km")},
+        "zz": {"emb": emb("Nowhere Commission", "NC", None), "items": [item(None, "zzp1", "zz")], "src": src("zz")},
+        "bi": {"emb": emb("Fixture Burundi Commission", "FBC", None), "items": [item(None, "bip1", "bi")], "src": src("bi")},
+        "ng": {"emb": emb("Broken Commission", "BC", None), "items": [{"d": None, "src": "ngp1", "t": {"en": "Only English"}}], "src": src("ng")}}
+
+
 def make_fixtures(tmp):
     fx = os.path.join(tmp, "fixtures")
     os.makedirs(os.path.join(fx, "editions"))
@@ -479,6 +493,9 @@ def make_fixtures(tmp):
     write_js(os.path.join(fx, "editions", "bi.js"), SRC_BI=S, META_BI=M, ED_BI=E)
     with open(os.path.join(fx, "editions", "td.js"), "w", encoding="utf8") as f:
         f.write("const SRC_TD = { half: 'written' \n")
+    # « Prépare ton vote » : cg (complet : dates passées, à venir, sans date), km (page d'information, organisme sans site), zz et bi (pas d'édition
+    # valide), ng (fiche invalide : une langue manque) ; le build doit avertir pour les trois derniers sans rien casser
+    write_js(os.path.join(fx, "prep.js"), PREP=fixture_prep())
     return fx
 
 
@@ -562,7 +579,7 @@ def build_outputs(c):
     """Le site du dépôt : page complète, page d'artefact, données non intégrées."""
     idx = open(os.path.join(ROOT, "index.html"), encoding="utf8").read()
     art = open(os.path.join(ROOT, "artifact.html"), encoding="utf8").read()
-    c(idx.startswith("<!doctype html>\n<html lang=\"fr\">"), "index.html starts with doctype + html lang")
+    c(idx.startswith("<!doctype html>\n<html lang=\"en\">"), "index.html starts with doctype + html lang")
     c('<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">' in idx, "viewport meta")
     c('<meta charset="utf-8">' in idx and 'property="og:title"' in idx and 'rel="icon" href="data:image/svg+xml' in idx, "charset, og, favicon")
     c("[hidden]{display:none!important}" in idx and "env(safe-area-inset-top" in idx, "reset + safe areas")
@@ -572,8 +589,8 @@ def build_outputs(c):
     c("[hidden]{display:none!important}" in art, "artifact keeps the reset")
     for marker in ("const SRC_NG", "const ED_NG", "Allied Peoples Movement", "I18N_NG", "Rassemblement national"):
         c(marker not in idx, f"edition data not inlined ({marker})")
-    c(len(idx.encode()) < 400_000, f"index.html small ({len(idx.encode())} bytes)")
-    c(len(zlib.compress(idx.encode(), 9)) < 130_000, f"index.html small once compressed ({len(zlib.compress(idx.encode(), 9))} bytes)")
+    c(len(idx.encode()) < 420_000, f"index.html small ({len(idx.encode())} bytes)")
+    c(len(zlib.compress(idx.encode(), 9)) < 135_000, f"index.html small once compressed ({len(zlib.compress(idx.encode(), 9))} bytes)")
     NOTES.append(f"page weight: index.html {len(idx.encode()) / 1024:.1f} KB ({len(zlib.compress(idx.encode(), 9)) / 1024:.1f} KB compressed)")
     for v in ("--c-apc", "--c-lepen"):
         c(v not in idx, f"old colour token {v} removed")
@@ -585,7 +602,12 @@ def build_outputs(c):
         c(os.path.exists(os.path.join(ROOT, "data", cc + ".json")), f"data/{cc}.json exists")
         c(e["evSrc"] and e["evSrc"]["u"].startswith("http"), f"catalog {cc}: date source")
         D = json.load(open(os.path.join(ROOT, "data", cc + ".json"), encoding="utf8"))
-        c(D["kind"] == e["kind"] and D["id"] == cc and D["langs"] == e["langs"] and set(D["i18n"]) == set(e["langs"][1:]), f"data/{cc}.json matches catalog")
+        c(D["kind"] == e["kind"] and D["id"] == cc and D["langs"] == e["langs"] and "i18n" not in D, f"data/{cc}.json matches catalog (base file, no translations inside)")
+        for l in e["langs"][1:]:
+            T_ = json.load(open(os.path.join(ROOT, "data", f"{cc}.{l}.json"), encoding="utf8"))
+            c(T_["id"] == cc and T_["lang"] == l and isinstance(T_["t"], dict) and "strip" in T_["t"], f"data/{cc}.{l}.json is that translation")
+        c(sorted(f for f in os.listdir(os.path.join(ROOT, "data")) if f.startswith(cc + ".")) == sorted([cc + ".json"] + [f"{cc}.{l}.json" for l in e["langs"][1:]]),
+          f"data/: the files of {cc} are the base and one per translation")
     # JavaScript livré : rien de plus récent qu'ES2019 (anciens navigateurs de téléphone), vérifié deux fois
     for name, html in (("index.html", idx), ("artifact.html", art)):
         code = "\n".join(re.findall(r"<script>(.*?)</script>", html, re.S))
@@ -651,8 +673,16 @@ def build_fixtures(c):
     c("cg.json" in files and "km.json" in files and "ng.json" in files, f"fixture data written: {files}")
     c("bi.json" not in files and "td.json" not in files, "invalid editions not written")
     cg = json.load(open(os.path.join(site, "data", "cg.json"), encoding="utf8"))
-    c(cg["a3"] == "178" and cg["langs"] == ["en", "fr"] and list(cg["i18n"]) == ["fr"], "cg.json langs and i18n")
+    c(cg["a3"] == "178" and cg["langs"] == ["en", "fr"] and "i18n" not in cg, "cg.json langs, no translation inside")
+    c("cg.fr.json" in files and "cg.pt.json" not in files and "cg.sw.json" not in files and "km.ar.json" in files and "km.fr.json" not in files, f"one file per kept translation: {files}")
     c(sorted(os.listdir(os.path.join(ROOT, "data"))) == repo_data, "repo data/ untouched")
+    c("prep" in cg and cg["prep"]["emb"]["short"] == "FEC" and len(cg["prep"]["items"]) == 4, "cg.json carries its prep data (base file)")
+    c("prep" in json.load(open(os.path.join(site, "data", "km.json"), encoding="utf8")), "km.json carries its prep data")
+    c("prep" not in json.load(open(os.path.join(site, "data", "ng.json"), encoding="utf8")), "ng.json: the invalid fixture entry is not written")
+    pages = sorted(d for d in os.listdir(site) if re.fullmatch(r"[a-z]{2}", d) and os.path.exists(os.path.join(site, d, "index.html")))
+    c("cg" in pages and "km" in pages and "ng" in pages and not {"bi", "td", "zz"} & set(pages), f"country pages for built editions only ({pages})")
+    c("manifest.webmanifest" in os.listdir(site) and "og.png" in os.listdir(site) and os.path.isdir(os.path.join(site, "fonts")) and os.path.isdir(os.path.join(site, "icons")) and os.path.isdir(os.path.join(site, "flags")),
+      "manifest, og.png, fonts/, icons/ and flags/ are copied beside the page")
     CTX["site"] = site
 
 
@@ -1427,6 +1457,7 @@ def headlines(c):
     # Arabe : « Nom (SIGLE) » isolé en entier dans le titre
     far = find_answers(D, "far")
     page.click('#langs [data-lang="ar"]')
+    page.wait_for_function("() => state.ui === 'ar'")
     set_answers(page, far)
     title, kind = expected_title(page, "ar", D, far)
     got = page.evaluate("document.querySelector('.res-head h1').textContent")
@@ -2137,7 +2168,8 @@ def banner_screens(c):
     c(page.evaluate("document.getElementById('topFlag').hidden"), "map: no flag in the header")
 
     def band(where, cc, name, w=32, h=24):
-        page.wait_for_function("() => [...document.querySelectorAll('#app .cband img.flag')].some(i => i.complete)")
+        # le pays précédent reste affiché le temps que le suivant se charge : on attend son drapeau, pas seulement un bandeau
+        page.wait_for_function("cc => { const i = document.querySelector('#app .cband img.flag'); return !!i && i.getAttribute('src') === 'flags/' + cc + '.svg' && i.complete; }", arg=cc)
         P = page.evaluate("""() => { const b = document.querySelector('#app .cband'), i = b.querySelector('img.flag'), q = i.getBoundingClientRect(), t = b.getBoundingClientRect();
             return { src: i.getAttribute('src'), ok: i.naturalWidth > 0, w: q.width, h: q.height, text: b.textContent.trim(), fl: q.left, fr: q.right, bl: t.left, br: t.right, dir: getComputedStyle(b).direction }; }""")
         c(P["src"] == f"flags/{cc}.svg" and P["ok"], f"{where}: band flag flags/{cc}.svg loads")
@@ -2598,7 +2630,7 @@ def meter_states(c):
         c("repeating-linear-gradient" in G["proImg"] and "radial-gradient" in G["conImg"], f"{key}: stripes vs dots")
         c(G["conCap"] >= 3, f"{key}: conservative side has a marked square end ({G['conCap']}px)")
         c(len(M.gets) == 1 and "cookie" not in M.gets[0] and "authorization" not in M.gets[0], f"{key}: one GET /counts, no cookie ({len(M.gets)})")
-        c(page.inner_text("#footer").strip().endswith(L["footerMeter"]) and "nowhere" not in page.inner_text("#footer"), f"{key}: the footer no longer says ‘sent nowhere’ once an optional send exists")
+        c(L["footerMeter"] in page.inner_text("#footer") and "nowhere" not in page.inner_text("#footer"), f"{key}: the footer no longer says ‘sent nowhere’ once an optional send exists")
         c(not M.posts, f"{key}: nothing is sent just by looking")
         if key == "prog":
             shot(page, "meter-prog-390.png")
@@ -2937,6 +2969,1064 @@ def meter_worker(c):
 
 
 # ------------------------------------------------------------------ exécution
+# ------------------------------------------------------------------ APPFIX3 : aperçus de liens, polices, langues à la demande
+def read_text(*parts):
+    return open(os.path.join(ROOT, *parts), encoding="utf8").read()
+
+
+def png_size(path):
+    with open(path, "rb") as f:
+        b = f.read(24)
+    return struct.unpack(">II", b[16:24]) if b[:8] == b"\x89PNG\r\n\x1a\n" else None
+
+
+def meta_of(html, attr, name):
+    m = re.search(r'<meta %s="%s" content="([^"]*)"' % (attr, re.escape(name)), html)
+    return m.group(1).replace("&quot;", '"').replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&") if m else None
+
+
+def build_const(name):
+    found = re.findall(r'^const %s = "([^"]+)";' % name, read_text("tools", "build.js"), re.M)
+    return found[0] if len(found) == 1 else None
+
+
+def pin_today(page, iso):
+    """Fixe « aujourd'hui » (ailleurs, c'est la date de l'appareil) puis redessine l'écran."""
+    page.evaluate("d => { todayISO = () => d; rerender(); }", iso)
+
+
+def open_ng(page, lang):
+    open_country(page, "566", lang)
+    page.wait_for_selector(".theme-grid")
+
+
+def goto_cc(page, base, cc, lang="en", ready=None):
+    """Va droit à un pays (adresse #/cc/langue) dans l'onglet courant et attend qu'il soit affiché."""
+    page.goto(f"{base}/index.html#/{cc}/{lang}")
+    page.wait_for_function("cc => state.country === cc && state.view !== 'loading'", arg=cc, timeout=8000)
+    if ready:
+        page.wait_for_selector(ready)
+
+
+@test
+def social_meta(c):
+    """Aperçus de liens : balises Open Graph et Twitter, adresse canonique, manifeste, icônes, image 1200×630, une seule adresse de site."""
+    SITE, REPO = build_const("SITE_URL"), build_const("REPO_URL")
+    c(bool(SITE) and bool(REPO), "SITE_URL and REPO_URL are each defined once in tools/build.js")
+    c(SITE.startswith("https://") and SITE.endswith("/") and "?" not in SITE and "#" not in SITE, f"SITE_URL is an https address ending in a slash ({SITE})")
+    c(REPO.startswith("https://github.com/") and not REPO.endswith("/"), f"REPO_URL is a GitHub repository address ({REPO})")
+    stray = []
+    for d in ("src", "tools"):
+        for root, _, files in os.walk(os.path.join(ROOT, d)):
+            for f in files:
+                if f in ("test.py", "build.js") or not f.endswith((".js", ".html", ".py")) or os.path.basename(root) == "parts":
+                    continue
+                txt = read_text(os.path.relpath(os.path.join(root, f), ROOT))
+                if SITE in txt or REPO in txt or SITE.split("/")[2] in txt:
+                    stray.append(os.path.join(os.path.basename(root), f))
+    c(not stray, f"the public addresses are written nowhere but tools/build.js ({stray})")
+    idx = read_text("index.html")
+    title = f"{BRAND} — Elections in Africa"
+    want = {("property", "og:title"): title, ("property", "og:site_name"): BRAND, ("property", "og:type"): "website", ("property", "og:url"): SITE,
+            ("property", "og:image"): SITE + "og.png", ("property", "og:image:type"): "image/png", ("property", "og:image:width"): "1200",
+            ("property", "og:image:height"): "630", ("property", "og:locale"): "en_GB", ("name", "twitter:card"): "summary_large_image",
+            ("name", "twitter:title"): title, ("name", "twitter:image"): SITE + "og.png", ("name", "theme-color"): "#5A2DB8"}
+    for (a, n), v in want.items():
+        c(meta_of(idx, a, n) == v, f"index.html {n} is “{v}” (got “{meta_of(idx, a, n)}”)")
+    desc = meta_of(idx, "name", "description")
+    c(bool(desc) and 60 < len(desc) < 200, f"description of a sensible length ({len(desc or '')})")
+    c(meta_of(idx, "property", "og:description") == desc and meta_of(idx, "name", "twitter:description") == desc, "og and twitter descriptions repeat it")
+    c(bool(meta_of(idx, "property", "og:image:alt")) and bool(meta_of(idx, "name", "twitter:image:alt")), "image alternative text")
+    c(re.search(r'<link rel="canonical" href="%s">' % re.escape(SITE), idx) is not None, "canonical link is the site address")
+    c(len(re.findall(r'<meta property="og:locale:alternate"', idx)) == 4, "four alternate locales")
+    c('<link rel="manifest" href="manifest.webmanifest">' in idx and '<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">' in idx, "manifest and apple-touch-icon links")
+    c(re.search(r"<title>[^<]*%s" % re.escape(BRAND), idx) is not None, "title carries the brand")
+    c(idx.count(SITE) >= 5 and not re.findall(r'content="https?://(?!%s)' % re.escape(SITE.split("//")[1]), idx), "every absolute address in the link-preview tags starts with SITE_URL")
+    c(f"const SITE_URL = {json.dumps(SITE)}" in idx, "the script gets the same constant")
+    # manifeste et images
+    M = json.loads(read_text("manifest.webmanifest"))
+    c(M["name"] == BRAND and M["short_name"] == BRAND and M["display"] == "standalone" and M["start_url"] == "." and M["theme_color"] == "#5A2DB8", "manifest: name, short_name, display, start_url, theme_color")
+    c(meta_of(idx, "name", "theme-color") == M["theme_color"], "manifest theme colour = theme-color meta")
+    c(not any(i["src"].startswith(("/", "http")) for i in M["icons"]), "manifest icons are relative (the site lives in a sub-folder)")
+    c({i["purpose"] for i in M["icons"]} == {"any", "maskable"}, "manifest has ‘any’ and ‘maskable’ icons")
+    for i in M["icons"]:
+        w, h = (int(x) for x in i["sizes"].split("x"))
+        c(png_size(os.path.join(ROOT, i["src"])) == (w, h), f"{i['src']} is {w}×{h}")
+    c(png_size(os.path.join(ROOT, "og.png")) == (1200, 630), "og.png is 1200×630")
+    c(os.path.getsize(os.path.join(ROOT, "og.png")) < 300_000, f"og.png under 300 KB ({os.path.getsize(os.path.join(ROOT, 'og.png'))} bytes: some previews refuse larger images)")
+    c(png_size(os.path.join(ROOT, "icons", "apple-touch-icon.png")) == (180, 180), "apple-touch-icon is 180×180")
+    NOTES.append(f"og.png {os.path.getsize(os.path.join(ROOT, 'og.png')) / 1024:.1f} KB (1200×630)")
+
+
+@test
+def country_pages(c):
+    """<cc>/index.html : une page de partage par pays (titre, description, image propres), redirection immédiate vers l'application."""
+    SITE = build_const("SITE_URL")
+    cat = CTX["catalog"]
+    mark = "<!-- generated by tools/build.js -->"
+    found = sorted(d for d in os.listdir(ROOT) if re.fullmatch(r"[a-z]{2}", d) and os.path.exists(os.path.join(ROOT, d, "index.html"))
+                   and mark in read_text(d, "index.html"))
+    c(found == sorted(cat), f"one generated page per edition ({found} vs {sorted(cat)})")
+    loc = {"en": "en_GB", "fr": "fr_FR", "pt": "pt_PT", "sw": "sw_KE", "ar": "ar_AR"}
+    for cc, e in cat.items():
+        html = read_text(cc, "index.html")
+        D = json.load(open(os.path.join(ROOT, "data", cc + ".json"), encoding="utf8"))
+        base = e["langs"][0]
+        c(f'<html lang="{base}">' in html, f"{cc}: html lang is the edition's base language")
+        c(meta_of(html, "property", "og:url") == f"{SITE}{cc}/" and f'<link rel="canonical" href="{SITE}{cc}/">' in html, f"{cc}: og:url and canonical are the country address")
+        c(meta_of(html, "property", "og:image") == SITE + "og.png" and meta_of(html, "name", "twitter:image") == SITE + "og.png", f"{cc}: share image is the site image")
+        t = meta_of(html, "property", "og:title")
+        c(t.endswith(" · " + BRAND) and re.search(r"<title>(.*?)</title>", html).group(1).replace("&amp;", "&") == t, f"{cc}: <title> = og:title = “… · {BRAND}” ({t})")
+        c(meta_of(html, "name", "twitter:title") == t, f"{cc}: twitter:title")
+        c(meta_of(html, "property", "og:locale") == loc[base], f"{cc}: og:locale")
+        desc = meta_of(html, "name", "description")
+        c(bool(desc) and meta_of(html, "property", "og:description") == desc, f"{cc}: description")
+        if e["kind"] == "ed":
+            E = D["ed"]
+            c(str(len(E["questions"])) in desc and str(len(E["parties"])) in desc, f"{cc}: description counts the questions and parties")
+        c(f'<meta http-equiv="refresh" content="0; url=../#/{cc}">' in html, f"{cc}: refresh to ../#/{cc}")
+        c(f'location.replace("../"+(h.indexOf("#/{cc}/")===0?h:"#/{cc}"))' in html, f"{cc}: script redirect keeps a #/{cc}/<language> link")
+        c(len(html) < 4500 and "<link rel=\"stylesheet\"" not in html and "src=" not in html, f"{cc}: self-contained and small ({len(html)} bytes)")
+    c("Nigeria" in meta_of(read_text("ng", "index.html"), "property", "og:title"), "ng: the country name is in the title")
+    # la redirection, dans un navigateur
+    S = Session(CTX["browser"], width=400, height=800)
+    page = S.page
+    page.goto(CTX["base"] + "/ng/")
+    page.wait_for_selector("#langDlg[open]")
+    c(page.url.split("#")[0] == CTX["base"] + "/" and page.url.endswith("#/ng"), f"/ng/ lands on the app at #/ng ({page.url})")
+    page.goto(CTX["base"] + "/ng/#/ng/fr")
+    page.wait_for_selector(".theme-grid")
+    c(page.url.split("#")[0] == CTX["base"] + "/" and page.evaluate("[state.country, state.ui]") == ["ng", "fr"], f"/ng/#/ng/fr opens Nigeria in French ({page.url})")
+    page.goto(CTX["base"] + "/ao/")
+    page.wait_for_selector("#langDlg[open]")
+    c(page.url.endswith("#/ao"), "an information-page country redirects too")
+    S.close(c)
+
+
+@test
+def fonts_local(c):
+    """Polices hébergées : WOFF2 présents, unicode-range et font-display: swap, un seul préchargement (latin du texte courant),
+    visiteur latin sous 120 Ko, aucun serveur de polices contacté, artifact.html garde des adresses relatives."""
+    files = ["bricolage-grotesque-latin.woff2", "bricolage-grotesque-latin-ext.woff2", "readex-pro-latin.woff2", "readex-pro-latin-ext.woff2", "readex-pro-arabic.woff2"]
+    sizes = {}
+    for f in files:
+        b = open(os.path.join(ROOT, "fonts", f), "rb").read()
+        c(b[:4] == b"wOF2", f"fonts/{f} is a WOFF2 file")
+        sizes[f] = len(b)
+    for lic in ("LICENSE-bricolage-grotesque.txt", "LICENSE-readex-pro.txt", "README.txt"):
+        c(os.path.exists(os.path.join(ROOT, "fonts", lic)), f"fonts/{lic} is there")
+    c("SIL OPEN FONT LICENSE" in read_text("fonts", "LICENSE-readex-pro.txt").upper(), "the font licence is the SIL Open Font License")
+    latin = sizes["bricolage-grotesque-latin.woff2"] + sizes["readex-pro-latin.woff2"]
+    c(latin < 120 * 1024, f"Latin-only visitor under 120 KB ({latin / 1024:.1f} KB)")
+    NOTES.append(f"fonts: Latin-only visitor {latin / 1024:.1f} KB (budget 120), the five files {sum(sizes.values()) / 1024:.1f} KB")
+    for name in ("index.html", "artifact.html"):
+        html = read_text(name)
+        c("googleapis" not in html and "gstatic" not in html, f"{name}: no font server")
+        faces = re.findall(r"@font-face\s*\{[^}]*\}", html)
+        c(len(faces) == 5, f"{name}: five @font-face rules")
+        c(all("font-display: swap" in x and 'format("woff2")' in x and "unicode-range" in x for x in faces), f"{name}: every face has font-display: swap and a unicode-range")
+        c(sorted(re.findall(r'url\("([^"]+)"\)', " ".join(faces))) == sorted("fonts/" + f for f in files), f"{name}: face addresses are relative fonts/…")
+        pre = re.findall(r'<link rel="preload" [^>]*>', html)
+        c(len(pre) == 1 and 'href="fonts/readex-pro-latin.woff2"' in pre[0] and 'as="font"' in pre[0] and 'type="font/woff2"' in pre[0] and "crossorigin" in pre[0],
+          f"{name}: one preload, the Latin body font ({pre})")
+    S = Session(CTX["browser"], width=1100)
+    page = S.page
+    got = []
+    page.on("response", lambda r: got.append(r.url.rsplit("/", 1)[-1]) if r.url.endswith(".woff2") else None)
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    open_ng(page, "en")
+    page.evaluate("document.fonts.ready")
+    page.wait_for_timeout(300)
+    c(sorted(got) == ["bricolage-grotesque-latin.woff2", "readex-pro-latin.woff2"], f"a Latin visitor downloads the two Latin files, each once ({sorted(got)})")
+    c(sum(sizes[f] for f in set(got)) < 120 * 1024, "…under 120 KB in all")
+    fam = page.evaluate("[getComputedStyle(document.querySelector('h1')).fontFamily, getComputedStyle(document.body).fontFamily]")
+    c("Bricolage Grotesque" in fam[0] and "Readex Pro" in fam[1] and "sans-serif" in fam[1], f"headings and body use the hosted fonts, with a system fallback ({fam})")
+    c(page.evaluate("document.fonts.check('16px \"Readex Pro\"') && document.fonts.check('700 32px \"Bricolage Grotesque\"')"), "both families are loaded")
+    page.click('#langs [data-lang="ar"]')
+    page.wait_for_function("document.documentElement.lang === 'ar'")
+    page.evaluate("document.fonts.ready")
+    page.wait_for_timeout(300)
+    c("readex-pro-arabic.woff2" in got and got.count("readex-pro-arabic.woff2") == 1, f"Arabic downloads the Arabic file, once ({got})")
+    S.close(c)
+    S = Session(CTX["browser"], width=1100)
+    page = S.page
+    got2 = []
+    page.on("response", lambda r: got2.append(r.url.rsplit("/", 1)[-1]) if r.url.endswith(".woff2") else None)
+    page.goto(CTX["base"] + "/artifact.html")
+    page.wait_for_selector("#mapWrap svg")
+    page.evaluate("document.fonts.ready")
+    page.wait_for_timeout(300)
+    c(sorted(got2) == ["bricolage-grotesque-latin.woff2", "readex-pro-latin.woff2"], f"artifact.html loads the same two Latin files from fonts/ ({sorted(got2)})")
+    S.close(c)
+
+
+@test
+def lang_loading(c):
+    """Données par langue : la base d'abord, une traduction seulement quand on la choisit (une fois), échec et délai dépassé signalés sans perdre
+    l'écran, choix tardif périmé ignoré, lien direct dans une langue."""
+    S = Session(CTX["browser"], width=1100)
+    page = S.page
+    reqs = []
+    page.on("request", lambda r: reqs.append(r.url.split("/data/")[1]) if "/data/" in r.url else None)
+    page.goto(CTX["base"] + "/index.html#/ng/en")
+    page.wait_for_selector(".theme-grid")
+    c(reqs == ["ng.json"], f"English Nigeria downloads the base file only ({reqs})")
+    size = os.path.getsize(os.path.join(ROOT, "data", "ng.json"))
+    seen = page.evaluate("performance.getEntriesByType('resource').filter(e => e.name.endsWith('/data/ng.json')).map(e => e.decodedBodySize)")
+    c(seen == [size], f"…{size} bytes ({seen})")
+    NOTES.append(f"first Nigeria request in English: {size / 1024:.1f} KB (one 208.2 KB file before the split); each translation 33–47 KB, fetched when chosen")
+    c(page.evaluate("Object.keys(TRANS).length") == 0 and "ed" in page.evaluate("Object.keys(DATA.ng)"), "no translation in memory yet")
+    fr_before = page.evaluate("state.view")
+    page.click('#langs [data-lang="fr"]')
+    page.wait_for_function("state.ui === 'fr'")
+    c(reqs == ["ng.json", "ng.fr.json"] and page.evaluate("document.documentElement.lang") == "fr", f"French fetches its translation once ({reqs})")
+    c(page.evaluate("state.view") == fr_before, "the screen stayed the same")
+    page.click('#langs [data-lang="en"]')
+    page.wait_for_function("state.ui === 'en'")
+    page.click('#langs [data-lang="fr"]')
+    page.wait_for_function("state.ui === 'fr'")
+    c(reqs == ["ng.json", "ng.fr.json"], f"going back to a loaded language fetches nothing ({reqs})")
+    # échec : la langue reste, un message le dit, rien n'est perdu ; on peut réessayer
+    page.route("**/data/ng.sw.json", lambda r: r.abort())
+    page.click('#langs [data-lang="sw"]')
+    page.wait_for_selector("#toast", state="visible", timeout=4000)
+    c(page.inner_text("#toast").strip() == page.evaluate("T.fr.langLoadFail"), "failure: a message, in the current language")
+    c(page.evaluate("[state.ui, document.documentElement.lang, state.view]") == ["fr", "fr", fr_before], "failure: language and screen unchanged")
+    c(page.get_attribute('#langs [data-lang="sw"]', "aria-busy") is None, "failure: the button is no longer busy")
+    page.unroute("**/data/ng.sw.json")
+    page.evaluate("document.getElementById('toast').hidden = true")
+    page.click('#langs [data-lang="sw"]')
+    page.wait_for_function("state.ui === 'sw'")
+    c(reqs.count("ng.sw.json") == 2 and page.is_hidden("#toast"), f"retry works ({reqs})")
+    # délai dépassé
+    hung = []
+    page.evaluate("LOAD_TIMEOUT = 400")
+    page.route("**/data/ng.ar.json", lambda r: hung.append(r))
+    page.click('#langs [data-lang="ar"]')
+    c(page.get_attribute('#langs [data-lang="ar"]', "aria-busy") == "true", "waiting: the button is marked busy")
+    page.wait_for_selector("#toast", state="visible", timeout=4000)
+    c(page.evaluate("[state.ui, document.documentElement.lang]") == ["sw", "sw"], "timeout: language unchanged")
+    c(page.get_attribute('#langs [data-lang="ar"]', "aria-busy") is None, "timeout: the button is no longer busy")
+    page.unroute("**/data/ng.ar.json")
+    for r in hung:
+        try:
+            r.abort()
+        except Exception:
+            pass
+    page.evaluate("LOAD_TIMEOUT = 20000; document.getElementById('toast').hidden = true")
+    page.click('#langs [data-lang="ar"]')
+    page.wait_for_function("state.ui === 'ar'")
+    c(reqs.count("ng.ar.json") == 2, f"retry after a timeout works ({reqs.count('ng.ar.json')} requests)")
+    # choix périmé : on clique « pt » (lent), puis « en » ; la traduction arrive après : la langue reste « en »
+    hung = []
+    page.route("**/data/ng.pt.json", lambda r: hung.append(r))
+    page.click('#langs [data-lang="pt"]')
+    page.click('#langs [data-lang="pt"]')
+    page.click('#langs [data-lang="en"]')
+    page.wait_for_function("state.ui === 'en'")
+    page.wait_for_timeout(150)
+    c(len(hung) == 1, f"two taps on the same language make one request ({len(hung)})")
+    hung[0].continue_()
+    page.wait_for_function("!!TRANS['ng:pt']")
+    page.wait_for_timeout(200)
+    c(page.evaluate("state.ui") == "en" and page.is_hidden("#toast"), "a late answer to an abandoned choice changes nothing")
+    page.unroute("**/data/ng.pt.json")
+    page.click('#langs [data-lang="pt"]')
+    page.wait_for_function("state.ui === 'pt'")
+    c(reqs.count("ng.pt.json") == 1, "…and the translation it fetched is kept")
+    c(all("Failed to load resource" in m for m in S.console), f"the only console messages are the two requests this test aborted ({S.console})")
+    S.close(c, allow_console=True)
+    # lien direct dans une langue : la base et cette traduction, pas les autres
+    S = Session(CTX["browser"], width=1100)
+    page = S.page
+    reqs = []
+    page.on("request", lambda r: reqs.append(r.url.split("/data/")[1]) if "/data/" in r.url else None)
+    page.goto(CTX["base"] + "/index.html#/ng/ar")
+    page.wait_for_selector(".theme-grid")
+    c(sorted(reqs) == ["ng.ar.json", "ng.json"], f"a direct link in Arabic fetches the base and the Arabic file ({reqs})")
+    S.close(c)
+
+
+# ------------------------------------------------------------------ APPFIX3 : « Pourquoi ce score ? », « Prépare ton vote », partage, signaler une erreur
+def expected_explain(D, answers, pid):
+    """(k, accords, désaccords) attendus : questions chiffrées où le parti a une position ; accord = écart ≤ 1 (écart croissant), désaccord =
+    écart ≥ 2 (écart décroissant) ; égalité : ordre des questions ; 3 au plus de chaque."""
+    rows = []
+    for qi, q in enumerate(D["ed"]["questions"]):
+        v, cell = answers.get(qi), q["cells"].get(pid)
+        if not isinstance(v, int) or cell is None:
+            continue
+        rows.append((qi, v, cell["p"], abs(v - cell["p"])))
+    agree = sorted((r for r in rows if r[3] <= 1), key=lambda r: (r[3], r[0]))[:3]
+    dis = sorted((r for r in rows if r[3] >= 2), key=lambda r: (-r[3], r[0]))[:3]
+    return len(rows), agree, dis
+
+
+READ_XM = """() => [...document.querySelectorAll('#pan0 .rank li')].map(li => { const d = li.querySelector('details.xm'); return {
+  pid: li.querySelector('[data-fiche]').dataset.fiche, has: !!d, open: !!(d && d.open), sub: li.querySelector('.rank-sub').textContent,
+  summary: d ? d.querySelector('summary').textContent : null,
+  blocks: d ? [...d.querySelectorAll('.xm-block')].map(b => ({ h: b.querySelector('.xm-h').textContent,
+    items: [...b.querySelectorAll('.xm-item')].map(i => ({ qi: +i.querySelector('[data-qlink]').dataset.qlink, q: i.querySelector('.xm-q').textContent, pos: i.querySelector('.xm-pos').textContent })),
+    none: (b.querySelector('.xm-none') || {}).textContent || null })) : [] }; })"""
+
+
+@test
+def explain_match(c):
+    """« Pourquoi ce score ? » : jusqu'à 3 accords (écart ≤ 1) et 3 désaccords (écart ≥ 2) par parti, classés par écart puis par ordre des
+    questions ; jamais une question passée ou sans réponse ; lien vers « Par question » ; même contenu dans la fiche ; couverture cohérente."""
+    D = json.load(open(os.path.join(ROOT, "data", "ng.json"), encoding="utf8"))
+    E = D["ed"]
+    nq = len(E["questions"])
+    S = Session(CTX["browser"], width=1100, height=900)
+    page = S.page
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    open_ng(page, "en")
+    X = page.evaluate("({ h: T.en.whyScore, ag: T.en.whyAgree, dis: T.en.whyDisagree, noA: T.en.whyNoAgree, noD: T.en.whyNoDisagree, ans: T.en.ans })")
+    lab = lambda v: X["ans"][str(v)]
+
+    def check_rows(answers, where):
+        num = {k: v for k, v in answers.items() if isinstance(v, int)}
+        rows, a = model_rows(D, num, {}, [])
+        got = page.evaluate(READ_XM)
+        c(len(got) == len(E["parties"]), f"{where}: one row per party")
+        by = {g["pid"]: g for g in got}
+        for r in rows:
+            g, pid = by[r["id"]], r["id"]
+            k, agree, dis = expected_explain(D, num, pid)
+            c(k == r["k"], f"{where}/{r['sig']}: model and explanation agree on the number of compared questions ({k} vs {r['k']})")
+            c(g["has"] == (k > 0), f"{where}/{r['sig']}: ‘{X['h']}’ iff the party was compared on something")
+            c(g["sub"].count(page.evaluate("([k, a]) => T.en.compared(k, a)", [k, a])) == (1 if r["grp"] < 2 else 0), f"{where}/{r['sig']}: coverage ‘{k} of your {a} answers’ shown next to the score")
+            if not k:
+                continue
+            c(not g["open"] and g["summary"].strip() == X["h"], f"{where}/{r['sig']}: collapsed, summary ‘{X['h']}’")
+            c([b["h"] for b in g["blocks"]] == [X["ag"], X["dis"]], f"{where}/{r['sig']}: the two blocks")
+            for blk, want, none in ((g["blocks"][0], agree, X["noA"]), (g["blocks"][1], dis, X["noD"])):
+                c([i["qi"] for i in blk["items"]] == [w[0] for w in want], f"{where}/{r['sig']}/{blk['h']}: questions {[i['qi'] for i in blk['items']]} != expected {[w[0] for w in want]}")
+                c(len(blk["items"]) <= 3, f"{where}/{r['sig']}: at most three")
+                c((blk["none"] or "").strip() == (none if not want else ""), f"{where}/{r['sig']}/{blk['h']}: empty-block sentence iff nothing to show")
+                for it, w in zip(blk["items"], want):
+                    c(it["q"] == E["questions"][w[0]]["text"], f"{where}/{r['sig']}: question text of q{w[0]}")
+                    c(lab(w[2]) in it["pos"] and lab(w[1]) in it["pos"], f"{where}/{r['sig']}: both positions of q{w[0]} are spelled out ({it['pos']})")
+                    c(w[0] in num, f"{where}/{r['sig']}: only answered questions are cited")
+        return rows, by
+
+    # 1. réponses variées, avec des questions passées (null) et des questions laissées sans réponse
+    A = {}
+    for qi in range(nq):
+        if qi % 9 == 4:
+            continue
+        A[qi] = None if qi % 6 == 5 else [2, 1, 0, -1, -2][(qi * 3 + qi // 4) % 5]
+    set_answers(page, A)
+    rows, by = check_rows(A, "mixed")
+    # 2. le clic « Voir la question » : onglet « Par question », la question au focus
+    first = next(g for g in page.evaluate(READ_XM) if g["has"] and g["blocks"][0]["items"])
+    page.click(f'#pan0 [data-fiche="{first["pid"]}"]')
+    page.wait_for_selector("#fiche[open]")
+    c(page.locator("#fiche .xm-fiche").count() == 1 and page.text_content("#fiche .xm-fiche h3").strip() == X["h"], "fiche: the same explanation under a heading")
+    fiche_q = page.evaluate("[...document.querySelectorAll('#fiche .xm-item [data-qlink]')].map(b => +b.dataset.qlink)")
+    c(fiche_q == [i["qi"] for b in first["blocks"] for i in b["items"]], f"fiche: same questions as the ranking row ({fiche_q})")
+    target = fiche_q[0]
+    page.click("#fiche .xm-item [data-qlink]")
+    c(not page.is_visible("#fiche"), "‘See the question’ closes the profile")
+    c(page.get_attribute("#tab2", "aria-selected") == "true" and page.is_visible("#pan2") and not page.is_visible("#pan0"), "…and opens the By-question tab")
+    c(page.evaluate("document.activeElement.id") == f"qa-{target}" and page.evaluate(f"document.getElementById('qa-{target}').classList.contains('hl')"), f"…with question {target} in focus and highlighted")
+    c(page.evaluate("location.hash").endswith("/results/questions"), "…and the tab in the address")
+    page.click("#tab0")
+    page.locator(f'#pan0 .rank li:has([data-fiche="{first["pid"]}"]) details.xm summary').click()
+    c(page.evaluate(f"document.querySelector('#pan0 [data-fiche=\"{first['pid']}\"]').closest('li').querySelector('details.xm').open"), "the summary opens the explanation")
+    page.click(f'#pan0 li:has([data-fiche="{first["pid"]}"]) .xm-item [data-qlink]')
+    c(page.get_attribute("#tab2", "aria-selected") == "true", "‘See the question’ from the ranking row opens the By-question tab")
+    # 3. coverage on the By-theme tab: the same wording, the theme's own numbers
+    page.click("#tab1")
+    for th in E["themes"]:
+        num = {k: v for k, v in A.items() if isinstance(v, int)}
+        trows, ta = model_rows(D, num, {}, [], theme=th["id"])
+        if not ta:
+            continue
+        card = page.locator(f'#pan1 .theme-card:has(h2:text-is("{th["name"]}"))')
+        subs = card.locator(".mini-row").evaluate_all("rs => rs.filter(r => r.querySelector('.cov-sub')).map(r => [r.querySelector('.badge').textContent, r.querySelector('.cov-sub').textContent])")
+        want = {r["sig"]: page.evaluate("([k, a]) => T.en.compared(k, a)", [r["k"], ta]) for r in trows if r["grp"] < 2}
+        c(all(want.get(s) == t for s, t in subs) and len(subs) > 0, f"theme {th['id']}: ‘{list(want.values())[:1]}’ style coverage on every mini-row ({subs[:2]})")
+    # 4. réponses à l'opposé / dans le sens d'un parti : les phrases « aucun… »
+    P0 = E["parties"][0]
+    opp, same = {}, {}
+    for qi, q in enumerate(E["questions"]):
+        cell = q["cells"].get(P0["id"])
+        if cell is not None:
+            opp[qi] = -2 if cell["p"] >= 0 else 2
+            same[qi] = cell["p"]
+    set_answers(page, opp)
+    rows, by = check_rows(opp, "opposite")
+    c(by[P0["id"]]["blocks"][0]["items"] == [] and by[P0["id"]]["blocks"][0]["none"].strip() == X["noA"] and len(by[P0["id"]]["blocks"][1]["items"]) == 3, f"{P0['sigle']} answered opposite: no agreement, three disagreements")
+    set_answers(page, same)
+    rows, by = check_rows(same, "same")
+    c(by[P0["id"]]["blocks"][1]["items"] == [] and by[P0["id"]]["blocks"][1]["none"].strip() == X["noD"] and len(by[P0["id"]]["blocks"][0]["items"]) == 3, f"{P0['sigle']} answered the same: three agreements, no disagreement")
+    # 5. un parti sans position documentée sur ce que tu as répondu : pas d'explication
+    sparse = min(E["parties"], key=lambda p: sum(1 for q in E["questions"] if p["id"] in q["cells"]))
+    only_others = {qi: 1 for qi, q in enumerate(E["questions"]) if sparse["id"] not in q["cells"]}
+    if only_others and len(only_others) >= 2:
+        set_answers(page, only_others)
+        rows, by = check_rows(only_others, "uncovered")
+        c(not by[sparse["id"]]["has"], f"{sparse['sigle']} has no documented position on these answers: no explanation, no empty box")
+    # 6. peu de réponses : le premier aperçu ne casse rien
+    set_answers(page, {0: 2})
+    c(page.locator("#pan0 .rank li").count() == len(E["parties"]), "one answer: the ranking is still drawn")
+    # 7. arabe : mêmes questions, de droite à gauche, sans débordement
+    set_answers(page, A)
+    page.click('#langs [data-lang="ar"]')
+    page.wait_for_function("state.ui === 'ar'")
+    page.set_viewport_size({"width": 390, "height": 844})
+    num = {k: v for k, v in A.items() if isinstance(v, int)}
+    ar_rows = page.evaluate(READ_XM)
+    c(page.evaluate("document.documentElement.dir") == "rtl", "ar: right-to-left")
+    for g in ar_rows:
+        k, agree, dis = expected_explain(D, num, g["pid"])
+        c(g["has"] == (k > 0) and (not k or [[i["qi"] for i in b["items"]] for b in g["blocks"]] == [[w[0] for w in agree], [w[0] for w in dis]]), f"ar/{g['pid']}: same questions as in English")
+    page.locator("#pan0 .rank li details.xm summary").first.click()
+    no_overflow(page, c, "ar results with the explanation open")
+    shot(page, "explain-ar-390.png", full=False)
+    page.click('#langs [data-lang="en"]')
+    page.wait_for_function("state.ui === 'en'")
+    page.locator("#pan0 .rank li details.xm summary").first.click()
+    no_overflow(page, c, "en results with the explanation open (390 px)")
+    shot(page, "explain-en-390.png", full=False)
+    S.close(c)
+
+
+# ------------------------------------------------------------------ « Prépare ton vote »
+def days_between(a, b):
+    import datetime
+    f = lambda x: datetime.date(*map(int, x.split("-")))
+    return (f(b) - f(a)).days
+
+
+def read_prep(page):
+    return page.evaluate("""() => { const s = document.querySelector('section.prep'); if (!s) return null;
+      return { title: s.querySelector('.prep-title').textContent.trim(), role: s.querySelector('.prep-title').getAttribute('role'), level: s.querySelector('.prep-title').getAttribute('aria-level'),
+        count: (s.querySelector('.prep-count') || {}).textContent || null, countB: (s.querySelector('.prep-count b') || {}).textContent || null,
+        emb: s.querySelector('.prep-emb').textContent.trim(), embLink: (() => { const a = s.querySelector('.prep-emb a'); return a ? { href: a.href, target: a.target, rel: a.rel, label: a.getAttribute('aria-label') } : null; })(),
+        check: (() => { const a = s.querySelector('.prep-check a'); return a ? { href: a.href, text: a.textContent, target: a.target, rel: a.rel } : null; })(),
+        caveat: s.querySelector('.prep-cav').textContent.trim(), ics: [...s.querySelectorAll('a.prep-ics')].map(a => ({ href: a.getAttribute('href'), file: a.getAttribute('download'), text: a.textContent })),
+        items: [...s.querySelectorAll('.prep-item')].map(li => ({ text: li.querySelector('.prep-t > span').textContent, past: li.classList.contains('past'), tag: (li.querySelector('.prep-tag') || {}).textContent || null,
+          date: (li.querySelector('time') || {}).dateTime || null, color: getComputedStyle(li).color, srcHref: (li.querySelector('.src a') || {}).href || null })) }; }""")
+
+
+def prep_order(items, today):
+    """Ordre attendu : les éléments à venir (ou sans date) d'abord, les passés ensuite, l'ordre du fichier dans chaque groupe."""
+    return sorted(enumerate(items), key=lambda x: ((x[1]["d"] is not None and x[1]["d"] < today), x[0]))
+
+
+def parse_ics(href):
+    body = urllib.parse.unquote(href.split(",", 1)[1])
+    raw = body.split("\r\n")
+    lines = []
+    for ln in raw:
+        if ln.startswith(" ") and lines:
+            lines[-1] += ln[1:]
+        else:
+            lines.append(ln)
+    return body, raw, lines
+
+
+@test
+def prep_card(c):
+    """« Prépare ton vote » (données réelles) : les éléments à venir d'abord, les passés en retrait avec « passé », compte à rebours seulement
+    pour une date exacte, lien .ics (hors cadre isolé), organisme sans lien quand il n'a pas de site, rien pour un pays sans données."""
+    import datetime
+    SITE = build_const("SITE_URL")
+    cat = CTX["catalog"]
+    D = json.load(open(os.path.join(ROOT, "data", "ng.json"), encoding="utf8"))
+    P = D["prep"]
+    sect = read_text("src", "app.js")
+    sect = sect[sect.index("/* ================== « Prépare ton vote » "):sect.index("/* ================== Partager ")]
+    c(re.search(r"\b20[2-9]\d\b", sect) is None and "new Date()" in sect, "no date written in the code of the card: ‘today’ is the device's date")
+    S = Session(CTX["browser"], width=390, height=844)
+    page = S.page
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    c(page.evaluate("todayISO()") == datetime.date.today().isoformat() or page.evaluate("todayISO()") in (datetime.date.today().isoformat(), (datetime.date.today() + datetime.timedelta(days=1)).isoformat(), (datetime.date.today() - datetime.timedelta(days=1)).isoformat()),
+      "todayISO() is the device's date")
+    X = page.evaluate("({ title: T.en.prepTitle2, past: T.en.prepPast, check: T.en.prepCheck, cav: T.en.prepCaveat, add: T.en.prepAdd, new: T.en.newTab })")
+    open_ng(page, "en")
+    for today in ("2026-11-01", "2000-01-01", "2099-01-01", "2027-01-15", "2027-01-16", "2027-01-17"):
+        pin_today(page, today)
+        R = read_prep(page)
+        exp = prep_order(P["items"], today)
+        w = f"ng @ {today}"
+        c(R is not None and R["title"] == X["title"] and R["role"] == "heading" and R["level"] == "2", f"{w}: card titled ‘{X['title']}’")
+        c([i["text"] for i in R["items"]] == [it["t"]["en"] for _, it in exp], f"{w}: order {[i for i, _ in exp]}")
+        c([i["past"] for i in R["items"]] == [it["d"] is not None and it["d"] < today for _, it in exp], f"{w}: past flags")
+        c([i["tag"] for i in R["items"]] == [X["past"] if (it["d"] is not None and it["d"] < today) else None for _, it in exp], f"{w}: ‘{X['past']}’ tag on past items only")
+        c([i["date"] for i in R["items"]] == [it["d"] for _, it in exp], f"{w}: dates in <time datetime>")
+        c([i["srcHref"] for i in R["items"]] == [P["src"][it["src"]]["u"] for _, it in exp], f"{w}: each item links its source")
+        past_cols = {i["color"] for i in R["items"] if i["past"]}
+        up_cols = {i["color"] for i in R["items"] if not i["past"]}
+        c(not past_cols or not up_cols or not (past_cols & up_cols), f"{w}: past items are muted ({past_cols} vs {up_cols})")
+        ev = D["meta"]["ev"][0]
+        if today <= ev["d"]:
+            n = days_between(today, ev["d"])
+            want = "Voting is today" if n == 0 else "Vote tomorrow" if n == 1 else f"Vote in {n} days"
+            c(R["countB"] == want, f"{w}: countdown ‘{want}’ ({R['countB']})")
+            c(len(R["ics"]) == 1 and R["ics"][0]["file"] == f"vote-ng-{ev['d']}.ics" and R["ics"][0]["href"].startswith("data:text/calendar;charset=utf-8,"), f"{w}: calendar file offered ({R['ics'][0]['file'] if R['ics'] else None})")
+        else:
+            c(R["count"] is None and not R["ics"], f"{w}: election over, no countdown, no calendar file")
+    pin_today(page, "2026-11-01")
+    R = read_prep(page)
+    c(R["embLink"] and R["embLink"]["href"].rstrip("/") == P["emb"]["url"].rstrip("/") and R["embLink"]["target"] == "_blank" and "noopener" in R["embLink"]["rel"]
+      and R["embLink"]["label"].endswith(f"({X['new']})"), f"official body linked, new tab, announced ({R['embLink']})")
+    c(P["emb"]["name"] in R["emb"] and f"({P['emb']['short']})" in R["emb"], f"body named in full and by acronym ({R['emb']})")
+    c(R["check"] and R["check"]["href"] == P["check"]["url"] and R["check"]["text"] == X["check"] and R["check"]["target"] == "_blank", "‘check your registration’ link")
+    c(R["caveat"] == X["cav"], "dated-sources caveat")
+    # le fichier .ics
+    pin_today(page, "2026-11-01")
+    body, raw, lines = parse_ics(read_prep(page)["ics"][0]["href"])
+    c(lines[0] == "BEGIN:VCALENDAR" and lines[-2] == "END:VCALENDAR" and lines[-1] == "" and body.endswith("\r\n") and "\n" not in body.replace("\r\n", ""), ".ics: CRLF lines, one calendar")
+    c("VERSION:2.0" in lines and "DTSTART;VALUE=DATE:20270116" in lines and "DTEND;VALUE=DATE:20270117" in lines, ".ics: a whole-day event on the election day")
+    c("TRIGGER:-P1D" in lines and "ACTION:DISPLAY" in lines and any(x.startswith("UID:ng-general-2027-01-16@") for x in lines), ".ics: reminder the day before, stable UID")
+    c(any(x.startswith("SUMMARY:") and "Nigeria" in x for x in lines) and f"URL:{SITE}ng/" in lines, ".ics: summary names the country, URL is the country page")
+    c(all(len(r.encode()) <= 75 for r in raw), ".ics: lines folded at 75 octets")
+    # cv : compte à rebours exact, jour J, lendemain
+    goto_cc(page, CTX["base"], "cv", "en", "section.prep")
+    for today, want, ics in (("2026-11-01", "Vote in 14 days", True), ("2026-11-14", "Vote tomorrow", True), ("2026-11-15", "Voting is today", True), ("2026-11-16", None, False)):
+        pin_today(page, today)
+        R = read_prep(page)
+        c(R["countB"] == want and bool(R["ics"]) == ics, f"cv @ {today}: {want} / calendar file {ics} ({R['countB']}, {len(R['ics'])})")
+    pin_today(page, "2026-11-01")
+    R = read_prep(page)
+    c(R["ics"][0]["file"] == "vote-cv-2026-11-15.ics", "cv: file name")
+    body, raw, lines = parse_ics(R["ics"][0]["href"])
+    c("DTSTART;VALUE=DATE:20261115" in lines and any(x.startswith("SUMMARY:") and "Presidential" in x for x in lines), "cv: the .ics names the kind of election")
+    # cm : période (« range ») → « prévu… », pas de compte à rebours, pas de .ics ; organisme sans site → nom sans lien
+    goto_cc(page, CTX["base"], "cm", "en", "section.prep")
+    pin_today(page, "2026-11-01")
+    R = read_prep(page)
+    Pcm = json.load(open(os.path.join(ROOT, "data", "cm.json"), encoding="utf8"))["prep"]
+    c(R["embLink"] is None and Pcm["emb"]["name"] in R["emb"], f"cm: body without a website is named, not linked ({R['emb']})")
+    c(R["countB"] is not None and R["countB"].startswith("Vote expected") and " days" not in R["countB"] and not R["ics"], f"cm: ‘expected’ wording for a period, no countdown, no calendar ({R['countB']})")
+    # tous les pays : carte iff données, éléments dans la langue de base
+    for cc, e in sorted(cat.items()):
+        Dc = json.load(open(os.path.join(ROOT, "data", cc + ".json"), encoding="utf8"))
+        goto_cc(page, CTX["base"], cc, e["langs"][0])
+        page.wait_for_function("() => state.view !== 'loading'")
+        n = page.locator("section.prep").count()
+        c(n == (1 if Dc.get("prep") else 0), f"{cc}: card iff the country has prep data ({n})")
+        if Dc.get("prep"):
+            R = read_prep(page)
+            c(len(R["items"]) == len(Dc["prep"]["items"]), f"{cc}: every item is shown ({len(R['items'])})")
+            c(all(i["text"] and (i["srcHref"] or "").startswith("https://") for i in R["items"]), f"{cc}: every item has text and a source link")
+    for cc in ("gq",):
+        goto_cc(page, CTX["base"], cc, "en")
+        c(page.locator("section.prep").count() == 0 and page.locator(".theme-grid, .why-box").count() >= 1, f"{cc}: no card, the page works")
+    # français et arabe
+    goto_cc(page, CTX["base"], "ng", "fr", "section.prep")
+    pin_today(page, "2026-11-01")
+    Lf = page.evaluate("({ t: T.fr.prepTitle2, d: T.fr.prepDaysIn(76), past: T.fr.prepPast, add: T.fr.prepAdd })")
+    R = read_prep(page)
+    exp = prep_order(P["items"], "2026-11-01")
+    c(R["title"] == Lf["t"] == "Prépare ton vote" and R["countB"] == Lf["d"] == "Vote dans 76 jours", f"fr: title and countdown ({R['countB']})")
+    c([i["text"] for i in R["items"]] == [it["t"]["fr"] for _, it in exp] and [i["tag"] for i in R["items"]].count(Lf["past"]) == sum(1 for _, it in exp if it["d"] is not None and it["d"] < "2026-11-01"), "fr: items in French, past ones marked ‘passé’")
+    c(R["ics"][0]["text"] == Lf["add"], "fr: calendar button label")
+    goto_cc(page, CTX["base"], "ng", "ar", "section.prep")
+    pin_today(page, "2026-11-01")
+    R = read_prep(page)
+    c(page.evaluate("document.documentElement.dir") == "rtl" and R["title"] == page.evaluate("T.ar.prepTitle2"), "ar: right-to-left, translated title")
+    c([i["text"] for i in R["items"]] == [it["t"]["ar"] for _, it in exp] and R["countB"] == page.evaluate("T.ar.prepDaysIn(76)"), "ar: items and countdown in Arabic")
+    c(page.evaluate("document.querySelector('.prep-emb bdi') !== null"), "ar: the body's name is isolated (bdi)")
+    no_overflow(page, c, "ng card in Arabic (390 px)")
+    shot(page, "prep-ng-ar-390.png", full=True)
+    # écrans étroits, structure des titres
+    goto_cc(page, CTX["base"], "ng", "en", "section.prep")
+    pin_today(page, "2026-11-01")
+    c(heading_ok(heading_levels(page)), f"start screen with the card: heading order {heading_levels(page)}")
+    page.set_viewport_size({"width": 320, "height": 640})
+    no_overflow(page, c, "ng card at 320 px")
+    shot(page, "prep-ng-320.png", full=True)
+    page.set_viewport_size({"width": 390, "height": 844})
+    shot(page, "prep-ng-390.png", full=True)
+    S.close(c)
+    # jugement de la date, directement
+    S = Session(CTX["browser"], width=800, height=600)
+    page = S.page
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    ex = lambda d, t="presidential": {"t": t, "d": d, "q": "exact"}
+    cases = [
+        ("exact, in 14 days", [ex("2026-11-15")], "Vote in 14 days"), ("exact, today", [ex("2026-11-01")], "Voting is today"), ("exact, tomorrow", [ex("2026-11-02")], "Vote tomorrow"),
+        ("exact, yesterday", [ex("2026-10-31")], ""), ("month, this month", [{"t": "legislative", "d": "2026-11", "q": "month"}], "Vote expected in"),
+        ("month, last month", [{"t": "legislative", "d": "2026-10", "q": "month"}], ""),
+        ("month, a later one", [{"t": "legislative", "d": "2027-07", "q": "month"}], "Vote expected in"),
+        ("range", [{"t": "legislative", "d": "2027-01-29", "d2": "2027-04-19", "q": "range"}], "Vote expected"),
+        ("by", [{"t": "legislative", "d": "2027-11", "q": "by"}], "Vote expected"), ("before", [{"t": "legislative", "d": "2027-03-01", "q": "before"}], "Vote expected"),
+        ("two exact: the nearest", [ex("2026-12-01"), ex("2026-11-20", "legislative")], "Vote in 19 days"),
+        ("a month and an exact one: the countdown wins", [{"t": "legislative", "d": "2027-02", "q": "month"}, ex("2027-03-01")], "Vote in 120 days"),
+        ("range already over", [{"t": "legislative", "d": "2026-01-01", "d2": "2026-10-01", "q": "range"}], ""), ("no event", [], "")]
+    for name, evs, want in cases:
+        got = page.evaluate("([evs]) => { todayISO = () => '2026-11-01'; return window.__etv.voteLine({ meta: { ev: evs } }, T.en).replace(/<[^>]+>/g, ''); }", [evs])
+        c(got.startswith(want) if want else got == "", f"voteLine — {name}: ‘{got}’ vs ‘{want}’")
+        if want.startswith("Vote expected"):
+            c(" days" not in got, f"voteLine — {name}: no countdown for a date that is not exact")
+    for lang in LANGS:
+        got = page.evaluate("l => window.__etv.voteLine({ meta: { ev: [{ t: 'presidential', d: '2026-11-15', q: 'exact' }] } }, T[l]).replace(/<[^>]+>/g, '')", lang)
+        got2 = page.evaluate("l => window.__etv.voteLine({ meta: { ev: [{ t: 'legislative', d: '2027-07', q: 'month' }] } }, T[l]).replace(/<[^>]+>/g, '')", lang)
+        c("14" in got.replace("١٤", "14") or lang == "ar", f"voteLine {lang}: countdown ‘{got}’")
+        c(got and got2 and got != got2, f"voteLine {lang}: different wording for ‘expected’ ({got2})")
+    S.close(c)
+
+
+@test
+def prep_fixture(c):
+    """« Prépare ton vote » avec des données de test : ordre (à venir, sans date, puis passés), mois non exact, page d'information, organisme sans site."""
+    D = json.load(open(os.path.join(CTX["site"], "data", "cg.json"), encoding="utf8"))
+    S = Session(CTX["browser"], width=400, height=860)
+    page = S.page
+    base = CTX["fbase"] + "/site"
+    page.goto(base + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    open_country(page, "178", "en")
+    page.wait_for_selector(".theme-grid")
+    pin_today(page, "2026-11-01")
+    R = read_prep(page)
+    c([i["text"] for i in R["items"]] == ["[en] Fixture step future", "[en] Fixture step nodate", "[en] Fixture step old", "[en] Fixture step old2"], f"upcoming, undated, then past in file order ({[i['text'] for i in R['items']]})")
+    c([i["past"] for i in R["items"]] == [False, False, True, True] and [i["tag"] for i in R["items"]] == [None, None, "past", "past"], "the two old items are tagged ‘past’")
+    c(R["items"][1]["date"] is None, "an item without a date shows none and is never ‘past’")
+    c(R["embLink"]["href"] == "https://example.org/fixture/fec" and R["check"]["href"] == "https://example.org/fixture/check", "body and registration links")
+    c(R["countB"].startswith("Vote expected in") and "(date to be confirmed)" in R["countB"] and not R["ics"], f"a month-level date: ‘{R['countB']}’, no calendar file")
+    pin_today(page, "2027-08-02")
+    c(read_prep(page)["count"] is None, "after the month, the line goes")
+    pin_today(page, "2099-12-31")
+    R = read_prep(page)
+    c([i["past"] for i in R["items"]] == [False, False, True, True], "an item dated today is not past")
+    pin_today(page, "2100-01-01")
+    R = read_prep(page)
+    c([i["text"] for i in R["items"]] == ["[en] Fixture step nodate", "[en] Fixture step future", "[en] Fixture step old", "[en] Fixture step old2"] or all(i["past"] for i in R["items"][1:]),
+      f"all dated items past: undated first, then file order ({[i['text'] for i in R['items']]})")
+    # page d'information (Comores de test) : organisme sans site, arabe
+    page.goto(base + "/index.html#/km/ar")
+    page.wait_for_selector(".why-box")
+    pin_today(page, "2026-11-01")
+    R = read_prep(page)
+    c(R is not None and R["embLink"] is None and "Fixture Islands Commission" in R["emb"] and R["check"] is None, "information page: card, body without a link, no registration link")
+    c(R["items"][0]["text"] == "[ar] Fixture step km" and R["title"] == page.evaluate("T.ar.prepTitle2"), "information page: Arabic text")
+    c(R["countB"].startswith(page.evaluate("T.ar.prepPlanned")), f"information page: ‘expected’ line in Arabic ({R['countB']})")
+    no_overflow(page, c, "km card 400 px")
+    shot(page, "prep-km-ar-400.png", full=True)
+    # Nigeria : sa fiche est invalide dans ce site de test → pas de carte, pas de plantage
+    page.goto(base + "/index.html#/ng/en")
+    page.wait_for_selector(".theme-grid")
+    c(page.locator("section.prep").count() == 0, "an invalid PREP entry is ignored: no card")
+    c("prep" not in json.load(open(os.path.join(CTX["site"], "data", "ng.json"), encoding="utf8")), "…and nothing of it in data/ng.json")
+    S.close(c)
+
+
+@test
+def prep_build(c):
+    """Validation de src/prep.js par le build : 5 langues et une source existante par élément, https, dates valides ; avertir sans échouer
+    (échec seulement avec --strict) ; un pays sans édition est signalé ; un fichier illisible ne bloque rien."""
+    out = CTX["fixture_build_log"]
+    for cc in ("zz", "bi"):
+        c(f"prep: {cc} is in PREP but has no edition, ignored" in out, f"warning: {cc} has prep data but no edition")
+    c(re.search(r"prep: ng invalid, ignored .*items\[0\]\.t\.ar is missing", out) is not None, "warning: ng prep invalid (a language missing), ignored")
+    line = re.search(r"^prep\s+(.*)$", out, re.M)
+    c(line is not None and {"cg", "km"} <= set(line.group(1).split(" (")[0].split()) and not {"ng", "bi", "zz"} & set(line.group(1).split(" (")[0].split()), f"the build lists the countries that get a card ({line and line.group(0)})")
+    tmp = tempfile.mkdtemp(prefix="etv-prep-")
+    try:
+        fx = os.path.join(tmp, "fx")
+        os.makedirs(os.path.join(fx, "editions"))
+        ok = {"emb": {"name": "Replaced Body", "short": "RB", "url": "https://example.org/rb"}, "src": {"s": {"o": "O", "t": "T", "d": "1 Oct 2026", "u": "https://example.org/s"}},
+              "items": [{"d": "2027-01-01", "src": "s", "t": {l: f"[{l}] x" for l in LANGS}}]}
+        bad = lambda f: json.loads(json.dumps(f))
+        P = {"gm": ok, "qq": bad(ok)}
+        e = bad(ok); e["items"][0]["src"] = "nope"; P["ke"] = e
+        e = bad(ok); e["emb"]["url"] = "http://example.org/insecure"; P["cv"] = e
+        e = bad(ok); e["items"][0]["d"] = "2026-13-45"; P["ao"] = e
+        e = bad(ok); e["check"] = {"url": "https://example.org/c", "src": "missing"}; P["ls"] = e
+        e = bad(ok); e["items"] = []; P["so"] = e
+        e = bad(ok); del e["emb"]["short"]; P["tn"] = e
+        write_js(os.path.join(fx, "prep.js"), PREP=P)
+        site = os.path.join(tmp, "site")
+        r = subprocess.run(["node", os.path.join(ROOT, "tools", "build.js"), "--extra", fx, "--out", site], capture_output=True, text=True, timeout=180)
+        log = r.stdout + r.stderr
+        c(r.returncode == 0, f"warnings do not fail the build ({log[-300:]})")
+        for cc, why in (("ke", "src “nope”"), ("cv", "https"), ("ao", "YYYY-MM-DD"), ("ls", "check"), ("so", "items is empty"), ("tn", "emb needs")):
+            c(re.search(r"prep: %s invalid, ignored .*%s" % (cc, re.escape(why)), log) is not None, f"warning for {cc} ({why})")
+        c("prep: qq is in PREP but has no edition, ignored" in log, "warning for qq (no edition)")
+        c("prep: gm " not in log, "gm (valid) raises nothing")
+        gm = json.load(open(os.path.join(site, "data", "gm.json"), encoding="utf8"))
+        c(gm.get("prep", {}).get("emb", {}).get("name") == "Replaced Body", "an --extra prep.js replaces the entry of src/prep.js")
+        for cc in ("ke", "cv", "ao", "ls", "so", "tn"):
+            c("prep" not in json.load(open(os.path.join(site, "data", cc + ".json"), encoding="utf8")), f"{cc}: invalid entry not written (no card), edition still built")
+        r = subprocess.run(["node", os.path.join(ROOT, "tools", "build.js"), "--extra", fx, "--out", os.path.join(tmp, "site2"), "--strict"], capture_output=True, text=True, timeout=180)
+        c(r.returncode != 0, "--strict fails on those warnings")
+        broken = os.path.join(tmp, "broken")
+        os.makedirs(os.path.join(broken, "editions"))
+        open(os.path.join(broken, "prep.js"), "w").write("const PREP = { cv: \n")
+        r = subprocess.run(["node", os.path.join(ROOT, "tools", "build.js"), "--extra", broken, "--out", os.path.join(tmp, "site3")], capture_output=True, text=True, timeout=180)
+        c(r.returncode == 0 and "cannot load" in r.stdout + r.stderr and "prep.js" in r.stdout + r.stderr, f"a prep.js that does not load is reported and the build goes on ({(r.stdout + r.stderr)[-200:]})")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    # le dépôt : chaque fiche réelle est complète, https, sources existantes ; ni gq ni cg
+    withprep = []
+    for f in sorted(os.listdir(os.path.join(ROOT, "data"))):
+        if f.count(".") != 1:
+            continue
+        D = json.load(open(os.path.join(ROOT, "data", f), encoding="utf8"))
+        if "prep" not in D:
+            continue
+        cc, P = f[:-5], D["prep"]
+        withprep.append(cc)
+        c(re.fullmatch(r"https://\S+", P["emb"]["url"] or "https://x") is not None and P["emb"]["name"] and P["emb"]["short"], f"{cc}: body")
+        c(P["items"] and all(it["src"] in P["src"] and all(it["t"].get(l) for l in LANGS) and (it["d"] is None or re.fullmatch(r"\d{4}-\d\d-\d\d", it["d"])) for it in P["items"]), f"{cc}: items have a source of their own country, five languages, a valid date")
+        c(all(s["u"].startswith("https://") for s in P["src"].values()), f"{cc}: https sources")
+        c(cc in CTX["catalog"], f"{cc}: has an edition")
+    c(set(withprep) == {"ao", "bi", "cm", "cv", "gm", "gw", "ke", "ls", "ly", "mg", "ng", "so", "ss", "tn"}, f"the fourteen countries with data have a card ({withprep})")
+    c("gq" not in withprep and "cg" not in withprep, "gq and cg have no card")
+    NOTES.append(f"prep: {len(withprep)} countries ({' '.join(withprep)})")
+    # le fichier de prep ne s'ajoute pas aux pages qui n'en ont pas
+    ng = json.load(open(os.path.join(ROOT, "data", "ng.fr.json"), encoding="utf8"))
+    c("prep" not in ng, "translation files carry no prep (it lives in the base file)")
+
+
+# ------------------------------------------------------------------ partager
+SHARE_STUB = """(() => {
+  const S = window.__sh = { share: [], clip: [], act: [], shareMode: "ok", clipMode: "ok" };
+  Object.defineProperty(navigator, "share", { configurable: true, writable: true, value: function (d) { S.share.push(d); S.act.push("share:" + navigator.userActivation.isActive);
+    return S.shareMode === "ok" ? Promise.resolve() : S.shareMode === "abort" ? Promise.reject(new DOMException("cancelled", "AbortError")) : Promise.reject(new Error("boom")); } });
+  Object.defineProperty(navigator, "clipboard", { configurable: true, writable: true, value: { writeText: function (t) { S.clip.push(t); S.act.push("clip:" + navigator.userActivation.isActive);
+    return S.clipMode === "ok" ? Promise.resolve() : Promise.reject(new DOMException("denied", "NotAllowedError")); } } });
+})();"""
+
+
+def share_expected(D, answers, lang, page):
+    """Texte et adresse attendus d'après le classement calculé en Python."""
+    rows, _ = model_rows(D, answers, {}, [])
+    lead = lead_group(rows)
+    sigs = [r["sig"] for r in lead]
+    pct = js_round(rows[0]["s"] * 100)
+    return sigs, pct
+
+
+@test
+def share_button(c):
+    """Partager : texte « Mon parti le plus proche pour Nigeria 2027 : NDC (61 %) — et toi ? » + adresse du pays, jamais les réponses ; partage natif
+    en contexte sécurisé hors cadre isolé, sinon copie dans le clic, sinon champ visible déjà sélectionné ; rien hors cadre isolé."""
+    SITE = build_const("SITE_URL")
+    D = json.load(open(os.path.join(ROOT, "data", "ng.json"), encoding="utf8"))
+    nq = len(D["ed"]["questions"])
+    A = {qi: [2, 1, 0, -1, -2][(qi * 3 + qi // 4) % 5] for qi in range(nq) if qi % 9 != 4}
+    S = Session(CTX["browser"], width=420, height=900, init=SHARE_STUB)
+    page = S.page
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    open_ng(page, "fr")
+    set_answers(page, A)
+    L = page.evaluate("({ btn: T.fr.shareBtn, note: T.fr.shareNote, ok: T.fr.shareCopied, man: T.fr.shareManual })")
+    c(page.locator(".share button[data-go=share]").count() == 1 and page.inner_text(".share button").strip() == L["btn"], f"fr: button ‘{L['btn']}’")
+    c(page.inner_text("#shareNote").strip() == L["note"] and page.get_attribute(".share button", "aria-describedby") == "shareNote", "fr: the note says only the party name leaves; the button points to it")
+    c(page.get_attribute("#shareStatus", "role") == "status" and page.get_attribute("#shareStatus", "aria-live") == "polite", "the confirmation is a polite status")
+    sigs, pct = share_expected(D, A, "fr", page)
+    who = page.evaluate("s => listFmt(s)", sigs)
+    name = page.evaluate("edName(ed())")
+    year = D["meta"]["ev"][0]["d"][:4]
+    lead_word = "Mon parti le plus proche" if len(sigs) == 1 else "Mes partis les plus proches"
+    exp_text = f"{lead_word} pour {name} {year} : {who} ({pct}\u202f%) — et toi ?"
+    exp_url = f"{SITE}ng/#/ng/fr"
+    parts = page.evaluate("shareParts()")
+    c(parts["text"] == exp_text and parts["url"] == exp_url, f"fr: text and address: ‘{parts['text']}’ {parts['url']} (expected ‘{exp_text}’)")
+    c(re.fullmatch(r"Mon parti le plus proche pour Nigeria 2027 : [A-Z0-9]+ \(\d+\u202f%\) — et toi \?", parts["text"]) is not None or len(sigs) > 1, "fr: the sentence has the agreed shape")
+    c("?" not in parts["url"] and "answers" not in parts["text"] + parts["url"] and not re.search(r"[?&=]", parts["url"]), "no answer, no parameter in what is shared")
+    c(len(parts["text"] + parts["url"]) < 200, "short enough for a message")
+    full = parts["text"] + "\n" + parts["url"]
+    # 1. partage natif : appelé, rien d'autre
+    page.click(".share button")
+    page.wait_for_timeout(100)
+    sh = page.evaluate("window.__sh")
+    c(len(sh["share"]) == 1 and sh["share"][0] == {"title": BRAND, "text": parts["text"], "url": parts["url"]} and not sh["clip"], f"native share called once with title, text and address ({sh['share']})")
+    c(sh["act"] == ["share:true"], "…inside the click (user activation is live)")
+    c(page.inner_text("#shareStatus").strip() == "" and page.is_hidden("#shareManual"), "…nothing else shown")
+    # 2. annulé par la personne : rien de plus
+    page.evaluate("window.__sh.shareMode = 'abort'")
+    page.click(".share button")
+    page.wait_for_timeout(150)
+    sh = page.evaluate("window.__sh")
+    c(len(sh["share"]) == 2 and not sh["clip"] and page.is_hidden("#shareManual") and page.inner_text("#shareStatus").strip() == "", "cancelling the share sheet copies nothing")
+    # 3. échec du partage natif : copie
+    page.evaluate("window.__sh.shareMode = 'fail'")
+    page.click(".share button")
+    page.wait_for_function("window.__sh.clip.length === 1")
+    c(page.evaluate("window.__sh.clip[0]") == full, "a native share that fails falls back to copying the text and address")
+    page.wait_for_function("document.getElementById('shareStatus').textContent.trim() !== ''")
+    c(page.inner_text("#shareStatus").strip() == L["ok"], f"‘{L['ok']}’ confirmation")
+    # 4. pas de partage natif : copie dans le clic
+    page.evaluate("navigator.share = undefined; window.__sh.clip.length = 0; window.__sh.act.length = 0")
+    page.click(".share button")
+    page.wait_for_function("window.__sh.clip.length === 1")
+    sh = page.evaluate("window.__sh")
+    c(sh["clip"] == [full] and sh["act"] == ["clip:true"], "no native share: the clipboard write happens inside the click")
+    page.wait_for_function("document.getElementById('shareStatus').textContent.trim() !== ''")
+    c(page.inner_text("#shareStatus").strip() == L["ok"] and page.is_hidden("#shareManual"), "…with a confirmation, no text field")
+    page.wait_for_function("document.getElementById('shareStatus').textContent.trim() === ''", timeout=7000)
+    # 5. copie refusée : champ visible, sélectionné
+    page.evaluate("window.__sh.clipMode = 'deny'")
+    page.click(".share button")
+    page.wait_for_selector("#shareManual", state="visible")
+    f = page.evaluate("(() => { const f = document.getElementById('shareField'); return { v: f.value, s: f.selectionStart, e: f.selectionEnd, focus: document.activeElement === f, ro: f.readOnly, lab: document.querySelector('label[for=shareField]').textContent }; })()")
+    c(f["v"] == full and f["s"] == 0 and f["e"] == len(full) and f["focus"], "copy refused: a visible field holds the text, selected and focused")
+    c(f["lab"].strip() == L["man"], "…labelled")
+    # 6. pas de presse-papiers du tout
+    page.evaluate("document.getElementById('shareManual').hidden = true; Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined })")
+    page.click(".share button")
+    page.wait_for_selector("#shareManual", state="visible")
+    c(page.input_value("#shareField") == full, "no clipboard API: same field")
+    # 7. contexte non sécurisé : pas de partage natif même s'il existe
+    page.evaluate("""document.getElementById('shareManual').hidden = true; window.__sh.share.length = 0;
+        navigator.share = function (d) { window.__sh.share.push(d); return Promise.resolve(); };
+        Object.defineProperty(window, 'isSecureContext', { configurable: true, value: false })""")
+    page.click(".share button")
+    page.wait_for_selector("#shareManual", state="visible")
+    c(page.evaluate("window.__sh.share.length") == 0, "an insecure page never calls navigator.share")
+    no_overflow(page, c, "share field at 420 px")
+    shot(page, "share-manual-fr-420.png", full=True)
+    # 8. égalité : pluriel ; arabe : isolats
+    page.evaluate("Object.defineProperty(window, 'isSecureContext', { configurable: true, value: true })")
+    page.click('#langs [data-lang="ar"]')
+    page.wait_for_function("state.ui === 'ar'")
+    parts = page.evaluate("shareParts()")
+    c(parts["url"] == f"{SITE}ng/#/ng/ar" and FSI in parts["text"] and PDI in parts["text"] and re.search(r"[؀-ۿ]", parts["text"]), f"ar: Arabic text, name isolated, address in Arabic ({parts['text']})")
+    page.evaluate("navigator.share = undefined; window.__sh.clipMode = 'ok'; Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: t => { window.__sh.clip.push(t); return Promise.resolve(); } } })")
+    page.click(".share button")
+    page.wait_for_function("document.getElementById('shareStatus').textContent.trim() !== ''")
+    c(page.inner_text("#shareStatus").strip() == page.evaluate("T.ar.shareCopied"), "ar: ‘تم النسخ’")
+    # 9. une seule réponse : rien à partager
+    set_answers(page, {0: 2})
+    c(page.locator(".share").count() == 0, "with fewer than two answers there is no share button")
+    S.close(c)
+    # 10. artifact.html (cadre isolé) : jamais le partage natif
+    S = Session(CTX["browser"], width=420, height=900, init=SHARE_STUB)
+    page = S.page
+    page.goto(CTX["base"] + "/artifact.html")
+    page.wait_for_selector("#mapWrap svg")
+    open_ng(page, "en")
+    set_answers(page, A)
+    page.click(".share button")
+    page.wait_for_function("window.__sh.clip.length === 1")
+    sh = page.evaluate("window.__sh")
+    c(page.evaluate("EMBEDDED") is True and sh["share"] == [] and sh["clip"][0].endswith("\n" + SITE + "ng/#/ng/en"), "artifact.html: copies, never calls navigator.share")
+    c(re.fullmatch(r"My closest part(y|ies) for Nigeria 2027: .+ \(\d+%\) \S{1,6} and you\?\n" + re.escape(SITE) + r"ng/#/ng/en", sh["clip"][0]) is not None, f"en: ‘{sh['clip'][0]}’ (the dash is garbled only because the test serves artifact.html without a charset; hosts wrap it in a page that has one)")
+    S.close(c)
+
+
+IMG_STUB = """(() => {
+  const S = window.__im = { shared: [], mode: "ok", can: true };
+  navigator.canShare = function (d) { return S.can && !!(d && d.files && d.files.length); };
+  navigator.share = function (d) { S.shared.push({ name: d.files[0].name, type: d.files[0].type, size: d.files[0].size, text: d.text, url: d.url, file: d.files[0] });
+    return S.mode === "ok" ? Promise.resolve() : S.mode === "abort" ? Promise.reject(new DOMException("cancelled", "AbortError")) : Promise.reject(new Error("boom")); };
+})();"""
+
+
+@test
+def share_image(c):
+    """Image à partager (1080 × 1350, facultative) : le fichier part par le partage natif quand c'est possible, sinon le PNG est enregistré ;
+    annuler ne télécharge rien ; jamais dans artifact.html ; l'image ne montre que le parti, son pourcentage et l'adresse."""
+    SITE = build_const("SITE_URL")
+    D = json.load(open(os.path.join(ROOT, "data", "ng.json"), encoding="utf8"))
+    nq = len(D["ed"]["questions"])
+    A = {qi: [2, 1, 0, -1, -2][(qi * 3 + qi // 4) % 5] for qi in range(nq) if qi % 9 != 4}
+    S = Session(CTX["browser"], width=420, height=900, init=IMG_STUB)
+    page = S.page
+    downloads = []
+    page.on("download", lambda d: downloads.append(d))
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    open_ng(page, "fr")
+    set_answers(page, A)
+    L = page.evaluate("({ btn: T.fr.shareImgBtn, saved: T.fr.shareImgSaved })")
+    c(page.locator('.share button[data-go="shareimg"]').count() == 1 and page.inner_text('.share button[data-go="shareimg"]').strip() == L["btn"], f"fr: button ‘{L['btn']}’")
+    parts = page.evaluate("shareParts()")
+
+    def grab(expr, name):
+        b64 = page.evaluate("async (e) => { const f = eval(e); const buf = new Uint8Array(await f.arrayBuffer()); let s = ''; buf.forEach(b => { s += String.fromCharCode(b); }); return btoa(s); }", expr)
+        import base64
+        raw = base64.b64decode(b64)
+        path = os.path.join(ARGS.shots, name)
+        open(path, "wb").write(raw)
+        return raw, path
+
+    # 1. partage natif du fichier
+    page.click('button[data-go="shareimg"]')
+    page.wait_for_function("window.__im.shared.length === 1", timeout=10000)
+    sh = page.evaluate("window.__im.shared.map(x => ({ name: x.name, type: x.type, size: x.size, text: x.text, url: x.url }))")[0]
+    c(sh["name"] == "vote-ng.png" and sh["type"] == "image/png" and 15_000 < sh["size"] < 600_000, f"native share gets a PNG file ({sh['name']}, {sh['size']} bytes)")
+    c(sh["text"] == parts["text"] and sh["url"] == parts["url"], "…with the same text and address as the text share")
+    raw, path = grab("window.__im.shared[0].file", "share-image-fr.png")
+    c(png_size(path) == (1080, 1350), f"the image is 1080×1350 ({png_size(path)})")
+    px = page.evaluate("""async () => { const bm = await createImageBitmap(window.__im.shared[0].file); const c = document.createElement('canvas'); c.width = bm.width; c.height = bm.height;
+        const x = c.getContext('2d'); x.drawImage(bm, 0, 0); const d = x.getImageData(0, 0, c.width, c.height).data; const seen = new Set();
+        for (let i = 0; i < d.length; i += 4 * 97) seen.add((d[i] >> 5) + ',' + (d[i + 1] >> 5) + ',' + (d[i + 2] >> 5));
+        return { w: bm.width, h: bm.height, colours: seen.size, tl: [d[0], d[1], d[2]] }; }""")
+    c(px["w"] == 1080 and px["h"] == 1350 and px["colours"] >= 6, f"…drawn, not blank ({px['colours']} colour buckets)")
+    c(abs(px["tl"][0] - 0x5A) < 20 and abs(px["tl"][1] - 0x2D) < 20 and abs(px["tl"][2] - 0xB8) < 20, f"…on the site's purple ({px['tl']})")
+    c(not downloads and page.inner_text("#shareStatus").strip() == "", "…nothing saved, no message")
+    # 2. annulé : rien d'enregistré
+    page.evaluate("window.__im.mode = 'abort'")
+    page.click('button[data-go="shareimg"]')
+    page.wait_for_function("window.__im.shared.length === 2")
+    page.wait_for_timeout(400)
+    c(not downloads, "cancelling the share sheet saves nothing")
+    # 3. échec du partage : le PNG est enregistré
+    page.evaluate("window.__im.mode = 'fail'")
+    with page.expect_download(timeout=10000) as dl:
+        page.click('button[data-go="shareimg"]')
+    c(dl.value.suggested_filename == "vote-ng.png", f"a failed share saves the PNG ({dl.value.suggested_filename})")
+    c(png_size(dl.value.path()) == (1080, 1350), "…1080×1350")
+    page.wait_for_function("document.getElementById('shareStatus').textContent.trim() !== ''")
+    c(page.inner_text("#shareStatus").strip() == L["saved"], f"‘{L['saved']}’")
+    # 4. pas de partage de fichier : le PNG est enregistré
+    page.evaluate("window.__im.can = false")
+    n = len(page.evaluate("window.__im.shared"))
+    with page.expect_download(timeout=10000) as dl:
+        page.click('button[data-go="shareimg"]')
+    c(len(page.evaluate("window.__im.shared")) == n and dl.value.suggested_filename == "vote-ng.png", "canShare(files) false: saved, share not called")
+    # 5. arabe et anglais : mêmes dimensions (captures à regarder)
+    for lang in ("ar", "en"):
+        page.click(f'#langs [data-lang="{lang}"]')
+        page.wait_for_function("l => state.ui === l", arg=lang)
+        page.evaluate("window.__im.can = true; window.__im.mode = 'ok'; window.__im.shared.length = 0")
+        page.click('button[data-go="shareimg"]')
+        page.wait_for_function("window.__im.shared.length === 1", timeout=10000)
+        raw, path = grab("window.__im.shared[0].file", f"share-image-{lang}.png")
+        c(png_size(path) == (1080, 1350), f"{lang}: 1080×1350")
+    # 5b. deux boutons de partage, texte le plus long (portugais), écran de 320 px : rien ne déborde
+    page.click('#langs [data-lang="pt"]')
+    page.wait_for_function("state.ui === 'pt'")
+    page.set_viewport_size({"width": 320, "height": 700})
+    no_overflow(page, c, "share buttons at 320 px (pt)")
+    c(all(page.evaluate("[...document.querySelectorAll('.share button')].map(b => { const r = b.getBoundingClientRect(); return r.right <= innerWidth && r.height >= 40; })")), "both share buttons are on screen and at least 40 px tall")
+    page.locator(".share").scroll_into_view_if_needed()
+    shot(page, "share-buttons-pt-320.png")
+    page.set_viewport_size({"width": 420, "height": 900})
+    # 6. trop peu de réponses : ni bouton ni image
+    set_answers(page, {0: 2})
+    c(page.locator('button[data-go="shareimg"]').count() == 0, "no ranked party: no image button")
+    S.close(c)
+    # 7. artifact.html : jamais
+    S = Session(CTX["browser"], width=420, height=900, init=IMG_STUB)
+    page = S.page
+    page.goto(CTX["base"] + "/artifact.html")
+    page.wait_for_selector("#mapWrap svg")
+    open_ng(page, "en")
+    set_answers(page, A)
+    c(page.locator('.share button[data-go="share"]').count() == 1 and page.locator('button[data-go="shareimg"]').count() == 0, "artifact.html: text share only, no image button (no downloads in the frame)")
+    S.close(c)
+
+
+# ------------------------------------------------------------------ signaler une erreur, quoi de neuf
+@test
+def report_and_news(c):
+    """Un lien « Signaler une erreur » sous chaque position codée (« Par question »), vers un nouveau ticket GitHub déjà rempli, sans les réponses ;
+    « Quoi de neuf » en pied de page vers CHANGELOG.md, dans un nouvel onglet."""
+    REPO = build_const("REPO_URL")
+    D = json.load(open(os.path.join(ROOT, "data", "ng.json"), encoding="utf8"))
+    E = D["ed"]
+    nq = len(E["questions"])
+    A = {qi: [2, 1, 0, -1, -2][(qi * 3 + qi // 4) % 5] for qi in range(nq)}
+    S = Session(CTX["browser"], width=1100, height=900)
+    page = S.page
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    X = page.evaluate("({ news: T.en.whatsNew, tab: T.en.newTab, rep: T.en.reportErr, ans: T.en.ans, fr: T.fr.ans, ar: T.ar.whatsNew })")
+    news = lambda: page.evaluate("(() => { const a = document.querySelector('#footer a'); return a ? { href: a.href, target: a.target, rel: a.rel, text: a.textContent, label: a.getAttribute('aria-label') } : null; })()")
+    n = news()
+    c(n and n["href"] == REPO + "/blob/main/CHANGELOG.md" and n["target"] == "_blank" and "noopener" in n["rel"] and n["text"] == X["news"] and n["label"] == f"{X['news']} ({X['tab']})", f"map screen footer: ‘{X['news']}’ → CHANGELOG.md in a new tab ({n})")
+    open_ng(page, "en")
+    c(news()["href"] == REPO + "/blob/main/CHANGELOG.md", "…also on the country screens")
+    set_answers(page, A)
+    c(news()["text"] == X["news"], "…and on the results")
+    page.click("#tab2")
+    links = page.evaluate("""() => [...document.querySelectorAll('#pan2 a.report')].map(a => ({ href: a.href, target: a.target, rel: a.rel, label: a.getAttribute('aria-label'), text: a.textContent,
+        qa: a.closest('.qa').id, party: a.closest('li').querySelector('.badge').textContent }))""")
+    cells = sum(len(q["cells"]) for q in E["questions"])
+    c(len(links) == cells, f"one link under each coded position ({len(links)} vs {cells})")
+    c(all(l["text"] == X["rep"] and l["target"] == "_blank" and "noopener" in l["rel"] and l["label"].endswith(f"({X['tab']})") for l in links), "…named, opening in a new tab, announced as such")
+    lab = lambda d, v: d[str(v)]
+    by_sig = {p["sigle"]: p for p in E["parties"]}
+    seen = set()
+    for l in links:
+        u = urllib.parse.urlparse(l["href"])
+        q = urllib.parse.parse_qs(u.query)
+        qi = int(l["qa"].split("-")[1])
+        p = by_sig[l["party"]]
+        cell = E["questions"][qi]["cells"][p["id"]]
+        seen.add((qi, p["id"]))
+        body = q["body"][0]
+        ok = (l["href"].startswith(REPO + "/issues/new?title=") and q["title"][0] == f"Position error: NG Q{qi + 1} {p['sigle']}"
+              and f"**Country / Pays:** Nigeria (ng)" in body and f"**Question {qi + 1} / {nq}:** {E['questions'][qi]['text']}" in body
+              and f"**Party / Parti:** {p['nom']} ({p['sigle']})" in body
+              and f"**Coded position / Position codée:** {lab(X['ans'], cell['p'])} ({'+' if cell['p'] > 0 else ''}{cell['p']}) / {lab(X['fr'], cell['p'])}" in body
+              and f"**Source:** {D['src'][cell['s']]['u']}" in body and "**Interface language / Langue de l’interface:** en" in body)
+        c(ok, f"report link q{qi + 1}/{p['sigle']} is filled in as agreed: {l['href'][:150]}")
+        c(len(l["href"]) < 4000 and "<script" not in body, "short, inert")
+        c(str(A[qi]) not in "".join(re.findall(r"\*\*Your answer[^\n]*", body)) and "Your answer" not in body and "answers" not in body.lower().replace("answers.", ""), "the report does not carry the person's answers")
+    c(seen == {(qi, pid) for qi, q in enumerate(E["questions"]) for pid in q["cells"]}, "every coded position has its link, none twice")
+    # français : la question affichée (traduite) s'ajoute à la question d'origine
+    page.click('#langs [data-lang="fr"]')
+    page.wait_for_function("state.ui === 'fr'")
+    page.click("#tab2")
+    l0 = page.evaluate("document.querySelector('#pan2 a.report').href")
+    b0 = urllib.parse.parse_qs(urllib.parse.urlparse(l0).query)["body"][0]
+    shown = page.evaluate("ed().questions[0].text")
+    c(shown != E["questions"][0]["text"] and f"\n> {shown}" in b0 and E["questions"][0]["text"] in b0 and "Langue de l’interface:** fr" in b0, "fr: both the original and the displayed question are in the report")
+    c(page.evaluate("document.querySelector('#pan2 a.report').textContent") == page.evaluate("T.fr.reportErr"), "fr: link text")
+    page.click('#langs [data-lang="ar"]')
+    page.wait_for_function("state.ui === 'ar'")
+    c(news()["text"] == X["ar"], "ar: footer link translated")
+    no_overflow(page, c, "ar results with report links")
+    page.click("#tab2")
+    shot(page, "report-ar-1100.png", full=False)
+    S.close(c)
+
+
+# ------------------------------------------------------------------ textes
+@test
+def strings_v3(c):
+    """Les textes ajoutés (src/ui/t-v3.js) : mêmes clés dans les cinq langues, même genre (texte ou fonction), jamais vides ni identiques
+    à l'anglais ; chaque clé utilisée par l'application existe dans chaque langue ; pluriel arabe des jours."""
+    src = read_text("src", "ui", "t-v3.js")
+    blocks = re.split(r"^Object\.assign\(T\.(\w+), \{", src, flags=re.M)
+    keys = {blocks[i]: re.findall(r"^  (\w+):", blocks[i + 1], re.M) for i in range(1, len(blocks), 2)}
+    c(sorted(keys) == sorted(LANGS), f"t-v3.js has the five languages ({sorted(keys)})")
+    c(all(keys[l] == keys["en"] for l in LANGS) and len(keys["en"]) >= 25, f"…with the same {len(keys['en'])} keys in the same order")
+    S = Session(CTX["browser"], width=800)
+    page = S.page
+    page.goto(CTX["base"] + "/index.html")
+    page.wait_for_selector("#mapWrap svg")
+    samples = {"whyTheirs": ["NDC"], "prepDaysIn": [0], "prepInMonth": ["July 2027"], "shareText": ["Nigeria 2027", "NDC", "61%", 1], "shareImgLead": ["Nigeria 2027", 1], "reportAria": ["NDC"]}
+    for k in keys["en"]:
+        kind = page.evaluate("k => typeof T.en[k]", k)
+        outs = {}
+        for l in LANGS:
+            c(page.evaluate("([l, k]) => typeof T[l][k]", [l, k]) == kind, f"{l}.{k}: same kind as English ({kind})")
+            outs[l] = page.evaluate("([l, k, a]) => { const v = T[l][k]; return typeof v === 'function' ? v.apply(null, a) : v; }", [l, k, samples.get(k, [])])
+            s = outs[l]
+            c(isinstance(s, str) and s.strip() != "" and not re.search(r"undefined|NaN|\[object|\$\{", s), f"{l}.{k}: a real sentence (‘{s}’)")
+        c(all(outs[l] != outs["en"] for l in LANGS if l != "en"), f"{k}: translated, not copied from English")
+        c(re.search(r"[؀-ۿ]", outs["ar"]) is not None, f"ar.{k}: in Arabic script")
+    for n, want in ((0, "التصويت اليوم"), (1, "التصويت غدًا"), (2, "التصويت بعد يومين"), (3, "التصويت بعد 3 أيام"), (10, "التصويت بعد 10 أيام"), (11, "التصويت بعد 11 يومًا"), (76, "التصويت بعد 76 يومًا")):
+        c(page.evaluate("n => T.ar.prepDaysIn(n)", n) == want, f"ar: {n} days → ‘{want}’")
+    for l in LANGS:
+        outs = [page.evaluate("([l, n]) => T[l].prepDaysIn(n)", [l, n]) for n in (0, 1, 2, 14)]
+        c(len(set(outs)) == 4, f"{l}: today, tomorrow and later are worded differently ({outs})")
+    # toute clé L.xxx de src/app.js existe dans les cinq langues
+    app = read_text("src", "app.js")
+    used = sorted(set(re.findall(r"\bL\.([A-Za-z0-9_]+)", app)))
+    names = {l: set(page.evaluate("l => Object.keys(T[l])", l)) for l in LANGS}
+    known = [k for k in used if any(k in names[l] for l in LANGS)]   # (« L » désigne aussi la traduction d'une édition : ses clés ne sont pas des textes de l'interface)
+    missing = {l: [k for k in known if k not in names[l]] for l in LANGS}
+    c(len(known) > 150 and all(not m for m in missing.values()), f"every interface text used in app.js ({len(known)} keys) exists in all five languages ({ {l: m for l, m in missing.items() if m} })")
+    S.close(c)
+
+
 def main():
     t0 = time.time()
     only = set(filter(None, ARGS.only.split(",")))
@@ -2950,7 +4040,7 @@ def main():
             for fn in TESTS:
                 if only and fn.__name__ not in only and fn.__name__ not in must:
                     continue
-                if fn.__name__ in ("info_page", "leader_edition") and "fbase" not in CTX:
+                if fn.__name__ in ("info_page", "leader_edition", "prep_fixture") and "fbase" not in CTX:
                     if "site" not in CTX:
                         RESULTS.append((fn.__name__, False, 0, "fixture site not built", 0))
                         continue
@@ -2964,7 +4054,8 @@ def main():
                 except Exception as e:
                     msg = f"{type(e).__name__}: {e}".split("\n")[0][:300]
                     if not isinstance(e, AssertionError):
-                        msg += " @ " + traceback.extract_tb(e.__traceback__)[-1].line[:120]
+                        mine = [f for f in traceback.extract_tb(e.__traceback__) if f.filename == __file__] or traceback.extract_tb(e.__traceback__)
+                        msg += f" @ line {mine[-1].lineno}: " + (mine[-1].line or "")[:120]
                     RESULTS.append((fn.__name__, False, c.n, msg, time.time() - t1))
             CTX["browser"].close()
     finally:

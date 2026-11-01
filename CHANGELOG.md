@@ -22,7 +22,12 @@ Ce qui change sur la plateforme, du plus récent au plus ancien. Les positions d
 - Bannière pays : en choisissant un pays sur la carte, on voit son drapeau, sa carte et son nom dans la langue de l’interface, avant de choisir la langue ; un bandeau plus petit reste sur les écrans suivants (55 drapeaux hébergés avec le site, aucune requête externe).
 - Module de valeurs : 10 affirmations identiques dans tous les pays (5 dans un sens, 5 dans l’autre, aucune sur les droits LGBTQ+), proposées en option après le questionnaire, sur les pages d’information et pour les pays sans élection ; elles ne changent jamais le classement des partis.
 - Thermomètre des valeurs : ta position (libéral·progressiste ↔ conservateur·nationaliste) s’affiche avec les questions qui ont compté ; la barre collective de l’Afrique (envoi anonyme du pays et d’un niveau sur cinq, jamais les réponses) s’activera quand le compteur en ligne sera déployé, et ne s’affiche qu’à partir de 30 contributions.
-- Tests automatiques : 39 tests, 3532 vérifications.
+- « Pourquoi ce score ? » : sous chaque parti du classement et dans son profil, jusqu’à 3 sujets où tu es le plus d’accord et 3 où tu l’es le moins, avec sa position et ta réponse ; la couverture (« comparé sur 20 de tes 28 réponses ») s’affiche à côté de chaque pourcentage.
+- « Prépare ton vote » : un encadré sur l’écran de départ de 14 pays (organe électoral, dates d’inscription ou de scrutin, compte à rebours pour les dates exactes, ajout à l’agenda) ; chaque fait est daté et sourcé, les dates passées sont grisées.
+- Partage : bouton « Partager » (texte court et lien du pays, jamais tes réponses) et image à partager ; aperçus soignés sur WhatsApp et les réseaux (une page par pays, par exemple `/ke/`), manifeste d’application.
+- Plus rapide, plus privé : polices hébergées sur le site (plus aucune requête à Google), traductions chargées seulement dans la langue choisie (Nigeria en anglais : 213 Ko → 58 Ko).
+- « Signaler une erreur » sous chaque position codée (ouvre un signalement GitHub prérempli) et lien « Quoi de neuf » en bas de page.
+- Tests automatiques : 51 tests, 5462 vérifications.
 
 ## 18–19 octobre 2026 (nuit)
 

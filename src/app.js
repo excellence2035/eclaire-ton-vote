@@ -29,8 +29,11 @@ const t = () => T[state.ui] || T.en;
 const edCache = {};
 const ed = () => {
   const key = state.country + ":" + state.ui;
-  if (!edCache[key]) edCache[key] = localizeEdition(DATA[state.country], state.ui);
-  return edCache[key];
+  if (edCache[key]) return edCache[key];
+  const E = localizeEdition(DATA[state.country], state.ui);
+  // Pas de mémoire tant que la traduction de cette langue n'est pas arrivée (sinon le texte de base resterait en mémoire à sa place)
+  if (hasLang(state.country, state.ui) || !DATA[state.country].langs.includes(state.ui)) edCache[key] = E;
+  return E;
 };
 const nn = n => String(n).padStart(2, "0");
 const C = () => state.ui === "fr" ? " :" : ":";
@@ -59,7 +62,7 @@ function localizeEdition(D, lang) {
   const E = JSON.parse(JSON.stringify(base));
   E.kind = D.kind; E.cc = D.id; E.a3 = D.a3; E.baseLang = D.lang; E.meta = D.meta || {}; E.src = D.src || {};
   E.langs = LANGS.map(l => ({ code: l.code, label: l.code.toUpperCase(), name: l.name, ready: D.langs.includes(l.code) }));
-  const L = lang !== D.lang && D.i18n && D.i18n[lang];
+  const L = lang !== D.lang && TRANS[D.id + ":" + lang];
   E.lang = L ? lang : D.lang;
   // Note de l'édition (report, doute sur la date…) : traduite quand la traduction fournit « note »
   E.note = E.meta.note || ""; E.noteLang = D.lang;
@@ -160,28 +163,46 @@ function injectColours(D) {
   st.textContent = `:root{${vars(0)}}@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){${vars(1)}}}:root[data-theme="dark"]{${vars(1)}}`;
   (document.head || document.documentElement).appendChild(st);
 }
-/* Un seul téléchargement par pays à la fois (pays rouvert pendant le chargement) ; abandon au bout de LOAD_TIMEOUT. */
+/* Données d'un pays : data/<cc>.json (langue de base, META, sources, « Prépare ton vote ») et, si la langue de l'interface n'est pas la
+   langue de base, data/<cc>.<langue>.json (cette traduction seulement). Une autre langue n'est téléchargée que si on la choisit.
+   Un seul téléchargement par fichier à la fois ; abandon au bout de LOAD_TIMEOUT. */
+const TRANS = {};   // « cc:langue » → traduction
 const inflight = {};
-function loadEdition(cc) {
-  if (DATA[cc]) return Promise.resolve(DATA[cc]);
-  if (inflight[cc]) return inflight[cc];
+function fetchJson(name, valid) {
+  if (inflight[name]) return inflight[name];
   const ac = typeof AbortController === "function" ? new AbortController() : null;
   const p = new Promise((resolve, reject) => {
     const timer = setTimeout(() => { if (ac) ac.abort(); reject(new Error("timeout")); }, LOAD_TIMEOUT);
-    fetch(`data/${encodeURIComponent(cc)}.json`, ac ? { signal: ac.signal } : {})
+    fetch(`data/${encodeURIComponent(name)}.json`, ac ? { signal: ac.signal } : {})
       .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-      .then(D => {
-        if (!D || D.id !== cc || !(D.ed || D.info)) throw new Error("bad data");
-        DATA[cc] = D;
-        injectColours(D);
-        return D;
-      })
-      .then(D => { clearTimeout(timer); resolve(D); }, e => { clearTimeout(timer); reject(e); });
+      .then(J => { if (!valid(J)) throw new Error("bad data"); return J; })
+      .then(J => { clearTimeout(timer); resolve(J); }, e => { clearTimeout(timer); reject(e); });
   });
-  inflight[cc] = p;
-  const done = () => { delete inflight[cc]; };
+  inflight[name] = p;
+  const done = () => { delete inflight[name]; };
   p.then(done, done);
   return p;
+}
+const baseLang = cc => CATALOG[cc].langs[0];
+/* La langue demandée si ce pays l'a, sinon sa langue de base */
+const wantLang = (cc, lang) => CATALOG[cc].langs.includes(lang) ? lang : baseLang(cc);
+/* Tout ce qu'il faut pour afficher ce pays dans cette langue est-il là ? */
+const hasLang = (cc, lang) => !!DATA[cc] && (lang === DATA[cc].lang || !CATALOG[cc].langs.includes(lang) || !!TRANS[cc + ":" + lang]);
+function loadBase(cc) {
+  if (DATA[cc]) return Promise.resolve(DATA[cc]);
+  return fetchJson(cc, D => !!D && D.id === cc && !!(D.ed || D.info)).then(D => {
+    if (!DATA[cc]) { DATA[cc] = D; injectColours(D); }
+    return DATA[cc];
+  });
+}
+function loadLang(cc, lang) {
+  if (lang === baseLang(cc) || !CATALOG[cc].langs.includes(lang) || TRANS[cc + ":" + lang]) return Promise.resolve();
+  return fetchJson(`${cc}.${lang}`, J => !!J && J.id === cc && J.lang === lang && !!J.t && typeof J.t === "object").then(J => { TRANS[cc + ":" + lang] = J.t; });
+}
+function loadEdition(cc, lang) {
+  lang = wantLang(cc, lang || state.ui);
+  if (hasLang(cc, lang)) return Promise.resolve(DATA[cc]);
+  return Promise.all([loadBase(cc), loadLang(cc, lang)]).then(r => r[0]);
 }
 
 function badge(p, size) {
@@ -583,7 +604,7 @@ function renderChrome() {
   $("langTip").textContent = L.langWhy;
   // Le slogan de prudence sur les positions codées n'a de sens que là où des positions de partis sont affichées
   const pos = ["start", "question", "checkpoint", "results"].includes(state.view);
-  $("footer").innerHTML = `${pos ? `<span>${L.footer1}</span>` : ""}<span>${METER_ENDPOINT ? L.footerMeter : L.footer2}</span>`;
+  $("footer").innerHTML = `${pos ? `<span>${L.footer1}</span>` : ""}<span>${METER_ENDPOINT ? L.footerMeter : L.footer2}</span><span><a href="${esc(REPO_URL)}/blob/main/CHANGELOG.md" target="_blank" rel="noopener" aria-label="${esc(L.whatsNew + " (" + L.newTab + ")")}">${L.whatsNew}</a></span>`;
   // Lien d'évitement : seulement sur la carte (premier élément focalisable de la page)
   const sk = $("skip");
   sk.textContent = L.skipList;
@@ -974,9 +995,9 @@ function openEdition(cc, after) {
     if (after) after();
     else if (D.kind === "info") viewEdInfo(); else viewStart();
   };
-  if (DATA[cc]) { ready(); return; }
+  if (hasLang(cc, state.ui)) { ready(); return; }
   const timer = setTimeout(() => { if (seq === loadSeq) viewLoading(); }, 120);
-  loadEdition(cc).then(() => { clearTimeout(timer); ready(); }, () => {
+  loadEdition(cc, state.ui).then(() => { clearTimeout(timer); ready(); }, () => {
     clearTimeout(timer);
     if (seq !== loadSeq) return;
     viewLoadError();
@@ -1059,6 +1080,7 @@ function viewEdInfo(keep) {
       <p class="lead">${L.infoLead}</p>
     </div>
     ${noteHTML(E, L)}
+    ${prepCardHTML(DATA[state.country], L)}
     <section class="info-card" aria-labelledby="hFacts">
       <h2 id="hFacts">${L.infoFacts}</h2>
       <dl class="facts">${(E.facts || []).map(([a, b]) => `<div><dt>${esc(a)}</dt><dd>${esc(b)}</dd></div>`).join("")}</dl>
@@ -1103,6 +1125,7 @@ function viewStart(keep) {
       <button class="link" type="button" data-go="home">${L.changeCountry}</button>
     </div>
     ${noteHTML(E, L)}
+    ${prepCardHTML(DATA[state.country], L)}
     <div class="about">
       <details>
         <summary>${L.aboutElection}</summary>
@@ -1319,6 +1342,7 @@ function viewResults(keep) {
       ${H.straight ? `<p class="notice">${L.straight}</p>` : ""}
       <p>${esc(H.summary)}</p>
       ${H.early && H.more ? `<div class="early"><p>${L.earlyText(EARLY)}</p><button class="btn btn-primary" type="button" data-go="continue">${L.earlyBtn}</button></div>` : ""}
+      ${shareHTML()}
     </div>
     <div class="tabs" role="tablist">${L.tabs.map((x, k) => `<button class="tab" role="tab" id="tab${k}" aria-controls="pan${k}" aria-selected="${state.tab === k}" tabindex="${state.tab === k ? 0 : -1}" type="button" data-tab="${k}">${x}</button>`).join("")}</div>
     <div class="panel" role="tabpanel" id="pan0" aria-labelledby="tab0" ${state.tab === 0 ? "" : "hidden"}>${panelRanking(rank, a)}</div>
@@ -1348,6 +1372,7 @@ function panelRanking(rank, a) {
         <div class="rank-head"><b>${hname(r.p)}</b><span class="pct">${shown ? pctTxt(r.s) : "–"}</span></div>
         <div class="bar" style="--pc:var(${pvar(r.p.id)}, var(--accent))" role="img" aria-label="${shown ? Math.round(r.s * 100) + " " + L.pctWord : L.notRanked}"><span style="width:${shown ? (r.s * 100).toFixed(1) : 0}%"></span></div>
         <div class="rank-sub"><span>${candLine(r.p, E, L, true)}</span><span>${shown ? L.compared(r.k, a) : L.notRanked}</span>${r.grp === "ok" && r.cov < 0.5 ? `<span class="chip warn">${L.partial}</span>` : ""}${r.p.chip ? `<span class="chip grey">${esc(r.p.chip)}</span>` : ""}<button class="link" type="button" data-fiche="${esc(r.p.id)}">${L.seeProfile}</button></div>
+        ${r.k ? `<details class="xm"><summary>${L.whyScore}</summary>${whyBodyHTML(r.p)}</details>` : ""}
       </div>
     </li>`;
   };
@@ -1385,7 +1410,7 @@ function panelThemes() {
     return `<article class="theme-card${on ? " prio-on" : ""}">${head}
       <p class="verdict-line">${phrase}</p>
       <div class="mini">${r.map(x => x.grp !== "out"
-        ? `<div class="mini-row${x.grp === "thin" ? " thin" : ""}">${badge(x.p, "sm")}<span class="name">${hname(x.p)}${x.grp === "thin" ? ` <span class="chip warn">${L.partial}</span>` : ""}</span><div class="bar" style="--pc:var(${pvar(x.p.id)}, var(--accent))"><span style="width:${(x.s * 100).toFixed(1)}%"></span></div><span class="pct">${pctTxt(x.s)}</span></div>`
+        ? `<div class="mini-row${x.grp === "thin" ? " thin" : ""}">${badge(x.p, "sm")}<span class="name">${hname(x.p)}${x.grp === "thin" ? ` <span class="chip warn">${L.partial}</span>` : ""}<span class="cov-sub">${L.compared(x.k, answeredIn(th.id))}</span></span><div class="bar" style="--pc:var(${pvar(x.p.id)}, var(--accent))"><span style="width:${(x.s * 100).toFixed(1)}%"></span></div><span class="pct">${pctTxt(x.s)}</span></div>`
         : `<div class="mini-row nd">${badge(x.p, "sm")}<span class="name">${hname(x.p)}</span><span class="ndt" style="font-size:.82rem;font-style:italic">${L.notDoc}</span><span></span></div>`).join("")}
       </div>
     </article>`;
@@ -1405,7 +1430,7 @@ function panelQuestions() {
     const yours = typeof v === "number"
       ? `<p style="font-size:.92rem">${L.yourAnswer}${C()} <b>${L.ans[v]}</b></p>`
       : `<p class="skipped-note">${v === null ? L.youSkipped : L.youNotYet}</p>`;
-    return `<article class="qa">
+    return `<article class="qa" id="qa-${qi}" tabindex="-1">
       <div class="qa-meta"><span class="mono">${nn(k + 1)}</span><span>${esc(th.name)}</span>${state.priorities.includes(q.theme) ? `<span class="chip">${L.prio}</span>` : ""}${state.double[qi] ? `<span class="chip grey">×2</span>` : ""}</div>
       <p class="qa-text">${esc(q.text)}</p>
       ${yours}
@@ -1414,7 +1439,7 @@ function panelQuestions() {
       <details><summary>${L.whatTheySay}</summary>
         <ul class="why-list">${E.parties.map(p => {
           const c = q.cells[p.id];
-          if (c) return `<li>${badge(p, "sm")}<div><span class="pos-label">${hname(p)} · ${L.ans[c.p]}</span> <span class="kind">· ${L.kinds[c.k] || esc(c.k)}</span><p>${esc(c.n)}</p>${srcLine([c.s], L)}</div></li>`;
+          if (c) return `<li>${badge(p, "sm")}<div><span class="pos-label">${hname(p)} · ${L.ans[c.p]}</span> <span class="kind">· ${L.kinds[c.k] || esc(c.k)}</span><p>${esc(c.n)}</p>${srcLine([c.s], L)}<p class="src"><a class="report" href="${esc(reportHref(p, q, qi, c))}" target="_blank" rel="noopener" aria-label="${esc(L.reportAria(plabel(p)) + " (" + L.newTab + ")")}">${L.reportErr}</a></p></div></li>`;
           const note = q.nd && q.nd[p.id];
           return `<li>${badge(p, "sm")}<div><span class="pos-label" style="font-weight:400;font-style:italic">${hname(p)} · ${L.notDoc}</span>${note ? `<p>${esc(note)}</p>` : ""}</div></li>`;
         }).join("")}</ul>
@@ -1729,6 +1754,333 @@ function viewValuesDone(keep) {
   `, null, "screen", keep);
 }
 
+/* ================== « Pourquoi ce score ? » ==================
+   Pour un parti : parmi les questions auxquelles tu as répondu ET où il a une position documentée, jusqu'à 3 questions où l'écart
+   |ta réponse − sa position| est le plus petit (écart ≤ 1 : vous êtes du même côté) et jusqu'à 3 où il est le plus grand (écart ≥ 2).
+   Égalité : l'ordre des questions de l'édition. Seules tes réponses chiffrées comptent (une question passée n'est jamais citée). */
+function explainMatch(pid) {
+  const rows = [];
+  ed().questions.forEach((q, qi) => {
+    const v = state.answers[qi], c = q.cells[pid];
+    if (typeof v !== "number" || !c) return;
+    rows.push({ qi: qi, q: q, you: v, they: c.p, gap: Math.abs(v - c.p) });
+  });
+  return {
+    k: rows.length,
+    agree: rows.filter(r => r.gap <= 1).sort((a, b) => a.gap - b.gap || a.qi - b.qi).slice(0, 3),
+    disagree: rows.filter(r => r.gap >= 2).sort((a, b) => b.gap - a.gap || a.qi - b.qi).slice(0, 3)
+  };
+}
+function whyBodyHTML(p) {
+  const L = t(), X = explainMatch(p.id);
+  if (!X.k) return `<p class="muted">${L.whyNone}</p>`;
+  const item = r => `<div class="xm-item" role="listitem"><p class="xm-q">${esc(r.q.text)}</p><p class="xm-pos"><span>${L.whyTheirs(esc(psig(p)))}${C()} <b>${L.ans[r.they]}</b></span><span>${L.yourAnswer}${C()} <b>${L.ans[r.you]}</b></span></p><button class="link" type="button" data-qlink="${r.qi}">${L.whySeeQ}</button></div>`;
+  const part = (title, list, none) => `<div class="xm-block"><p class="xm-h">${title}</p>${list.length ? `<div class="xm-list" role="list">${list.map(item).join("")}</div>` : `<p class="muted xm-none">${none}</p>`}</div>`;
+  return `${part(L.whyAgree, X.agree, L.whyNoAgree)}${part(L.whyDisagree, X.disagree, L.whyNoDisagree)}`;
+}
+/* Un clic sur « Voir la question » : l'onglet « Par question », la question en vue et prise par le focus */
+function showQuestion(qi) {
+  closeFiche();
+  if (state.view !== "results") return;
+  selectTab(TABS.indexOf("questions"));
+  const a = $("qa-" + qi);
+  if (!a) return;
+  a.scrollIntoView({ block: "start" });
+  a.focus({ preventScroll: true });
+  a.classList.add("hl");
+  a.addEventListener("blur", () => a.classList.remove("hl"), { once: true });
+}
+function selectTab(k) {
+  state.tab = k;
+  document.querySelectorAll('[role="tab"]').forEach((b, i) => { b.setAttribute("aria-selected", String(i === k)); b.tabIndex = i === k ? 0 : -1; });
+  document.querySelectorAll('[role="tabpanel"]').forEach((pn, i) => { pn.hidden = i !== k; });
+  setHash(hashFor(), false);
+  save();
+}
+
+/* ================== « Prépare ton vote » ==================
+   Données : PREP (src/prep.js) par pays, dans data/<cc>.json (clé « prep »). Un pays sans données n'a pas de carte. Un élément dont la
+   date (d) est antérieure à aujourd'hui est montré en retrait avec « passé » et placé après les autres (l'ordre du fichier est gardé
+   dans chaque groupe). « Aujourd'hui » est la date du jour de l'appareil, jamais une date écrite en dur. */
+let todayISO = () => { const d = new Date(); return d.getFullYear() + "-" + nn(d.getMonth() + 1) + "-" + nn(d.getDate()); };
+const isoDay = d => /^\d{4}-\d\d-\d\d$/.test(d || "");
+const endOf = d => d.length === 4 ? d + "-12-31" : d.length === 7 ? d + "-31" : d;   // fin de la période que désigne une date AAAA ou AAAA-MM
+function daysBetween(a, b) {
+  const f = x => { const q = x.split("-").map(Number); return Date.UTC(q[0], q[1] - 1, q[2]); };
+  return Math.round((f(b) - f(a)) / 864e5);
+}
+function prepItems(P) {
+  const today = todayISO();
+  return P.items.map((it, i) => ({ it: it, i: i, past: isoDay(it.d) && it.d < today })).sort((a, b) => (a.past - b.past) || (a.i - b.i));
+}
+/* Ligne du haut : compte à rebours pour une date exacte, « prévu en… » pour un mois ou une période ; rien si le scrutin est passé */
+function voteLine(D, L) {
+  const today = todayISO();
+  const evs = (D.meta.ev || []).filter(e => endOf(e.d2 || e.d) >= today);
+  const ex = evs.filter(e => e.q === "exact" && isoDay(e.d)).sort((a, b) => a.d < b.d ? -1 : a.d > b.d ? 1 : 0)[0];
+  if (ex) return `<b>${esc(L.prepDaysIn(daysBetween(today, ex.d)))}</b> <span class="muted">· ${esc(L.types[ex.t] || ex.t)} · ${esc(fmtDate(ex.d))}</span>`;
+  const ev = evs[0];
+  if (!ev) return "";
+  const w = ev.q === "range" ? L.when.range(fmtDate(ev.d), fmtDate(ev.d2)) : ev.q === "by" ? L.when.by(fmtDate(ev.d)) : ev.q === "before" ? L.when.before(fmtDate(ev.d)) : L.prepInMonth(fmtDate(ev.d));
+  return `<b>${esc(L.prepPlanned + " " + w)}</b> <span class="muted">· ${esc(L.types[ev.t] || ev.t)}</span>`;
+}
+/* Fichier .ics (journée entière, rappel la veille) pour une date exacte : lien data: avec « download » */
+const icsEsc = x => String(x).replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+const icsFold = line => { const out = []; while (line.length > 72) { out.push(line.slice(0, 72)); line = " " + line.slice(72); } out.push(line); return out.join("\r\n"); };
+function icsLink(D, ev, L) {
+  const cc = D.id, d0 = ev.d.split("-").map(Number);
+  const ymd = x => x.getUTCFullYear() + nn(x.getUTCMonth() + 1) + nn(x.getUTCDate());
+  const start = new Date(Date.UTC(d0[0], d0[1] - 1, d0[2])), end = new Date(Date.UTC(d0[0], d0[1] - 1, d0[2] + 1));
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
+  const host = (/^https:\/\/([^/]+)/.exec(SITE_URL) || [])[1] || "vote";
+  const url = `${SITE_URL}${cc}/`;
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", `PRODID:-//${BRAND}//EN`, "CALSCALE:GREGORIAN", "BEGIN:VEVENT",
+    `UID:${cc}-${ev.t}-${ev.d}@${host}`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${ymd(start)}`, `DTEND;VALUE=DATE:${ymd(end)}`,
+    `SUMMARY:${icsEsc(`${edName(ed())} — ${L.types[ev.t] || ev.t}`)}`, `DESCRIPTION:${icsEsc(`${BRAND}. ${L.prepCaveat}`)}`, `URL:${url}`,
+    "BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${icsEsc(`${edName(ed())} — ${L.types[ev.t] || ev.t}`)}`, "TRIGGER:-P1D", "END:VALARM", "END:VEVENT", "END:VCALENDAR"];
+  return { href: "data:text/calendar;charset=utf-8," + encodeURIComponent(lines.map(icsFold).join("\r\n") + "\r\n"), file: `vote-${cc}-${ev.d}.ics`, type: ev.t };
+}
+function prepCardHTML(D, L) {
+  const P = D.prep;
+  if (!P || !P.items || !P.items.length) return "";
+  const lang = state.ui, today = todayISO();
+  const name = `<bdi>${esc(P.emb.name)}${P.emb.short && P.emb.short !== P.emb.name ? ` (${esc(P.emb.short)})` : ""}</bdi>`;
+  const emb = P.emb.url ? `<a href="${esc(P.emb.url)}" target="_blank" rel="noopener" aria-label="${esc(P.emb.name + " (" + L.newTab + ")")}">${name}</a>` : name;
+  const items = prepItems(P).map(x => {
+    const it = x.it, own = it.t && it.t[lang], text = own || (it.t && it.t.en) || "";
+    const s = P.src[it.src], src = s ? ` <span class="src muted">(${L.source}${C()} ${srcA(s)})</span>` : "";
+    const meta = (it.d ? `<time datetime="${esc(it.d)}">${esc(fmtDate(it.d))}</time>` : "") + (x.past ? `<span class="chip grey prep-tag">${L.prepPast}</span>` : "");
+    return `<li class="prep-item${x.past ? " past" : ""}">${meta ? `<span class="prep-d">${meta}</span>` : ""}<span class="prep-t"><span${own ? "" : ' lang="en" dir="ltr"'}>${esc(text)}</span>${src}</span></li>`;
+  }).join("");
+  const check = P.check ? `<p class="prep-check"><a href="${esc(P.check.url)}" target="_blank" rel="noopener">${L.prepCheck}</a>${P.src[P.check.src] ? ` <span class="src muted">(${L.source}${C()} ${srcA(P.src[P.check.src])})</span>` : ""}</p>` : "";
+  const exact = EMBEDDED ? [] : (D.meta.ev || []).filter(e => e.q === "exact" && isoDay(e.d) && e.d >= today);
+  const cal = exact.map(e => { const c = icsLink(D, e, L); return `<a class="btn btn-ghost prep-ics" href="${c.href}" download="${esc(c.file)}">${L.prepAdd}${exact.length > 1 ? ` (${esc(L.types[c.type] || c.type)})` : ""}</a>`; }).join("");
+  const line = voteLine(D, L);
+  return `<section class="prep" aria-labelledby="hPrep">
+    <div class="prep-title" id="hPrep" role="heading" aria-level="2">${L.prepTitle2}</div>
+    ${line ? `<p class="prep-count">${line}</p>` : ""}
+    <p class="prep-emb">${L.prepBody}${C()} ${emb}</p>
+    <ul class="prep-list">${items}</ul>
+    ${check}
+    ${cal ? `<div class="actions">${cal}</div>` : ""}
+    <p class="caveat prep-cav">${L.prepCaveat}</p>
+  </section>`;
+}
+
+/* ================== Partager ==================
+   Ce qui part : « Mon parti le plus proche pour Nigeria 2027 : NDC (61 %) — et toi ? » et l'adresse du pays (#/<cc>/<langue>), jamais les réponses.
+   Partage natif (navigator.share) quand la page est servie en contexte sécurisé et hors cadre isolé ; sinon copie dans le presse-papiers,
+   lancée dans le clic ; si elle est refusée, un champ de texte visible, déjà sélectionné. */
+function shareParts() {
+  const E = ed(), L = t();
+  const ranked = ranking().filter(r => r.grp === "ok");
+  if (!ranked.length) return null;
+  const lead = topGroup(ranked);
+  const ar = state.ui === "ar";
+  const who = listFmt(lead.map(r => ar ? psig(r.p) : r.p.sigle));
+  const ev = (E.meta.ev || [])[0], year = ev && ev.d ? ev.d.slice(0, 4) : "";
+  const name = edName(E) + (year ? " " + year : "");
+  const cc = state.country;
+  return { text: L.shareText(ar ? ISO[0] + name + ISO[1] : name, who, pctPlain(ranked[0].s), lead.length), url: `${SITE_URL}${cc}/#/${cc}/${state.ui}` };
+}
+function shareHTML() {
+  if (!shareParts()) return "";
+  const L = t();
+  return `<div class="share">
+    <div class="actions"><button class="btn btn-ghost" type="button" data-go="share" aria-describedby="shareNote"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5M5 12v7h14v-7"/></svg>${L.shareBtn}</button>${canShareImage() ? `<button class="btn btn-ghost" type="button" data-go="shareimg" aria-describedby="shareNote">${L.shareImgBtn}</button>` : ""}<span class="share-status" id="shareStatus" role="status" aria-live="polite"></span></div>
+    <p class="muted share-note" id="shareNote">${L.shareNote}</p>
+    <div class="share-manual" id="shareManual" hidden><label for="shareField">${L.shareManual}</label><textarea id="shareField" class="share-field" readonly rows="3" dir="auto"></textarea></div>
+  </div>`;
+}
+function shareStatus(msg) {
+  const el = $("shareStatus");
+  if (!el) return;
+  el.textContent = msg;
+  clearTimeout(shareStatus.t);
+  if (msg) shareStatus.t = setTimeout(() => { const e2 = $("shareStatus"); if (e2) e2.textContent = ""; }, 4000);
+}
+function shareManual(full) {
+  const box = $("shareManual"), f = $("shareField");
+  if (!box || !f) return;
+  box.hidden = false;
+  f.value = full;
+  f.style.height = "auto";
+  f.style.height = (f.scrollHeight + 4) + "px";   // tout le texte et l'adresse visibles, sans défiler dans le champ
+  f.focus({ preventScroll: true });
+  f.select();
+  let ok = false;
+  try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+  if (ok) shareStatus(t().shareCopied);
+}
+function copyShare(full) {
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+    let r = null;
+    try { r = navigator.clipboard.writeText(full); } catch (e) { r = null; }
+    if (r && typeof r.then === "function") { r.then(() => shareStatus(t().shareCopied), () => shareManual(full)); return; }
+  }
+  shareManual(full);
+}
+function doShare() {
+  const P = shareParts();
+  if (!P) return;
+  const full = P.text + "\n" + P.url;
+  if (!EMBEDDED && window.isSecureContext && typeof navigator.share === "function") {
+    let r = null;
+    try { r = navigator.share({ title: BRAND, text: P.text, url: P.url }); } catch (e) { r = null; }
+    if (r && typeof r.then === "function") { r.then(() => { }, e => { if (!e || e.name !== "AbortError") copyShare(full); }); return; }
+  }
+  copyShare(full);
+}
+
+/* Image à partager (1080 × 1350, dessinée dans un canvas) : le parti le plus proche et son pourcentage, l'adresse du pays, jamais les réponses.
+   Partage du fichier quand le navigateur le permet (navigator.canShare({ files })), sinon enregistrement du PNG ; absente d'artifact.html
+   (cadre isolé : ni partage ni téléchargement). */
+const IMG_W = 1080, IMG_H = 1350;
+function canShareImage() {
+  if (EMBEDDED) return false;
+  try { const c = document.createElement("canvas"); return !!(c.getContext && c.getContext("2d") && c.toBlob); } catch (e) { return false; }
+}
+function drawShareImage(P) {
+  const L = t(), ar = state.ui === "ar";
+  const ranked = ranking().filter(r => r.grp === "ok"), lead = topGroup(ranked);
+  const who = listFmt(lead.map(r => r.p.sigle));
+  const E = ed(), ev = (E.meta.ev || [])[0], year = ev && ev.d ? ev.d.slice(0, 4) : "";
+  const name = edName(E) + (year ? " " + year : "");
+  const pct = pctPlain(ranked[0].s), url = P.url.replace(/^https?:\/\//, "");
+  const loadFonts = () => {
+    if (!document.fonts || typeof document.fonts.load !== "function") return Promise.resolve();
+    const sample = L.shareImgLead(name, lead.length) + L.shareImgAsk + who + pct;
+    return Promise.all([document.fonts.load('800 100px "Bricolage Grotesque"', "Aa"), document.fonts.load('600 52px "Readex Pro"', sample), document.fonts.load('800 100px "Readex Pro"', sample)]).catch(() => { });
+  };
+  return loadFonts().then(() => new Promise(resolve => {
+    const cv = document.createElement("canvas");
+    cv.width = IMG_W; cv.height = IMG_H;
+    const x = cv.getContext("2d"), M = 84, W = IMG_W - 2 * M, X0 = ar ? IMG_W - M : M;
+    x.fillStyle = "#5A2DB8"; x.fillRect(0, 0, IMG_W, IMG_H);       // aplats : un PNG léger (un dégradé pèserait plus d'un Mo)
+    x.fillStyle = "#37186F"; x.fillRect(0, IMG_H - 340, IMG_W, 340);
+    x.direction = ar ? "rtl" : "ltr"; x.textAlign = "start"; x.textBaseline = "alphabetic";
+    const font = (w, px, fam) => `${w} ${px}px ${fam === "body" ? '"Readex Pro"' : '"Bricolage Grotesque", "Readex Pro"'}, "Segoe UI", system-ui, sans-serif`;
+    // marque : coche ambre dans un carré arrondi, puis le nom du site
+    const mx = ar ? IMG_W - M - 96 : M;
+    x.fillStyle = "rgba(255,255,255,.14)"; x.strokeStyle = "rgba(255,255,255,.35)"; x.lineWidth = 3;
+    x.beginPath(); (x.roundRect ? x.roundRect(mx, 84, 96, 96, 26) : x.rect(mx, 84, 96, 96)); x.fill(); x.stroke();
+    x.save(); x.translate(mx + 20, 84 + 20); x.scale(1.9, 1.9);
+    x.strokeStyle = "#F2B42C"; x.lineWidth = 4; x.lineCap = "round"; x.lineJoin = "round";
+    x.beginPath(); x.moveTo(8, 17); x.lineTo(14, 23); x.lineTo(27, 7); x.stroke(); x.restore();
+    x.fillStyle = "#fff"; x.font = font(800, 64); x.textAlign = ar ? "right" : "left";
+    x.fillText(BRAND, ar ? mx - 28 : mx + 96 + 28, 150);
+    x.textAlign = "start";
+    // phrase d'introduction, à la ligne si besoin
+    const lines = (text, fnt, maxW) => {
+      x.font = fnt;
+      const out = []; let cur = "";
+      text.split(" ").forEach(w => { const t2 = cur ? cur + " " + w : w; if (cur && x.measureText(t2).width > maxW) { out.push(cur); cur = w; } else cur = t2; });
+      if (cur) out.push(cur);
+      return out;
+    };
+    let y = 380;
+    x.fillStyle = "#EDE6FB";
+    lines(L.shareImgLead(name, lead.length), font(600, 56, "body"), W).forEach(l => { x.font = font(600, 56, "body"); x.fillText(l, X0, y); y += 76; });
+    // le(s) parti(s) : taille réduite jusqu'à tenir dans la largeur
+    let px = 220;
+    x.font = font(800, px);
+    while (px > 70 && x.measureText(who).width > W) { px -= 8; x.font = font(800, px); }
+    y += px * 0.82;
+    x.fillStyle = "#F2B42C"; x.fillText(who, X0, y);
+    y += 70;
+    x.fillStyle = "#fff"; x.font = font(800, 150); x.fillText(pct, X0, y + 120);
+    y += 170;
+    // barre
+    x.fillStyle = "rgba(255,255,255,.2)"; x.beginPath(); (x.roundRect ? x.roundRect(M, y, W, 28, 14) : x.rect(M, y, W, 28)); x.fill();
+    const fw = Math.max(28, Math.round(W * ranked[0].s));
+    x.fillStyle = "#F2B42C"; x.beginPath(); (x.roundRect ? x.roundRect(ar ? IMG_W - M - fw : M, y, fw, 28, 14) : x.rect(ar ? IMG_W - M - fw : M, y, fw, 28)); x.fill();
+    // la question, puis l'adresse
+    x.fillStyle = "#fff"; x.font = font(800, 92); x.fillText(L.shareImgAsk, X0, IMG_H - 220);
+    x.direction = "ltr"; x.textAlign = ar ? "right" : "left"; x.fillStyle = "#F2B42C";
+    let up = 40;
+    x.font = font(600, up, "body");
+    while (up > 22 && x.measureText(url).width > W) { up -= 2; x.font = font(600, up, "body"); }
+    x.fillText(url, ar ? IMG_W - M : M, IMG_H - 120);
+    cv.toBlob(b => resolve(b), "image/png");
+  }));
+}
+function saveBlob(blob, file) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = file; a.hidden = true;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+function doShareImage() {
+  const P = shareParts();
+  if (!P || !canShareImage()) return;
+  const file = "vote-" + state.country + ".png";
+  drawShareImage(P).then(blob => {
+    if (!blob) return;
+    let f = null;
+    try { f = typeof File === "function" ? new File([blob], file, { type: "image/png" }) : null; } catch (e) { f = null; }
+    const nav = window.isSecureContext && f && typeof navigator.canShare === "function" && typeof navigator.share === "function";
+    let can = false;
+    try { can = !!nav && navigator.canShare({ files: [f] }); } catch (e) { can = false; }
+    const save = () => { saveBlob(blob, file); shareStatus(t().shareImgSaved); };
+    if (!can) { save(); return; }
+    let r = null;
+    try { r = navigator.share({ files: [f], text: P.text, url: P.url }); } catch (e) { r = null; }
+    if (r && typeof r.then === "function") r.then(() => { }, e => { if (!e || e.name !== "AbortError") save(); });
+    else save();
+  });
+}
+
+/* ================== Signaler une erreur ==================
+   Un lien vers un nouveau ticket GitHub, déjà rempli (pays, question, parti, position codée, source) ; rien ne part tant que la personne ne l'envoie pas. */
+function reportHref(p, q, qi, c) {
+  const D = DATA[state.country], B = D.ed, cc = D.id;
+  const en = T.en.ans, fr = T.fr.ans;
+  const src = srcObj(c.s);
+  const qText = B.questions[qi].text, shown = q.text !== qText ? `\n> ${q.text}` : "";
+  const body = [
+    `**Country / Pays:** ${edName(ed())} (${cc})`,
+    `**Question ${qi + 1} / ${B.questions.length}:** ${qText}${shown}`,
+    `**Party / Parti:** ${p.nom} (${p.sigle})`,
+    `**Coded position / Position codée:** ${en[c.p]} (${c.p > 0 ? "+" : ""}${c.p}) / ${fr[c.p]}`,
+    `**Source:** ${src ? src.u : "-"}`,
+    `**Interface language / Langue de l’interface:** ${state.ui}`,
+    "",
+    "---",
+    "What is wrong, and what should it say? A link to a better source helps.",
+    "Qu’est-ce qui est faux, et que faudrait-il dire ? Un lien vers une meilleure source aide."
+  ].join("\n");
+  const title = `Position error: ${cc.toUpperCase()} Q${qi + 1} ${p.sigle}`;
+  return `${REPO_URL}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
+}
+
+/* ================== Changement de langue ==================
+   Si la traduction de cette langue n'est pas encore là (un pays déjà ouvert dans une autre langue), on la télécharge d'abord : l'écran
+   reste tel quel pendant ce temps (bouton en attente) et ne change qu'à l'arrivée ; en cas d'échec, la langue reste l'ancienne et un
+   message le dit. */
+let switchSeq = 0;
+function switchLang(code) {
+  const cc = state.country, seq = ++switchSeq, nav = loadSeq;
+  const focusBtn = () => { const b = document.querySelector(`#langs [data-lang="${code}"]`); if (b) b.focus({ preventScroll: true }); };
+  if (!cc || !DATA[cc] || hasLang(cc, code)) { setUi(code, true); rerender(); focusBtn(); return; }
+  const btn = document.querySelector(`#langs [data-lang="${code}"]`);
+  if (btn) btn.setAttribute("aria-busy", "true");
+  loadLang(cc, code).then(() => {
+    if (seq !== switchSeq || nav !== loadSeq) return;   // l'utilisateur est reparti ailleurs, ou a choisi une autre langue
+    setUi(code, true); rerender(); focusBtn();
+  }, () => {
+    if (btn) btn.removeAttribute("aria-busy");
+    if (seq === switchSeq && nav === loadSeq) toast(t().langLoadFail);
+  });
+}
+let toastTimer = null;
+function toast(msg) {
+  const el = $("toast");
+  if (!el) return;
+  el.textContent = msg; el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.hidden = true; }, 5000);
+}
+
 /* ================== Fiche parti ================== */
 function openFiche(pid) {
   const E = ed(), L = t();
@@ -1743,8 +2095,9 @@ function openFiche(pid) {
     </div>
     ${p.chip ? `<p><span class="chip warn">${esc(p.chip)}</span></p>` : ""}
     <p style="font-size:.95rem">${esc(p.tag)}${p.tagSrc && srcLink(p.tagSrc) ? ` <span class="src muted">(${srcLink(p.tagSrc)})</span>` : ""}</p>
-    ${sc.k >= 2 ? `<div class="fiche-score"><span class="pct">${pctTxt(sc.s)}</span><span>${L.ficheScore}</span></div>` : ""}
+    ${sc.k >= 2 ? `<div class="fiche-score"><span class="pct">${pctTxt(sc.s)}</span><span>${L.ficheScore}</span><span class="mono muted fs-cov">${L.compared(sc.k, answeredCount())}</span></div>` : ""}
     <p class="mono muted" style="font-size:.85rem">${L.ficheDoc(documented(pid), E.questions.length)}</p>
+    ${state.view === "results" && sc.k ? `<section class="xm-fiche"><h3>${L.whyScore}</h3>${whyBodyHTML(p)}</section>` : ""}
     <section><h3>${L.ficheCommit}</h3><ul class="commit">${p.commit.map(([c, s]) => `<li><span>${esc(c)}</span>${srcLink(s) ? `<span class="src muted">${L.source}${C()} ${srcLink(s)}</span>` : ""}</li>`).join("")}</ul></section>
     <section><h3>${L.fichePos}</h3><ul class="pos-table">${E.questions.map(q => {
       const c = q.cells[pid];
@@ -1812,6 +2165,8 @@ function go(where, el) {
       return viewQuestion();
     }
     case "qlist": return openQList();
+    case "share": return doShare();
+    case "shareimg": return doShareImage();
     case "vstart": state.vi = 0; navMode = "push"; return viewValuesQ();
     case "vopen": { const k = VALUES.findIndex(v => state.vals[v.id] === undefined); state.vi = k >= 0 ? k : 0; navMode = "push"; return viewValuesQ(); }
     case "vprev": if (state.vi > 0) { state.vi--; viewValuesQ(); } return;
@@ -1842,7 +2197,7 @@ document.addEventListener("click", e => {
   if (e.target === $("langDlg")) return closeLang();
   if (e.target === $("fiche")) return closeFiche();
   if (e.target === $("qDlg")) return closeQList();
-  const el = e.target.closest("[data-pick],[data-place],[data-lang],[data-go],[data-prio],[data-val],[data-vv],[data-dbl],[data-goto],[data-tab],[data-fiche],[data-qjump],#ficheClose,#langCancel,#qClose,#skip,#brand");
+  const el = e.target.closest("[data-pick],[data-place],[data-lang],[data-go],[data-prio],[data-val],[data-vv],[data-dbl],[data-goto],[data-tab],[data-fiche],[data-qjump],[data-qlink],#ficheClose,#langCancel,#qClose,#skip,#brand");
   if (!el) return;
   if (el.id === "skip") { e.preventDefault(); return skipToList(); }
   if (el.id === "qClose") return closeQList();
@@ -1855,14 +2210,11 @@ document.addEventListener("click", e => {
   if (el.dataset.lang) {
     // Langue pas encore traduite : le bouton reste focalisable, un toucher explique (infobulle, 3 s) au lieu de ne rien faire
     if (el.getAttribute("aria-disabled") === "true") { langTip(el); langTipTimer = setTimeout(() => langTip(null), 3000); return; }
-    const code = el.dataset.lang;
-    setUi(code, true);
-    rerender();
-    const b = document.querySelector(`#langs [data-lang="${code}"]`); if (b) b.focus({ preventScroll: true });
-    return;
+    return switchLang(el.dataset.lang);
   }
   if (el.dataset.go) return go(el.dataset.go, el);
   if (el.dataset.fiche) return openFiche(el.dataset.fiche);
+  if (el.dataset.qlink !== undefined) return showQuestion(+el.dataset.qlink);
   if (el.dataset.prio) {
     const id = el.dataset.prio;
     const k = state.priorities.indexOf(id);
@@ -1901,11 +2253,7 @@ document.addEventListener("click", e => {
     state.i = k; return viewQuestion();
   }
   if (el.dataset.tab) {
-    state.tab = +el.dataset.tab;
-    document.querySelectorAll('[role="tab"]').forEach((b, k) => { b.setAttribute("aria-selected", String(k === state.tab)); b.tabIndex = k === state.tab ? 0 : -1; });
-    document.querySelectorAll('[role="tabpanel"]').forEach((p, k) => { p.hidden = k !== state.tab; });
-    setHash(hashFor(), false);
-    save();
+    selectTab(+el.dataset.tab);
   }
 });
 /* Onglets : tabindex mobile, flèches (inversées de droite à gauche), Début et Fin. */
@@ -1931,7 +2279,7 @@ window.addEventListener("hashchange", () => { if (location.hash !== curHash) rou
 try { history.scrollRestoration = "manual"; } catch (e) { }
 
 /* Pour les tests : le calcul de la position et les parts du compteur sont des fonctions pures */
-window.__etv = { valuesLevel: valuesLevel, meterShares: meterShares, VALUES: VALUES, METER_ENDPOINT: METER_ENDPOINT, METER_MIN: METER_MIN, VAL_MIN: VAL_MIN };
+window.__etv = { explainMatch: explainMatch, prepItems: prepItems, voteLine: voteLine, hasLang: hasLang, valuesLevel: valuesLevel, meterShares: meterShares, VALUES: VALUES, METER_ENDPOINT: METER_ENDPOINT, METER_MIN: METER_MIN, VAL_MIN: VAL_MIN };
 
 /* Démarrage : langue (appareil → navigateur → anglais), session de cet onglet, puis l'écran que décrit l'adresse. */
 state.ui = initialUi();

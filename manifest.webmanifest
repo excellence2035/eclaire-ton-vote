@@ -1,0 +1,32 @@
+{
+  "name": "Vote",
+  "short_name": "Vote",
+  "description": "Answer precise questions, issue by issue, and see which parties think like you. Election map of the 54 African countries, questionnaires by country, in 5 languages.",
+  "lang": "en",
+  "id": ".",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#F3F1F8",
+  "theme_color": "#5A2DB8",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

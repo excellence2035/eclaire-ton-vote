@@ -16,6 +16,13 @@
  *   puis intégré à l'application. meter.config.json ({ "endpoint": "" }) donne l'adresse du compteur collectif : vide, les
  *   fonctions collectives sont éteintes ; --endpoint <url> la remplace (tests). flags/ (drapeaux) est recopié dans le dossier
  *   de sortie quand --out en change ; meter/countries.json (liste des pays acceptés par le Worker) est généré depuis src/africa.js.
+ * - Données par langue : data/<cc>.json (langue de base, META, sources, « prépare ton vote » issu de src/prep.js) et
+ *   data/<cc>.<langue>.json (une traduction), que l'application charge à la demande. src/prep.js (PREP) est validé : 5 langues et une
+ *   source existante pour chaque élément ; un pays de PREP sans édition donne un avertissement. --extra <dir> peut apporter
+ *   <dir>/prep.js (il complète ou remplace celui de src/).
+ * - Écrit aussi manifest.webmanifest, <cc>/index.html (page de partage d'un pays : titre, description et image propres, puis
+ *   redirection vers #/<cc>) et recopie flags/, fonts/, icons/ et og.png quand --out change de dossier.
+ *   Les adresses publiques (SITE_URL, REPO_URL) sont définies une seule fois, ci-dessous.
  * Aucune dépendance : Node ≥ 18.
  */
 "use strict";
@@ -25,8 +32,17 @@ const ROOT = path.resolve(__dirname, "..");
 const SRC = path.join(ROOT, "src");
 const VALIDATOR = path.join(SRC, "tools", "validate-edition.js");
 const EXEMPT = new Set(["fr"]);
-const UI_FILES = ["ui/t-fr-en.js", "ui/t-pt-sw-ar.js", "ui/t-party.js", "ui/t-party-pt-sw-ar.js", "ui/t-multi.js", "ui/t-v2.js", "ui/t-meter.js"];
-const DESCRIPTION = "Réponds à des questions précises par ministère et découvre quels partis pensent comme toi. Carte des élections dans les 54 pays d’Afrique, questionnaires par pays, en 5 langues.";
+const UI_FILES = ["ui/t-fr-en.js", "ui/t-pt-sw-ar.js", "ui/t-party.js", "ui/t-party-pt-sw-ar.js", "ui/t-multi.js", "ui/t-v2.js", "ui/t-meter.js", "ui/t-v3.js"];
+const BRAND = "Vote";
+/* Adresses publiques, définies ici et nulle part ailleurs (le dépôt peut changer de nom : modifier ces deux lignes, relancer le build).
+   SITE_URL (avec « / » final) : og:url, og:image, canonical, pages <cc>/index.html, liens de partage. REPO_URL : « Signaler une erreur », « Quoi de neuf ». */
+const SITE_URL = "https://excellence2035.github.io/eclaire-ton-vote/";
+const REPO_URL = "https://github.com/excellence2035/eclaire-ton-vote";
+const THEME_COLOR = "#5A2DB8", BG_COLOR = "#F3F1F8";
+const TITLE = `${BRAND} — Elections in Africa`;
+const DESCRIPTION = "Answer precise questions, issue by issue, and see which parties think like you. Election map of the 54 African countries, questionnaires by country, in 5 languages.";
+const OG_ALT = `${BRAND}: election map of Africa and a questionnaire that shows which parties think like you`;
+const LOCALES = { en: "en_GB", fr: "fr_FR", pt: "pt_PT", sw: "sw_KE", ar: "ar_AR" };
 const FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%235A2DB8'/%3E%3Cpath d='M8 17l6 6L27 7' fill='none' stroke='%23F2B42C' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E";
 const RESET = "<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>";
 
@@ -228,6 +244,46 @@ for (const [cc, { file, i18n }] of [...sources.entries()].sort((a, b) => a[0].lo
   console.log(`ok    ${cc}: ${kind === "ed" ? "questionnaire" : "information page"}, ${what}, langs ${langs.join(",")}${EXEMPT.has(cc) ? " (validation exempt)" : ""}`);
 }
 
+/* ---------- « Prépare ton vote » : src/prep.js (global PREP), complété par <extra>/prep.js ---------- */
+/* Par pays : { emb: {name, short, url|null}, check?: {url, src}, items: [{d: AAAA-MM-JJ|null, src, t: {en, fr, pt, sw, ar}}], src: {clé: {o, t, d, u}} }.
+   Un pays sans édition, ou dont les données ne passent pas, est ignoré avec un avertissement (jamais d'échec : l'application marche sans). */
+const httpsUrl = u => typeof u === "string" && /^https:\/\/[^\s"<>]+$/.test(u);
+const isoDay = d => { if (typeof d !== "string" || !/^\d{4}-\d\d-\d\d$/.test(d)) return false; const t = new Date(d + "T12:00:00Z"); return !isNaN(t.getTime()) && t.toISOString().slice(0, 10) === d; };
+function checkPrep(P) {
+  const e = [];
+  if (!P || typeof P !== "object") return ["not an object"];
+  if (!P.emb || !isStr(P.emb.name) || !isStr(P.emb.short) || !(P.emb.url === null || httpsUrl(P.emb.url))) e.push("emb needs name, short and url (https:// or null)");
+  const src = P.src && typeof P.src === "object" ? P.src : {};
+  if (!Object.keys(src).length) e.push("src is empty");
+  Object.entries(src).forEach(([k, x]) => { if (!x || !isStr(x.o) || !isStr(x.t) || !isStr(x.d) || !httpsUrl(x.u)) e.push(`src.${k} needs o, t, d and an https:// u`); });
+  if (P.check !== undefined && (!P.check || !httpsUrl(P.check.url) || !src[P.check.src])) e.push("check needs an https:// url and a src key that exists");
+  if (!Array.isArray(P.items) || !P.items.length) e.push("items is empty");
+  else P.items.forEach((it, i) => {
+    if (!it || !(it.d === null || isoDay(it.d))) e.push(`items[${i}].d must be YYYY-MM-DD or null`);
+    if (!it || !isStr(it.src) || !src[it.src]) e.push(`items[${i}].src “${it && it.src}” is not in this country's src`);
+    UI_LANGS.forEach(l => { if (!it || !it.t || !isStr(it.t[l])) e.push(`items[${i}].t.${l} is missing`); });
+  });
+  return e;
+}
+const PREP = {};
+function loadPrep(file) {
+  if (!fs.existsSync(file)) return;
+  try { Object.assign(PREP, runFile(file, ["PREP"]).PREP || {}); }
+  catch (e) { warn(`cannot load ${path.relative(ROOT, file)} (${e.message.split("\n")[0]}), “Prépare ton vote” ignored for it`); }
+}
+loadPrep(path.join(SRC, "prep.js"));
+extras.forEach(d => loadPrep(path.join(d, "prep.js")));
+const prepOk = [];
+for (const [cc, P] of Object.entries(PREP).sort((a, b) => a[0].localeCompare(b[0]))) {
+  const b = built.find(x => x.cc === cc);
+  if (!b) { warn(`prep: ${cc} is in PREP but has no edition, ignored`); continue; }
+  const errs = checkPrep(P);
+  if (errs.length) { warn(`prep: ${cc} invalid, ignored (${errs.slice(0, 4).join("; ")}${errs.length > 4 ? ` … ${errs.length} problems` : ""})`); continue; }
+  b.data.prep = P;
+  prepOk.push(cc);
+}
+console.log(`prep  ${prepOk.length ? prepOk.join(" ") : "none"}${built.length - prepOk.length ? ` (no card for ${built.filter(b => !prepOk.includes(b.cc)).map(b => b.cc).join(" ") || "-"})` : ""}`);
+
 /* ---------- Cohérence : calendrier d'src/africa.js ↔ éditions (META) ---------- */
 // L'application affiche les dates de l'édition (META.ev) quand il y en a une ; la liste générale doit dire la même chose.
 const SRC_AF = runFile(path.join(SRC, "africa.js"), ["SRC_AF"]).SRC_AF;
@@ -249,17 +305,23 @@ for (const [num, row] of Object.entries(AFRICA)) {
   if (row.up && !row.src && !(b && b.cat.evSrc)) warn(`africa.js ${row.a2}: election announced but no source`);
 }
 
-/* ---------- Écriture : data/<cc>.json ---------- */
+/* ---------- Écriture : data/<cc>.json (base) et data/<cc>.<langue>.json (une traduction) ---------- */
+/* La page charge la base et la seule langue d'interface en cours ; une autre langue n'est téléchargée que si on la choisit. */
 const dataDir = path.join(OUT, "data");
 fs.mkdirSync(dataDir, { recursive: true });
 const sizes = [];
 const keep = new Set();
+const dataSizes = {};
 for (const { cc, data } of built) {
-  const f = path.join(dataDir, cc + ".json");
-  const json = JSON.stringify(data);
-  fs.writeFileSync(f, json);
-  keep.add(cc + ".json");
-  sizes.push([path.relative(OUT, f), Buffer.byteLength(json)]);
+  const { i18n: tr, ...base } = data;
+  const files = [[cc + ".json", base]].concat(Object.keys(tr).map(l => [`${cc}.${l}.json`, { id: cc, lang: l, t: tr[l] }]));
+  for (const [name, obj] of files) {
+    const json = JSON.stringify(obj);
+    fs.writeFileSync(path.join(dataDir, name), json);
+    keep.add(name);
+    dataSizes[name] = Buffer.byteLength(json);
+    sizes.push([path.join("data", name), dataSizes[name]]);
+  }
 }
 for (const f of fs.readdirSync(dataDir)) {
   if (f.endsWith(".json") && !keep.has(f)) { fs.unlinkSync(path.join(dataDir, f)); console.log(`rm    data/${f} (no valid edition)`); }
@@ -278,7 +340,7 @@ function noscriptHTML(built) {
     ar: "يحتاج هذا الموقع إلى جافاسكريبت لعرض الخريطة والاستبيانات. فعّله في متصفحك ثم أعد تحميل الصفحة."
   };
   return `<noscript><section class="screen">
-<h1 class="big-title">Vote</h1>
+<h1 class="big-title">${BRAND}</h1>
 ${Object.entries(say).map(([l, t]) => `<p lang="${l}"${l === "ar" ? ' dir="rtl"' : ""}>${t}</p>`).join("\n")}
 <h2>Questionnaires · Questionnaires</h2><ul>${list("ed")}</ul>
 <h2>Information pages · Fiches d’information</h2><ul>${list("info")}</ul>
@@ -338,25 +400,56 @@ function lateSyntax(code) {
 
 const catalog = {};
 built.forEach(({ cc, cat }) => { catalog[cc] = cat; });
-const scripts = [...UI_FILES, "values.js", "africa.js", "mapdata.js"].map(f => read(path.join(SRC, f)).replace(/\s+$/, "") + "\n").join("")
+/* EMBEDDED : vrai dans artifact.html (page dans le cadre isolé d'un hébergeur d'artefacts : ni téléchargement, ni window.open, ni partage natif),
+   faux dans index.html. SITE_URL et REPO_URL : voir en haut de ce fichier. */
+const bundle = embedded => [...UI_FILES, "values.js", "africa.js", "mapdata.js"].map(f => read(path.join(SRC, f)).replace(/\s+$/, "") + "\n").join("")
   + "\n/* ================== Catalogue des éditions (généré par tools/build.js) ================== */\n"
   + `const CATALOG = ${JSON.stringify(catalog)};\n`
   + `const METER_ENDPOINT = ${JSON.stringify(METER_ENDPOINT)};   // meter.config.json : vide = fonctions collectives éteintes\n`
+  + `const SITE_URL = ${JSON.stringify(SITE_URL)}, REPO_URL = ${JSON.stringify(REPO_URL)};   // adresses publiques : tools/build.js\n`
+  + `const EMBEDDED = ${embedded};   // true dans artifact.html\n`
   + app.replace(/\s+$/, "") + "\n";
+const scripts = bundle(false);
 
 const late = lateSyntax(shellBody.slice(shellBody.indexOf("<script>") + 8) + scripts);
 if (late.length) warn(`the bundled script uses syntax newer than ES2019: ${late.slice(0, 5).join(", ")}${late.length > 5 ? ` … ${late.length} in all` : ""}`);
 
+/* ---------- Aperçus sociaux : balises Open Graph / Twitter, adresse canonique ---------- */
+const attr = x => String(x).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+function socialMeta({ title, description, url, locale }) {
+  const img = SITE_URL + "og.png";
+  return [
+    `<meta name="description" content="${attr(description)}">`,
+    `<link rel="canonical" href="${attr(url)}">`,
+    `<meta property="og:site_name" content="${attr(BRAND)}">`,
+    `<meta property="og:type" content="website">`,
+    `<meta property="og:title" content="${attr(title)}">`,
+    `<meta property="og:description" content="${attr(description)}">`,
+    `<meta property="og:url" content="${attr(url)}">`,
+    `<meta property="og:image" content="${attr(img)}">`,
+    `<meta property="og:image:type" content="image/png">`,
+    `<meta property="og:image:width" content="1200">`,
+    `<meta property="og:image:height" content="630">`,
+    `<meta property="og:image:alt" content="${attr(OG_ALT)}">`,
+    `<meta property="og:locale" content="${locale}">`,
+    ...Object.values(LOCALES).filter(l => l !== locale).map(l => `<meta property="og:locale:alternate" content="${l}">`),
+    `<meta name="twitter:card" content="summary_large_image">`,
+    `<meta name="twitter:title" content="${attr(title)}">`,
+    `<meta name="twitter:description" content="${attr(description)}">`,
+    `<meta name="twitter:image" content="${attr(img)}">`,
+    `<meta name="twitter:image:alt" content="${attr(OG_ALT)}">`
+  ].join("\n");
+}
+
 const index = `<!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="${DESCRIPTION}">
-<meta property="og:title" content="Vote — Elections in Africa">
-<meta property="og:description" content="${DESCRIPTION}">
-<meta property="og:type" content="website">
-<meta name="theme-color" content="#5A2DB8">
+${socialMeta({ title: TITLE, description: DESCRIPTION, url: SITE_URL, locale: LOCALES.en })}
+<meta name="theme-color" content="${THEME_COLOR}">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="${FAVICON}">
 ${RESET}
 ${shellHead}
@@ -367,28 +460,131 @@ ${shellBody}${scripts}
 </html>
 `;
 const nl = shell.indexOf("\n");
-const artifact = shell.slice(0, nl + 1) + RESET + "\n" + shell.slice(nl + 1).replace(/\s+$/, "\n") + scripts;
+const artifact = shell.slice(0, nl + 1) + RESET + "\n" + shell.slice(nl + 1).replace(/\s+$/, "\n") + bundle(true);
 
+fs.mkdirSync(OUT, { recursive: true });
 fs.writeFileSync(path.join(OUT, "index.html"), index);
 fs.writeFileSync(path.join(OUT, "artifact.html"), artifact);
 sizes.unshift(["index.html", Buffer.byteLength(index)], ["artifact.html", Buffer.byteLength(artifact)]);
 
-/* Drapeaux : fichiers à côté de la page (jamais incorporés). Recopiés quand --out change de dossier. */
+/* ---------- manifest.webmanifest (installation sur l'écran d'accueil) ---------- */
+const manifest = {
+  name: BRAND, short_name: BRAND, description: DESCRIPTION, lang: "en", id: ".", start_url: ".", scope: ".", display: "standalone",
+  background_color: BG_COLOR, theme_color: THEME_COLOR,
+  icons: [
+    { src: "icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+    { src: "icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+    { src: "icons/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" }
+  ]
+};
+fs.writeFileSync(path.join(OUT, "manifest.webmanifest"), JSON.stringify(manifest, null, 2) + "\n");
+
+/* ---------- <cc>/index.html : une page de partage par pays ----------
+   Titre, description et image propres au pays (langue de base de l'édition, puis le français), puis redirection immédiate vers
+   l'application (#/<cc>, ou #/<cc>/<langue> quand le lien partagé le précise). Les robots d'aperçu lisent les balises sans exécuter le script. */
+const GEN_MARK = "<!-- generated by tools/build.js -->";
+const COPY = {
+  en: { ed: (nq, np, when) => `Answer ${nq} questions and see which of the ${np} parties think like you.${when ? ` ${when}.` : ""}`,
+        info: (when) => `How the election works, the main players and the sources.${when ? ` ${when}.` : ""}`, open: n => `Opening ${n}…` },
+  fr: { ed: (nq, np, when) => `Réponds à ${nq} questions et découvre lesquels des ${np} partis pensent comme toi.${when ? ` ${when}.` : ""}`,
+        info: (when) => `Comment fonctionne l’élection, les principaux acteurs et les sources.${when ? ` ${when}.` : ""}`, open: n => `Ouverture de ${n}…` },
+  pt: { ed: (nq, np, when) => `Responde a ${nq} perguntas e descobre quais dos ${np} partidos pensam como tu.${when ? ` ${when}.` : ""}`,
+        info: (when) => `Como funciona a eleição, os principais atores e as fontes.${when ? ` ${when}.` : ""}`, open: n => `A abrir ${n}…` },
+  sw: { ed: (nq, np, when) => `Jibu maswali ${nq} uone ni vyama vipi kati ya ${np} vinavyofikiri kama wewe.${when ? ` ${when}.` : ""}`,
+        info: (when) => `Jinsi uchaguzi unavyofanyika, wahusika wakuu na vyanzo.${when ? ` ${when}.` : ""}`, open: n => `Inafungua ${n}…` },
+  ar: { ed: (nq, np, when) => `أجب عن ${nq} سؤالًا واكتشف أيّ الأحزاب الـ${np} يفكّر مثلك.${when ? ` ${when}.` : ""}`,
+        info: (when) => `كيف تجري الانتخابات وأبرز الجهات الفاعلة والمصادر.${when ? ` ${when}.` : ""}`, open: n => `جارٍ فتح ${n}…` }
+};
+function countryName(b, lang) {
+  const row = b.data.a3 ? AFRICA[b.data.a3] : null;
+  const E = b.data.ed || b.data.info;
+  if (!row) return E.name;
+  if (lang === "fr") return row.fr;
+  if (lang === "en") return row.en;
+  try { const n = new Intl.DisplayNames([lang], { type: "region" }).of(row.a2); if (n && n !== row.a2) return n; } catch (e) { }
+  return row.en;
+}
+/* Texte d'un pays dans une langue : l'édition dans sa langue de base, sa traduction si elle existe (sinon seulement le nom du pays) */
+function countryCopy(b, lang) {
+  const E = b.data.ed || b.data.info, k = b.data.kind;
+  const T = lang === b.data.lang ? E : (b.data.i18n || {})[lang] || null;
+  const name = countryName(b, lang);
+  const strip = T && T.strip ? T.strip : "";
+  const when = T && T.stripDate ? T.stripDate : "";
+  const title = strip ? (strip.includes(name) ? strip : `${name} — ${strip}`) : name;
+  const c = COPY[lang] || COPY.en;
+  const desc = k === "ed" ? c.ed(E.questions.length, E.parties.length, when) : c.info(when);
+  return { name, title, desc, open: c.open(name) };
+}
+function countryPage(b) {
+  const cc = b.cc, base = b.data.lang;
+  const main = countryCopy(b, base);
+  const fr = base === "fr" ? null : countryCopy(b, "fr");
+  const title = `${main.title} · ${BRAND}`;
+  const description = fr ? `${main.desc} / ${fr.desc}` : main.desc;
+  const url = `${SITE_URL}${cc}/`;
+  const go = `../#/${cc}`;
+  return `<!doctype html>
+${GEN_MARK}
+<html lang="${base}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${attr(title)}</title>
+${socialMeta({ title, description, url, locale: LOCALES[base] || LOCALES.en })}
+<meta name="theme-color" content="${THEME_COLOR}">
+<link rel="icon" href="${FAVICON}">
+<meta http-equiv="refresh" content="0; url=${go}">
+<script>(function(){var h=location.hash;location.replace("../"+(h.indexOf("#/${cc}/")===0?h:"#/${cc}"))})()</script>
+</head>
+<body>
+<p><a href="${go}">${attr(main.open)}</a></p>
+</body>
+</html>
+`;
+}
+const pageDirs = new Set();
+for (const b of built) {
+  const dir = path.join(OUT, b.cc);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, "index.html"), countryPage(b));
+  pageDirs.add(b.cc);
+}
+for (const f of fs.readdirSync(OUT)) {   // pays qui n'a plus d'édition : sa page générée disparaît
+  const idx = path.join(OUT, f, "index.html");
+  if (/^[a-z]{2}$/.test(f) && !pageDirs.has(f) && fs.existsSync(idx) && read(idx).includes(GEN_MARK)) { fs.rmSync(path.join(OUT, f), { recursive: true, force: true }); console.log(`rm    ${f}/ (no valid edition)`); }
+}
+sizes.push([`<cc>/index.html × ${built.length}`, built.length ? Buffer.byteLength(countryPage(built[0])) : 0]);
+
+/* ---------- Fichiers à côté de la page (jamais incorporés) : drapeaux, polices, icônes, image de partage ----------
+   Recopiés dans le dossier de sortie quand --out change de dossier. */
+const sameDir = path.resolve(OUT) === ROOT;
+function copyDir(name) {
+  fs.mkdirSync(path.join(OUT, name), { recursive: true });
+  fs.readdirSync(path.join(ROOT, name)).forEach(f => fs.copyFileSync(path.join(ROOT, name, f), path.join(OUT, name, f)));
+}
 const flagsSrc = path.join(ROOT, "flags");
 if (!fs.existsSync(flagsSrc)) warn("flags/ is missing: run node tools/flags.js (the banners show without flags until then)");
 else {
   const cc2 = new Set([...Object.values(AFRICA).map(c => c.a2.toLowerCase()), "fr"]);
   cc2.forEach(cc => { if (!fs.existsSync(path.join(flagsSrc, cc + ".svg"))) warn(`flags/${cc}.svg is missing: run node tools/flags.js`); });
-  if (path.resolve(OUT) !== ROOT) {
-    fs.mkdirSync(path.join(OUT, "flags"), { recursive: true });
-    fs.readdirSync(flagsSrc).forEach(f => fs.copyFileSync(path.join(flagsSrc, f), path.join(OUT, "flags", f)));
-  }
+  if (!sameDir) copyDir("flags");
 }
+const FONT_FILES = ["bricolage-grotesque-latin.woff2", "bricolage-grotesque-latin-ext.woff2", "readex-pro-latin.woff2", "readex-pro-latin-ext.woff2", "readex-pro-arabic.woff2"];
+const missingFonts = FONT_FILES.filter(f => !fs.existsSync(path.join(ROOT, "fonts", f)));
+if (missingFonts.length) warn(`fonts/ is missing ${missingFonts.join(", ")}: run node tools/fonts.js (the page falls back to system fonts until then)`);
+else if (!sameDir) copyDir("fonts");
+const ICON_FILES = ["icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png"];
+const missingIcons = ICON_FILES.filter(f => !fs.existsSync(path.join(ROOT, "icons", f)));
+if (missingIcons.length) warn(`icons/ is missing ${missingIcons.join(", ")}: run python3 tools/og.py`);
+else if (!sameDir) copyDir("icons");
+if (!fs.existsSync(path.join(ROOT, "og.png"))) warn("og.png is missing: run python3 tools/og.py (link previews have no image until then)");
+else if (!sameDir) fs.copyFileSync(path.join(ROOT, "og.png"), path.join(OUT, "og.png"));
 /* Liste des pays que le Worker accepte : tous les pays de la carte et la France (mêmes codes que le site) */
 fs.mkdirSync(path.join(OUT, "meter"), { recursive: true });
 fs.writeFileSync(path.join(OUT, "meter", "countries.json"), JSON.stringify([...new Set([...Object.values(AFRICA).map(c => c.a2.toLowerCase()), "fr"])].sort()) + "\n");
 
 console.log(`\n${built.length} edition(s): ${built.map(b => `${b.cc} (${b.cat.kind})`).join(", ") || "none"}`);
-sizes.forEach(([f, n]) => console.log(`  ${f.padEnd(18)} ${(n / 1024).toFixed(1).padStart(7)} KB`));
+sizes.forEach(([f, n]) => console.log(`  ${f.padEnd(22)} ${(n / 1024).toFixed(1).padStart(7)} KB`));
 if (warnings.length) console.log(`${warnings.length} warning(s)`);
 if (strict && warnings.length) process.exit(1);
