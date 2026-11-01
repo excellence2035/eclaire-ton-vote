@@ -1,6 +1,6 @@
 const I18N_SS_FR = {
   strip: "Élections générales 2026",
-  stripDate: "Mardi 22 décembre 2026 (inscription des électeurs pas encore commencée)",
+  stripDate: "Mardi 22 décembre 2026 (aucun électeur inscrit au 7 octobre)",
   facts: [
     ["Jour du scrutin (président, assemblées législatives, gouverneurs)", "Mar. 22 déc. 2026"],
     ["Inscription des électeurs", "Pas commencée au 7 oct. 2026"],

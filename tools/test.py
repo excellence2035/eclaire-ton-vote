@@ -3505,6 +3505,12 @@ def prep_card(c):
     Pcm = json.load(open(os.path.join(ROOT, "data", "cm.json"), encoding="utf8"))["prep"]
     c(R["embLink"] is None and Pcm["emb"]["name"] in R["emb"], f"cm: body without a website is named, not linked ({R['emb']})")
     c(R["countB"] is not None and R["countB"].startswith("Vote expected") and " days" not in R["countB"] and not R["ics"], f"cm: ‘expected’ wording for a period, no countdown, no calendar ({R['countB']})")
+    # scrutin reporté (gw) ou sérieusement en doute (ss) : jamais de compte à rebours ni de .ics
+    for cc_, want in (("gw", "postponed"), ("ss", "Vote expected on 22 December 2026")):
+        goto_cc(page, CTX["base"], cc_, "en", "section.prep")
+        pin_today(page, "2026-11-01")
+        R = read_prep(page)
+        c(R["countB"] is not None and want in R["countB"] and " days" not in R["countB"] and not R["ics"], f"{cc_}: no countdown and no calendar for a doubtful vote ({R['countB']})")
     # tous les pays : carte iff données, éléments dans la langue de base
     for cc, e in sorted(cat.items()):
         Dc = json.load(open(os.path.join(ROOT, "data", cc + ".json"), encoding="utf8"))

@@ -25,18 +25,18 @@ const SRC_GW = {
 };
 
 const META_GW = {
-  ev: [{ t: "general", d: "2026-12-06", q: "exact" }],
+  ev: [{ t: "general", d: "2026-12-06", q: "postponed" }],
   src: "delay_reuters",
-  note: "On 8 Oct 2026 the transitional Prime Minister said the 6 December vote must be postponed; no new date had been set by 11 Oct 2026."
+  note: "On 8 Oct 2026 the transitional Prime Minister said the 6 December vote must be postponed; no new date had been set by 26 Oct 2026; an ECOWAS mediator was in Bissau on 26–27 October to discuss one."
 };
 
 const INFO_GW = {
   id: "gw", name: "Guinea-Bissau", lang: "en",
   strip: "Presidential and legislative elections 2026",
-  stripDate: "Set for Sunday 6 December 2026 · postponement announced, new date not yet set",
+  stripDate: "Postponement announced on 8 October 2026 (the 6 December vote was called unworkable) · new date not yet set",
   facts: [
     ["President & parliament (decree of 21 Jan 2026)", "Sun 6 Dec 2026"],
-    ["Postponement", "Announced by the transitional PM on 8 Oct 2026; no new date"],
+    ["Postponement", "Announced by the transitional PM on 8 Oct 2026; ECOWAS mediator in Bissau 26–27 Oct; no new date"],
     ["Candidacies filed by the 6 Oct deadline", "None reported"]
   ],
   factsSrc: ["decree", "delay_reuters", "pm_rfi", "no_cond_lusa", "cne_afp"],

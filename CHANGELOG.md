@@ -2,6 +2,15 @@
 
 Ce qui change sur la plateforme, du plus récent au plus ancien. Les positions des partis restent un prototype : elles sont codées à partir de sources publiques datées et n’ont pas encore été validées par les partis ni par un comité indépendant.
 
+## 1er novembre 2026
+
+- Calendriers revérifiés au 1er novembre pour les 14 pays de « Prépare ton vote » : Cap-Vert (campagne du 29 octobre au 13 novembre, vote le 15, second tour le 29 si besoin), Nigéria (18 candidats à la présidentielle, campagnes ouvertes depuis le 19 août), Cameroun (listes provisoires consultables jusqu’au 10 novembre), Somalie (pourparlers avec l’opposition du 14 au 18 novembre), Madagascar, Tunisie (déclarations de l’ISIE du 23 octobre), Angola.
+- Gambie : correction des dates de l’édition — candidatures du 3 au 14 novembre et campagne du 16 novembre au 3 décembre (l’édition reprenait l’ancien calendrier d’octobre 2025) ; le vote reste fixé au 5 décembre.
+- Guinée-Bissau : le scrutin du 6 décembre est désormais présenté comme « reporté » (annoncé le 8 octobre, médiateur de la CEDEAO à Bissau les 26 et 27 octobre, aucune nouvelle date).
+- Tunisie : les propos du porte-parole de l’ISIE du 23 octobre sont ajoutés (municipales possibles avant mars 2027 sur décision politique, législatives attendues en novembre ou décembre 2027). Soudan du Sud : « aucun électeur inscrit au 7 octobre ».
+- Un scrutin reporté ou sérieusement en doute n’affiche plus de compte à rebours ni de bouton « Ajouter à mon agenda ».
+- Les dates de « Prépare ton vote » ne marquent « passé » que des échéances ou des événements réellement datés.
+
 ## 22 octobre 2026
 
 - Nouveaux pays : Lesotho (questionnaire, 5 partis), Tunisie (questionnaire, 4 forces), Angola (fiche d’information : élections prévues en août 2027, date exacte non fixée) ; la fiche est traduite en portugais et en français.

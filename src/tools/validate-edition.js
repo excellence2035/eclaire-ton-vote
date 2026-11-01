@@ -26,7 +26,7 @@ if (!M || !Array.isArray(M.ev) || !M.ev.length) errs.push("META.ev missing");
 else M.ev.forEach((ev, i) => {
   if (!["general", "presidential", "legislative", "pres_leg", "referendum", "national"].includes(ev.t)) errs.push(`META.ev[${i}].t invalid`);
   if (!/^\d{4}-\d{2}(-\d{2})?$/.test(ev.d || "")) errs.push(`META.ev[${i}].d invalid`);
-  if (!["exact", "month", "by", "before", "range"].includes(ev.q)) errs.push(`META.ev[${i}].q invalid`);
+  if (!["exact", "month", "by", "before", "postponed", "range"].includes(ev.q)) errs.push(`META.ev[${i}].q invalid`);
   if (ev.q === "range" && !/^\d{4}-\d{2}(-\d{2})?$/.test(ev.d2 || "")) errs.push(`META.ev[${i}].d2 needed for range`);
 });
 if (M) srcOk(M.src, "META.src");

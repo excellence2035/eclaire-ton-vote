@@ -1817,11 +1817,13 @@ function prepItems(P) {
 function voteLine(D, L) {
   const today = todayISO();
   const evs = (D.meta.ev || []).filter(e => endOf(e.d2 || e.d) >= today);
-  const ex = evs.filter(e => e.q === "exact" && isoDay(e.d)).sort((a, b) => a.d < b.d ? -1 : a.d > b.d ? 1 : 0)[0];
+  /* Un scrutin « sérieusement en doute » (META.note) n’a pas de compte à rebours ni de fichier .ics : « prévu le… » seulement. */
+  const ex = D.meta.note ? null : evs.filter(e => e.q === "exact" && isoDay(e.d)).sort((a, b) => a.d < b.d ? -1 : a.d > b.d ? 1 : 0)[0];
   if (ex) return `<b>${esc(L.prepDaysIn(daysBetween(today, ex.d)))}</b> <span class="muted">· ${esc(L.types[ex.t] || ex.t)} · ${esc(fmtDate(ex.d))}</span>`;
   const ev = evs[0];
   if (!ev) return "";
-  const w = ev.q === "range" ? L.when.range(fmtDate(ev.d), fmtDate(ev.d2)) : ev.q === "by" ? L.when.by(fmtDate(ev.d)) : ev.q === "before" ? L.when.before(fmtDate(ev.d)) : L.prepInMonth(fmtDate(ev.d));
+  if (ev.q === "postponed") return `<b>${esc(L.when.postponed(fmtDate(ev.d)))}</b> <span class="muted">· ${esc(L.types[ev.t] || ev.t)}</span>`;
+  const w = ev.q === "range" ? L.when.range(fmtDate(ev.d), fmtDate(ev.d2)) : ev.q === "by" ? L.when.by(fmtDate(ev.d)) : ev.q === "before" ? L.when.before(fmtDate(ev.d)) : ev.q === "exact" ? L.when.exact(fmtDate(ev.d)) : L.prepInMonth(fmtDate(ev.d));
   return `<b>${esc(L.prepPlanned + " " + w)}</b> <span class="muted">· ${esc(L.types[ev.t] || ev.t)}</span>`;
 }
 /* Fichier .ics (journée entière, rappel la veille) pour une date exacte : lien data: avec « download » */
@@ -1853,7 +1855,7 @@ function prepCardHTML(D, L) {
     return `<li class="prep-item${x.past ? " past" : ""}">${meta ? `<span class="prep-d">${meta}</span>` : ""}<span class="prep-t"><span${own ? "" : ' lang="en" dir="ltr"'}>${esc(text)}</span>${src}</span></li>`;
   }).join("");
   const check = P.check ? `<p class="prep-check"><a href="${esc(P.check.url)}" target="_blank" rel="noopener">${L.prepCheck}</a>${P.src[P.check.src] ? ` <span class="src muted">(${L.source}${C()} ${srcA(P.src[P.check.src])})</span>` : ""}</p>` : "";
-  const exact = EMBEDDED ? [] : (D.meta.ev || []).filter(e => e.q === "exact" && isoDay(e.d) && e.d >= today);
+  const exact = EMBEDDED || D.meta.note ? [] : (D.meta.ev || []).filter(e => e.q === "exact" && isoDay(e.d) && e.d >= today);
   const cal = exact.map(e => { const c = icsLink(D, e, L); return `<a class="btn btn-ghost prep-ics" href="${c.href}" download="${esc(c.file)}">${L.prepAdd}${exact.length > 1 ? ` (${esc(L.types[c.type] || c.type)})` : ""}</a>`; }).join("");
   const line = voteLine(D, L);
   return `<section class="prep" aria-labelledby="hPrep">

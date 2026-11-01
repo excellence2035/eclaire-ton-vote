@@ -1,5 +1,6 @@
 /* Format: src/EDITION_SPEC.md. The Gambia edition, base language English, status 11 October 2026. Research notes: src/notes/gm.md */
 const SRC_GM = {
+  gambiaj_cal: { o: "The Gambia Journal", t: "IEC Sets November Nomination Window, 18-Day Campaign Period for 2026 Presidential Election", d: "10 Sep 2026", u: "https://gambiaj.com/news/politics/iec-sets-november-nomination-window-18-day-campaign-period-for-2026-presidential-election/" },
   iec_cal: { o: "Independent Electoral Commission (IEC)", t: "Electoral Calendar 2026–2027", d: "Oct 2025", u: "https://iec.gm/wp-content/uploads/2025/10/ELECTORALCALENDAR2026-2027.pdf" },
   ndi_peam: { o: "National Democratic Institute (NDI)", t: "Pre-Election Assessment Mission to The Gambia: statement", d: "28 Aug 2026", u: "https://www.ndi.org/sites/default/files/2026-08/Gambia-PEAM-Statement-2026-08.pdf" },
   wiki_2026: { o: "Wikipedia", t: "2026 Gambian presidential election", d: "2026", u: "https://en.wikipedia.org/wiki/2026_Gambian_presidential_election" },
@@ -61,11 +62,11 @@ const ED_GM = {
     ["How the President is elected", "A single round: the candidate with the most votes wins, even without a majority (first past the post). There is no run-off. Voters drop a marble into the drum of the candidate they choose."],
     ["How the National Assembly is elected", "58 members: 53 elected in single-member constituencies by first past the post, and 5 appointed by the President. Women hold 5 of the 58 seats."],
     ["Who can vote", "Gambian citizens aged 18 or over who are registered in a constituency. About 212,000 new voters registered in April–May 2026. Gambians abroad cannot vote: draft diaspora voting provisions were dropped from the Elections Act adopted in 2025."],
-    ["Rules for this election", "The Independent Electoral Commission (IEC), whose chair and four commissioners are appointed by the President, runs the vote under the Elections Act 2025, which gives it authority over police at polling stations. Nominations open on 26 October 2026; the campaign runs from 10 November to 3 December."],
+    ["Rules for this election", "The Independent Electoral Commission (IEC), whose chair and four commissioners are appointed by the President, runs the vote under the Elections Act 2025, which gives it authority over police at polling stations. Nominations run from 3 to 14 November 2026 and the campaign from 16 November to 3 December (IEC timetable reported on 10 September 2026)."],
     ["Key context", "President Adama Barrow, in office since 2017, is seeking a third term with an alliance that includes the APRC, the party of former President Yahya Jammeh, who lives in exile and faces prosecution if he returns. The opposition is split into three coalitions. An ECOWAS force (ECOMIG) has been in the country since the 2016–17 political crisis."]
   ],
-  systemSrc: ["const_stalled", "wiki_2026", "wiki_2027", "ndi_peam", "diaspora_vote", "iec_cal", "coalitions", "alliances_fr", "jammeh_warning", "ecomig_vp"],
-  status: "Party positions in this edition were coded from manifestos, speeches, votes and government records published up to 11 October 2026. They have not yet been validated by the parties or by an independent committee. Candidates are formally nominated from 26 October 2026 and the opposition coalitions had not yet published full programmes, so several positions come from rally speeches, interviews or older statements.",
+  systemSrc: ["const_stalled", "wiki_2026", "wiki_2027", "ndi_peam", "diaspora_vote", "iec_cal", "gambiaj_cal", "coalitions", "alliances_fr", "jammeh_warning", "ecomig_vp"],
+  status: "Party positions in this edition were coded from manifestos, speeches, votes and government records published up to 11 October 2026. They have not yet been validated by the parties or by an independent committee. Candidates are formally nominated from 3 to 14 November 2026 and the opposition coalitions had not yet published full programmes, so several positions come from rally speeches, interviews or older statements.",
   others: [
     "GDC · Mamma Kandeh (in the NPP-led alliance)",
     "APRC · Fabakary Jatta, interim leader (in the NPP-led alliance)",

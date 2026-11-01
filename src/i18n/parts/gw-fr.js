@@ -1,9 +1,9 @@
 const I18N_GW_FR = {
   strip: "Élections présidentielle et législatives 2026",
-  stripDate: "Prévues le dimanche 6 décembre 2026 · report annoncé, nouvelle date pas encore fixée",
+  stripDate: "Report annoncé le 8 octobre 2026 (le scrutin du 6 décembre est jugé irréalisable) · nouvelle date pas encore fixée",
   facts: [
     ["Président et Parlement (décret du 21 janv. 2026)", "Dim. 6 déc. 2026"],
-    ["Report", "Annoncé par le Premier ministre de transition le 8 oct. 2026 ; pas de nouvelle date"],
+    ["Report", "Annoncé par le Premier ministre de transition le 8 oct. 2026 ; médiateur de la CEDEAO à Bissau les 26 et 27 oct. ; pas de nouvelle date"],
     ["Candidatures déposées avant la date limite du 6 oct.", "Aucune signalée"]
   ],
   system: [

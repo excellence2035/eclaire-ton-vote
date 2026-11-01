@@ -1,7 +1,7 @@
 /* Traductions de l’édition SS — assemblées depuis src/i18n/parts/ */
 const I18N_SS_AR = {
   strip: "الانتخابات العامة 2026",
-  stripDate: "الثلاثاء 22 ديسمبر 2026 (لم يبدأ تسجيل الناخبين بعد)",
+  stripDate: "الثلاثاء 22 ديسمبر 2026 (لم يُسجَّل أي ناخب حتى 7 أكتوبر)",
   facts: [
     ["يوم الاقتراع (الرئيس والمجالس التشريعية وحكام الولايات)", "الثلاثاء 22 ديسمبر 2026"],
     ["تسجيل الناخبين", "لم يبدأ حتى 7 أكتوبر 2026"],
@@ -30,7 +30,7 @@ const I18N_SS_AR = {
 
 const I18N_SS_FR = {
   strip: "Élections générales 2026",
-  stripDate: "Mardi 22 décembre 2026 (inscription des électeurs pas encore commencée)",
+  stripDate: "Mardi 22 décembre 2026 (aucun électeur inscrit au 7 octobre)",
   facts: [
     ["Jour du scrutin (président, assemblées législatives, gouverneurs)", "Mar. 22 déc. 2026"],
     ["Inscription des électeurs", "Pas commencée au 7 oct. 2026"],

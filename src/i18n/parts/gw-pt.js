@@ -1,9 +1,9 @@
 const I18N_GW_PT = {
   strip: "Eleições presidenciais e legislativas de 2026",
-  stripDate: "Marcadas para domingo, 6 de dezembro de 2026 · adiamento anunciado, nova data ainda por fixar",
+  stripDate: "Adiamento anunciado a 8 de outubro de 2026 (a votação de 6 de dezembro foi considerada inexequível) · nova data ainda por fixar",
   facts: [
     ["Presidente e parlamento (decreto de 21 jan. 2026)", "Dom. 6 dez. 2026"],
-    ["Adiamento", "Anunciado pelo primeiro-ministro de transição a 8 out. 2026; sem nova data"],
+    ["Adiamento", "Anunciado pelo primeiro-ministro de transição a 8 out. 2026; mediador da CEDEAO em Bissau a 26 e 27 out.; sem nova data"],
     ["Candidaturas entregues até ao prazo de 6 out.", "Nenhuma noticiada"]
   ],
   system: [

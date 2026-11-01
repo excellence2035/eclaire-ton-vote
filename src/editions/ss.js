@@ -34,7 +34,7 @@ const META_SS = {
 const INFO_SS = {
   id: "ss", name: "South Sudan", lang: "en",
   strip: "General elections 2026",
-  stripDate: "Tuesday 22 December 2026 (voter registration not yet started)",
+  stripDate: "Tuesday 22 December 2026 (no voter registered as of 7 October)",
   facts: [
     ["Polling day (president, legislatures, governors)", "Tue 22 Dec 2026"],
     ["Voter registration", "Not started as of 7 Oct 2026"],

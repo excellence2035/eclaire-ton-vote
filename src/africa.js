@@ -47,7 +47,7 @@ const AFRICA = {
   "270": { a2: "GM", fr: "Gambie", en: "The Gambia", langs: ["en"], up: true, ev: [{ t: "presidential", d: "2026-12-05", q: "exact" }, { t: "legislative", d: "2027-04-10", q: "exact" }], src: "af_rio" },
   "288": { a2: "GH", fr: "Ghana", en: "Ghana", langs: ["en"], up: false, next: { t: "general", d: "2028-12-07", q: "exact" }, src: "af_elects" },
   "324": { a2: "GN", fr: "Guinée", en: "Guinea", langs: ["fr"], up: false, recent: "2026-05", src: "af_center" },
-  "624": { a2: "GW", fr: "Guinée-Bissau", en: "Guinea-Bissau", langs: ["pt"], up: true, ev: [{ t: "general", d: "2026-12-06", q: "exact" }], src: "af_gw" },
+  "624": { a2: "GW", fr: "Guinée-Bissau", en: "Guinea-Bissau", langs: ["pt"], up: true, ev: [{ t: "general", d: "2026-12-06", q: "postponed" }], src: "af_gw" },
   "404": { a2: "KE", fr: "Kenya", en: "Kenya", langs: ["sw", "en"], up: true, ev: [{ t: "general", d: "2027-08-10", q: "exact" }], src: "af_cal27" },
   "426": { a2: "LS", fr: "Lesotho", en: "Lesotho", langs: ["en"], up: true, ev: [{ t: "legislative", d: "2027-10", q: "by" }], src: "af_ls" },
   "430": { a2: "LR", fr: "Liberia", en: "Liberia", langs: ["en"], up: false },
