@@ -63,6 +63,17 @@ Il faut un ordinateur avec **Node.js 18 ou plus** ([nodejs.org](https://nodejs.o
    ```
    Puis reconstruire et publier le site comme d'habitude (`node tools/build.js`, voir le README principal). Le bouton « Ajouter mon résultat au compteur d'Afrique (anonyme) » et le compteur apparaissent. Le compteur d'Afrique ne s'affiche qu'à partir de **30 contributions** ; avant, le site écrit « Le compteur s'ouvre à 30 réponses : N pour l'instant ».
 
+## Variante sans terminal (tableau de bord Cloudflare, dans le navigateur)
+
+Pour ne rien installer : le fichier `worker-dashboard.js` est le même Worker, avec la liste des pays écrite dedans (un seul fichier à coller). Régénérer-le après un changement de `countries.json` en remplaçant la ligne `const COUNTRIES = [...]` par le contenu du fichier.
+
+1. Créer un compte sur [dash.cloudflare.com/sign-up](https://dash.cloudflare.com/sign-up) (gratuit, sans carte bancaire).
+2. Menu de gauche, **Stockage et bases de données › D1** (« Storage & Databases › D1 SQL database »), **Créer une base de données**, nom `vote-meter`.
+3. Dans cette base, onglet **Console** : coller le contenu de `schema.sql` (les trois `CREATE TABLE`), exécuter ; si la console n'accepte qu'une requête à la fois, les exécuter l'une après l'autre.
+4. Menu **Workers et Pages › Créer › Créer un Worker** : nom `vote-meter`, **Déployer** (avec le code d'exemple), puis **Modifier le code**, tout effacer, coller le contenu de `worker-dashboard.js`, **Déployer**.
+5. Dans ce Worker : **Paramètres › Liaisons › Ajouter › Base de données D1** ; nom de variable **`DB`** (exactement), base `vote-meter`, enregistrer et redéployer. Laisser les journaux (« Observabilité ») désactivés.
+6. Copier l'adresse du Worker (`https://vote-meter.NOM.workers.dev`), vérifier `/counts` dans le navigateur (étape 7 ci-dessus), puis la mettre dans `meter.config.json` (étape 8).
+
 ## Au quotidien
 
 - **Éteindre le compteur** : remettre `"endpoint": ""` dans `meter.config.json`, reconstruire, publier. Le site redevient entièrement local. (Pour supprimer aussi le serveur : `npx wrangler delete`, et supprimer la base dans le tableau de bord Cloudflare, rubrique « Storage & Databases › D1 ».)
